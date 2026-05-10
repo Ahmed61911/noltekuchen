@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import nolteLogo from "@/assets/nolte-logo.svg";
 
 export const Route = createFileRoute("/signup")({ component: SignupPage });
 
@@ -36,11 +35,11 @@ function SignupPage() {
     <div className="grid min-h-screen place-items-center bg-gradient-subtle p-6">
       <Card className="w-full max-w-md shadow-soft">
         <CardContent className="p-8">
-          <div className="flex flex-col items-start gap-3">
-            <img src={nolteLogo} alt="Nolte Küchen" className="h-9 w-auto dark:invert" />
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-primary font-display text-lg font-bold text-primary-foreground">N</div>
             <div>
               <h1 className="font-display text-xl font-semibold">{t("create_account_title")}</h1>
-              <p className="text-xs text-muted-foreground">ERP Interne</p>
+              <p className="text-xs text-muted-foreground">Nolte Küchen — ERP Interne</p>
             </div>
           </div>
 
