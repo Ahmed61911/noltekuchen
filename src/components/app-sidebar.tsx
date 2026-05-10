@@ -3,6 +3,7 @@ import {
   LayoutDashboard, Package, Boxes, ShoppingCart, Calendar,
   Truck, FileText, BarChart3, History, Users, Settings,
 } from "lucide-react";
+import nolteLogo from "@/assets/nolte-logo.svg";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter,
@@ -39,14 +40,16 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r">
       <SidebarHeader className="border-b">
         <Link to="/" className="flex items-center gap-3 px-2 py-2.5">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-primary text-primary-foreground shadow-elegant">
-            <span className="font-display text-lg font-bold">N</span>
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col leading-tight">
-              <span className="font-display text-sm font-semibold">Nolte Küchen</span>
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("app_tagline")}</span>
+          {collapsed ? (
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-primary text-primary-foreground shadow-elegant">
+              <span className="font-display text-lg font-bold">N</span>
             </div>
+          ) : (
+            <img
+              src={nolteLogo}
+              alt="Nolte Küchen"
+              className="h-8 w-auto dark:invert"
+            />
           )}
         </Link>
       </SidebarHeader>

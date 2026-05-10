@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import nolteLogo from "@/assets/nolte-logo.svg";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
@@ -34,10 +35,7 @@ function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="relative hidden bg-gradient-primary p-12 text-primary-foreground lg:flex lg:flex-col lg:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 font-display text-xl font-bold backdrop-blur">N</div>
-          <span className="font-display text-lg font-semibold">Nolte Küchen</span>
-        </div>
+        <img src={nolteLogo} alt="Nolte Küchen" className="h-9 w-auto brightness-0 invert" />
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
           <h2 className="font-display text-4xl font-semibold leading-tight">L'élégance allemande, gérée avec précision.</h2>
           <p className="mt-4 max-w-md text-white/80">
