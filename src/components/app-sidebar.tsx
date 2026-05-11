@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
+import logoUrl from "@/assets/nolte-logo.svg";
 
 export function AppSidebar() {
   const { t } = useI18n();
@@ -39,13 +40,13 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r">
       <SidebarHeader className="border-b">
         <Link to="/" className="flex items-center gap-3 px-2 py-2.5">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-primary text-primary-foreground shadow-elegant">
-            <span className="font-display text-lg font-bold">N</span>
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-white shadow-card overflow-hidden">
+            <img src={logoUrl} alt="Nolte Küchen" className="h-7 w-7 object-contain" />
           </div>
           {!collapsed && (
             <div className="flex flex-col leading-tight">
-              <span className="font-display text-sm font-semibold">Nolte Küchen</span>
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("app_tagline")}</span>
+              <img src={logoUrl} alt="Nolte Küchen" className="h-5 w-auto dark:invert" />
+              <span className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{t("app_tagline")}</span>
             </div>
           )}
         </Link>
