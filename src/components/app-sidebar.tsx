@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
+import logoUrl from "@/assets/nolte-logo.svg";
 
 export function AppSidebar() {
   const { t } = useI18n();
