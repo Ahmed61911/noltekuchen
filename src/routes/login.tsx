@@ -36,7 +36,9 @@ function LoginPage() {
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="relative hidden bg-gradient-primary p-12 text-primary-foreground lg:flex lg:flex-col lg:justify-between">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 font-display text-xl font-bold backdrop-blur">N</div>
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-white p-1.5 shadow-elegant">
+            <img src={logoUrl} alt="Nolte Küchen" className="h-full w-full object-contain" />
+          </div>
           <span className="font-display text-lg font-semibold">Nolte Küchen</span>
         </div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
