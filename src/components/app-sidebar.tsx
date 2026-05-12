@@ -40,12 +40,11 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r">
       <SidebarHeader className="border-b">
         <Link to="/" className="flex items-center gap-3 px-2 py-2.5">
-          <div className="grid h-9 w-9 place-items-center overflow-hidden">
+          {collapsed ? (
             <img src={logoUrl} alt="Nolte Küchen" className="h-7 w-7 object-contain dark:invert" />
-          </div>
-          {!collapsed && (
+          ) : (
             <div className="flex flex-col leading-tight">
-              <img src={logoUrl} alt="Nolte Küchen" className="h-5 w-auto dark:invert" />
+              <img src={logoUrl} alt="Nolte Küchen" className="h-6 w-auto dark:invert" />
               <span className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{t("app_tagline")}</span>
             </div>
           )}
