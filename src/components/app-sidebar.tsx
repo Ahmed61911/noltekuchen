@@ -40,8 +40,8 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r">
       <SidebarHeader className="border-b">
         <Link to="/" className="flex items-center gap-3 px-2 py-2.5">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-white shadow-card overflow-hidden">
-            <img src={logoUrl} alt="Nolte Küchen" className="h-7 w-7 object-contain" />
+          <div className="grid h-9 w-9 place-items-center overflow-hidden">
+            <img src={logoUrl} alt="Nolte Küchen" className="h-7 w-7 object-contain dark:invert" />
           </div>
           {!collapsed && (
             <div className="flex flex-col leading-tight">
