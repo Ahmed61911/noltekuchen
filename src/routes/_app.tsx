@@ -28,7 +28,7 @@ function AppLayout() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-gradient-subtle">
+      <div className="flex min-h-screen w-full bg-gradient-mesh">
         <AppSidebar />
         <SidebarInset className="flex flex-1 flex-col">
           <AppHeader />
