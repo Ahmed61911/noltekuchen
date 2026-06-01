@@ -116,10 +116,11 @@ function Dashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat icon={Boxes} label={t("total_stock")} value={fmt.format(data?.totalStock ?? 0)} accent="bg-primary/10 text-primary" />
-        <Stat icon={TrendingUp} label={t("stock_in")} value={fmt.format(data?.stockIn ?? 0)} accent="bg-success/15 text-success" />
-        <Stat icon={TrendingDown} label={t("stock_out")} value={fmt.format(data?.stockOut ?? 0)} accent="bg-warning/15 text-warning" />
-        <Stat icon={DollarSign} label={t("revenue")} value={fmtMoney.format(data?.revenue ?? 0)} accent="bg-accent text-accent-foreground" />
+        <Stat icon={Boxes} label={t("total_stock")} value={fmt.format(data?.totalStock ?? 0)} tone="primary" />
+        <Stat icon={TrendingUp} label={t("stock_in")} value={fmt.format(data?.stockIn ?? 0)} tone="success" />
+        <Stat icon={TrendingDown} label={t("stock_out")} value={fmt.format(data?.stockOut ?? 0)} tone="navy" />
+        <Stat icon={DollarSign} label={t("revenue")} value={fmtMoney.format(data?.revenue ?? 0)} tone="info" />
+
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
