@@ -35,6 +35,10 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-navy: var(--navy);
+  --color-navy-foreground: var(--navy-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -54,134 +58,141 @@
 }
 
 :root {
-  --radius: 0.875rem;
+  --radius: 0.625rem;
 
-  /* Modern light — crisp, airy, with electric indigo accents */
-  --background: oklch(0.985 0.005 250);
-  --foreground: oklch(0.18 0.03 260);
+  /* DreamsPOS-inspired — light gray canvas, white cards, vivid orange primary */
+  --background: oklch(0.97 0.005 80);
+  --foreground: oklch(0.22 0.03 260);
 
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.03 260);
+  --card-foreground: oklch(0.22 0.03 260);
 
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.03 260);
+  --popover-foreground: oklch(0.22 0.03 260);
 
-  /* Electric indigo */
-  --primary: oklch(0.55 0.22 268);
-  --primary-foreground: oklch(0.99 0.005 250);
-  --primary-glow: oklch(0.72 0.2 285);
+  /* Vivid orange (DreamsPOS) */
+  --primary: oklch(0.72 0.19 50);
+  --primary-foreground: oklch(0.99 0.005 80);
+  --primary-glow: oklch(0.8 0.17 55);
 
-  --secondary: oklch(0.96 0.012 255);
-  --secondary-foreground: oklch(0.22 0.04 260);
+  --secondary: oklch(0.96 0.008 80);
+  --secondary-foreground: oklch(0.25 0.03 260);
 
-  --muted: oklch(0.96 0.008 250);
-  --muted-foreground: oklch(0.5 0.02 258);
+  --muted: oklch(0.96 0.005 80);
+  --muted-foreground: oklch(0.52 0.02 258);
 
-  --accent: oklch(0.94 0.05 270);
-  --accent-foreground: oklch(0.3 0.15 270);
+  --accent: oklch(0.96 0.04 55);
+  --accent-foreground: oklch(0.4 0.15 50);
 
-  --destructive: oklch(0.6 0.24 22);
+  --destructive: oklch(0.62 0.24 22);
   --destructive-foreground: oklch(0.99 0 0);
 
-  /* Neon-leaning emerald */
-  --success: oklch(0.7 0.18 152);
-  --success-foreground: oklch(0.15 0.03 160);
+  /* DreamsPOS palette */
+  --success: oklch(0.6 0.12 175);          /* teal/green stat card */
+  --success-foreground: oklch(0.99 0 0);
 
-  --warning: oklch(0.82 0.17 85);
-  --warning-foreground: oklch(0.22 0.05 70);
+  --warning: oklch(0.72 0.19 50);          /* orange */
+  --warning-foreground: oklch(0.99 0 0);
 
-  --border: oklch(0.92 0.01 255);
-  --input: oklch(0.92 0.01 255);
-  --ring: oklch(0.55 0.22 268);
+  --info: oklch(0.58 0.18 260);            /* royal blue stat card */
+  --info-foreground: oklch(0.99 0 0);
 
-  --chart-1: oklch(0.6 0.22 268);   /* indigo */
-  --chart-2: oklch(0.7 0.18 152);   /* emerald */
-  --chart-3: oklch(0.7 0.18 220);   /* cyan-blue */
-  --chart-4: oklch(0.68 0.2 305);   /* violet */
-  --chart-5: oklch(0.78 0.17 85);   /* amber */
+  --navy: oklch(0.27 0.05 245);            /* deep navy stat card */
+  --navy-foreground: oklch(0.99 0 0);
 
-  /* Sidebar shares the dark futuristic vibe even in light mode */
-  --sidebar: oklch(0.19 0.04 265);
-  --sidebar-foreground: oklch(0.94 0.01 255);
-  --sidebar-primary: oklch(0.72 0.2 285);
-  --sidebar-primary-foreground: oklch(0.16 0.04 265);
-  --sidebar-accent: oklch(0.27 0.05 265);
-  --sidebar-accent-foreground: oklch(0.97 0.005 255);
-  --sidebar-border: oklch(1 0 0 / 0.08);
-  --sidebar-ring: oklch(0.72 0.2 285);
+  --border: oklch(0.92 0.005 80);
+  --input: oklch(0.92 0.005 80);
+  --ring: oklch(0.72 0.19 50);
 
-  --gradient-primary: linear-gradient(135deg, oklch(0.6 0.22 268), oklch(0.72 0.2 305));
-  --gradient-mesh: radial-gradient(at 20% 0%, oklch(0.72 0.2 285 / 0.18) 0px, transparent 50%),
-                   radial-gradient(at 90% 10%, oklch(0.7 0.18 220 / 0.16) 0px, transparent 50%),
-                   radial-gradient(at 50% 100%, oklch(0.7 0.18 152 / 0.12) 0px, transparent 50%);
-  --gradient-subtle: linear-gradient(180deg, oklch(0.99 0.005 250), oklch(0.96 0.012 255));
-  --shadow-elegant: 0 18px 40px -18px color-mix(in oklab, var(--primary) 45%, transparent);
-  --shadow-card: 0 1px 2px 0 oklch(0.2 0.04 260 / 0.06), 0 8px 24px -12px oklch(0.2 0.04 260 / 0.08);
-  --shadow-soft: 0 10px 30px -12px oklch(0.2 0.04 260 / 0.18);
-  --shadow-glow: 0 0 0 1px oklch(0.72 0.2 285 / 0.18), 0 12px 40px -10px oklch(0.6 0.22 268 / 0.45);
+  --chart-1: oklch(0.72 0.19 50);    /* orange */
+  --chart-2: oklch(0.6 0.12 175);    /* teal */
+  --chart-3: oklch(0.58 0.18 260);   /* blue */
+  --chart-4: oklch(0.27 0.05 245);   /* navy */
+  --chart-5: oklch(0.7 0.15 145);    /* green */
+
+  /* Light sidebar (DreamsPOS uses white sidebar) */
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.3 0.03 260);
+  --sidebar-primary: oklch(0.72 0.19 50);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.97 0.02 55);
+  --sidebar-accent-foreground: oklch(0.55 0.18 50);
+  --sidebar-border: oklch(0.93 0.005 80);
+  --sidebar-ring: oklch(0.72 0.19 50);
+
+  --gradient-primary: linear-gradient(135deg, oklch(0.72 0.19 50), oklch(0.8 0.17 55));
+  --gradient-mesh: linear-gradient(180deg, oklch(0.98 0.005 80), oklch(0.96 0.005 80));
+  --gradient-subtle: linear-gradient(180deg, oklch(0.99 0.005 80), oklch(0.96 0.008 80));
+  --shadow-elegant: 0 18px 40px -18px color-mix(in oklab, var(--primary) 40%, transparent);
+  --shadow-card: 0 1px 2px 0 oklch(0.2 0.04 260 / 0.05), 0 4px 16px -10px oklch(0.2 0.04 260 / 0.08);
+  --shadow-soft: 0 8px 24px -12px oklch(0.2 0.04 260 / 0.15);
+  --shadow-glow: 0 0 0 1px oklch(0.72 0.19 50 / 0.2), 0 12px 40px -10px oklch(0.72 0.19 50 / 0.4);
 }
 
 .dark {
-  /* Deep navy à la dashboard reference */
-  --background: oklch(0.16 0.03 265);
-  --foreground: oklch(0.97 0.008 250);
+  --background: oklch(0.18 0.02 260);
+  --foreground: oklch(0.97 0.008 80);
 
-  --card: oklch(0.21 0.035 265);
-  --card-foreground: oklch(0.97 0.008 250);
+  --card: oklch(0.23 0.025 260);
+  --card-foreground: oklch(0.97 0.008 80);
 
-  --popover: oklch(0.21 0.035 265);
-  --popover-foreground: oklch(0.97 0.008 250);
+  --popover: oklch(0.23 0.025 260);
+  --popover-foreground: oklch(0.97 0.008 80);
 
-  --primary: oklch(0.72 0.2 285);
-  --primary-foreground: oklch(0.16 0.04 265);
-  --primary-glow: oklch(0.78 0.2 305);
+  --primary: oklch(0.75 0.18 50);
+  --primary-foreground: oklch(0.18 0.02 260);
+  --primary-glow: oklch(0.82 0.16 55);
 
-  --secondary: oklch(0.26 0.04 265);
-  --secondary-foreground: oklch(0.97 0.008 250);
+  --secondary: oklch(0.28 0.03 260);
+  --secondary-foreground: oklch(0.97 0.008 80);
 
-  --muted: oklch(0.24 0.035 265);
+  --muted: oklch(0.26 0.025 260);
   --muted-foreground: oklch(0.74 0.02 255);
 
-  --accent: oklch(0.32 0.08 280);
-  --accent-foreground: oklch(0.97 0.008 250);
+  --accent: oklch(0.32 0.06 55);
+  --accent-foreground: oklch(0.97 0.008 80);
 
   --destructive: oklch(0.65 0.24 22);
   --destructive-foreground: oklch(0.99 0 0);
 
-  --success: oklch(0.78 0.2 152);
-  --success-foreground: oklch(0.14 0.03 160);
+  --success: oklch(0.65 0.13 175);
+  --success-foreground: oklch(0.99 0 0);
 
-  --warning: oklch(0.82 0.17 85);
-  --warning-foreground: oklch(0.2 0.05 70);
+  --warning: oklch(0.75 0.18 50);
+  --warning-foreground: oklch(0.18 0.02 260);
+
+  --info: oklch(0.65 0.18 260);
+  --info-foreground: oklch(0.99 0 0);
+
+  --navy: oklch(0.32 0.06 245);
+  --navy-foreground: oklch(0.99 0 0);
 
   --border: oklch(1 0 0 / 0.08);
   --input: oklch(1 0 0 / 0.1);
-  --ring: oklch(0.72 0.2 285);
+  --ring: oklch(0.75 0.18 50);
 
-  --chart-1: oklch(0.75 0.2 285);
-  --chart-2: oklch(0.78 0.2 152);
-  --chart-3: oklch(0.75 0.18 220);
-  --chart-4: oklch(0.7 0.22 305);
-  --chart-5: oklch(0.82 0.17 85);
+  --chart-1: oklch(0.75 0.18 50);
+  --chart-2: oklch(0.65 0.13 175);
+  --chart-3: oklch(0.65 0.18 260);
+  --chart-4: oklch(0.5 0.08 245);
+  --chart-5: oklch(0.72 0.15 145);
 
-  --sidebar: oklch(0.13 0.03 265);
-  --sidebar-foreground: oklch(0.93 0.01 255);
-  --sidebar-primary: oklch(0.72 0.2 285);
-  --sidebar-primary-foreground: oklch(0.14 0.03 265);
-  --sidebar-accent: oklch(0.24 0.05 270);
-  --sidebar-accent-foreground: oklch(0.97 0.008 250);
+  --sidebar: oklch(0.2 0.025 260);
+  --sidebar-foreground: oklch(0.93 0.01 80);
+  --sidebar-primary: oklch(0.75 0.18 50);
+  --sidebar-primary-foreground: oklch(0.18 0.02 260);
+  --sidebar-accent: oklch(0.28 0.04 55);
+  --sidebar-accent-foreground: oklch(0.97 0.008 80);
   --sidebar-border: oklch(1 0 0 / 0.06);
-  --sidebar-ring: oklch(0.72 0.2 285);
+  --sidebar-ring: oklch(0.75 0.18 50);
 
-  --gradient-primary: linear-gradient(135deg, oklch(0.72 0.2 285), oklch(0.78 0.18 220));
-  --gradient-mesh: radial-gradient(at 15% 0%, oklch(0.72 0.2 285 / 0.28) 0px, transparent 55%),
-                   radial-gradient(at 85% 5%, oklch(0.75 0.18 220 / 0.22) 0px, transparent 55%),
-                   radial-gradient(at 50% 100%, oklch(0.78 0.2 152 / 0.14) 0px, transparent 60%);
-  --gradient-subtle: linear-gradient(180deg, oklch(0.18 0.035 265), oklch(0.14 0.03 265));
+  --gradient-primary: linear-gradient(135deg, oklch(0.75 0.18 50), oklch(0.82 0.16 55));
+  --gradient-mesh: linear-gradient(180deg, oklch(0.2 0.025 260), oklch(0.16 0.02 260));
+  --gradient-subtle: linear-gradient(180deg, oklch(0.22 0.025 260), oklch(0.18 0.02 260));
   --shadow-elegant: 0 22px 50px -18px color-mix(in oklab, var(--primary) 45%, transparent);
   --shadow-card: 0 1px 2px 0 oklch(0 0 0 / 0.4), 0 8px 24px -12px oklch(0 0 0 / 0.5);
   --shadow-soft: 0 10px 30px -10px oklch(0 0 0 / 0.6);
-  --shadow-glow: 0 0 0 1px oklch(0.72 0.2 285 / 0.35), 0 16px 50px -10px oklch(0.72 0.2 285 / 0.5);
+  --shadow-glow: 0 0 0 1px oklch(0.75 0.18 50 / 0.35), 0 16px 50px -10px oklch(0.75 0.18 50 / 0.5);
 }
 
 @layer base {
