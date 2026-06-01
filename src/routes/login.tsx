@@ -52,8 +52,10 @@ function LoginPage() {
           <p className="mt-4 max-w-md text-white/80">
             Plateforme interne pour piloter le stock, les ventes, les rendez-vous et l'ensemble du back-office Nolte.
           </p>
+        </motion.div>
         <div className="text-xs text-white/60">© Nolte Küchen — ERP Interne</div>
         </div>
+
 
       </div>
 
