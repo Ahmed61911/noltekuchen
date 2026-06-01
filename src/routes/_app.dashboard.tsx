@@ -75,19 +75,25 @@ function useDashboardData() {
 const fmt = new Intl.NumberFormat("fr-FR");
 const fmtMoney = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 
-function Stat({ icon: Icon, label, value, accent, delta }: { icon: typeof Boxes; label: string; value: string; accent: string; delta?: string }) {
+function Stat({ icon: Icon, label, value, tone, delta }: { icon: typeof Boxes; label: string; value: string; tone: "primary" | "navy" | "success" | "info"; delta?: string }) {
+  const tones = {
+    primary: "bg-primary text-primary-foreground",
+    navy: "bg-navy text-navy-foreground",
+    success: "bg-success text-success-foreground",
+    info: "bg-info text-info-foreground",
+  } as const;
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-      <Card className="overflow-hidden border-border/60 shadow-card transition-shadow hover:shadow-soft">
+      <Card className={`overflow-hidden border-0 shadow-card transition-shadow hover:shadow-soft ${tones[tone]}`}>
         <CardContent className="p-5">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-              <p className="mt-2 font-display text-2xl font-semibold">{value}</p>
-              {delta && <p className="mt-1 text-xs text-muted-foreground">{delta}</p>}
+          <div className="flex items-start justify-between gap-3">
+            <div className="grid h-12 w-12 place-items-center rounded-xl bg-white/15 backdrop-blur-sm">
+              <Icon className="h-6 w-6" />
             </div>
-            <div className={`grid h-10 w-10 place-items-center rounded-lg ${accent}`}>
-              <Icon className="h-5 w-5" />
+            <div className="text-right">
+              <p className="text-xs font-medium uppercase tracking-wider opacity-80">{label}</p>
+              <p className="mt-1 font-display text-2xl font-semibold">{value}</p>
+              {delta && <p className="mt-1 text-xs opacity-80">{delta}</p>}
             </div>
           </div>
         </CardContent>
@@ -110,10 +116,11 @@ function Dashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat icon={Boxes} label={t("total_stock")} value={fmt.format(data?.totalStock ?? 0)} accent="bg-primary/10 text-primary" />
-        <Stat icon={TrendingUp} label={t("stock_in")} value={fmt.format(data?.stockIn ?? 0)} accent="bg-success/15 text-success" />
-        <Stat icon={TrendingDown} label={t("stock_out")} value={fmt.format(data?.stockOut ?? 0)} accent="bg-warning/15 text-warning" />
-        <Stat icon={DollarSign} label={t("revenue")} value={fmtMoney.format(data?.revenue ?? 0)} accent="bg-accent text-accent-foreground" />
+        <Stat icon={Boxes} label={t("total_stock")} value={fmt.format(data?.totalStock ?? 0)} tone="primary" />
+        <Stat icon={TrendingUp} label={t("stock_in")} value={fmt.format(data?.stockIn ?? 0)} tone="success" />
+        <Stat icon={TrendingDown} label={t("stock_out")} value={fmt.format(data?.stockOut ?? 0)} tone="navy" />
+        <Stat icon={DollarSign} label={t("revenue")} value={fmtMoney.format(data?.revenue ?? 0)} tone="info" />
+
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
