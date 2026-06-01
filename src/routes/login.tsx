@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import logoUrl from "@/assets/nolte-logo.svg";
+import kitchenAsset from "@/assets/login-kitchen.png.asset.json";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
@@ -34,7 +35,11 @@ function LoginPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden bg-gradient-primary p-12 text-primary-foreground lg:flex lg:flex-col lg:justify-between">
+      <div className="relative hidden overflow-hidden p-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <img src={kitchenAsset.url} alt="Cuisine Nolte" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/40 to-black/70" />
+        <div className="relative z-10 contents">
+
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 place-items-center">
             <img src={logoUrl} alt="Nolte Küchen" className="h-full w-full object-contain invert" />
