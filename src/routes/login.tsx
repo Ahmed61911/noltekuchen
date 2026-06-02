@@ -36,7 +36,9 @@ function LoginPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden overflow-hidden bg-background p-12 text-foreground lg:flex lg:flex-col lg:justify-between">
+      <div className="relative hidden overflow-hidden p-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <img src={kitchenAsset.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/30 to-black/70" />
         <div className="relative z-10 flex h-full flex-col justify-between">
           <div />
 
