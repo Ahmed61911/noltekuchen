@@ -36,9 +36,8 @@ function LoginPage() {
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="relative hidden overflow-hidden bg-background p-12 text-foreground lg:flex lg:flex-col lg:justify-between">
         <div className="relative z-10 flex h-full flex-col justify-between">
-          <div className="flex items-center">
-            <img src={logoUrl} alt="Nolte Küchen" className="h-14 w-auto rounded-md bg-white/95 px-3 py-2 shadow-sm" />
-          </div>
+          <div />
+
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <h2 className="font-display text-4xl font-semibold leading-tight">L'élégance allemande, gérée avec précision.</h2>
             <p className="mt-4 max-w-md text-foreground/80">
