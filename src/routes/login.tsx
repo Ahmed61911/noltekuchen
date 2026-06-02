@@ -44,11 +44,11 @@ function LoginPage() {
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <h2 className="font-display text-4xl font-semibold leading-tight">L'élégance allemande, gérée avec précision.</h2>
-            <p className="mt-4 max-w-md text-foreground/80">
+            <p className="mt-4 max-w-md text-white/85">
               Plateforme interne pour piloter le stock, les ventes, les rendez-vous et l'ensemble du back-office Nolte.
             </p>
           </motion.div>
-          <div className="text-xs text-foreground/60">© Nolte Küchen — ERP Interne</div>
+          <div className="text-xs text-white/70">© Nolte Küchen — ERP Interne</div>
         </div>
       </div>
 
