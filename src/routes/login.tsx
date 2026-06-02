@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import kitchenAsset from "@/assets/login-kitchen.png.asset.json";
+
 
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
