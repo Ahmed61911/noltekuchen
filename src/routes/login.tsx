@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import kitchenAsset from "@/assets/login-kitchen.png.asset.json";
+
 
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
@@ -34,17 +36,19 @@ function LoginPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden overflow-hidden bg-background p-12 text-foreground lg:flex lg:flex-col lg:justify-between">
+      <div className="relative hidden overflow-hidden p-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <img src={kitchenAsset.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/30 to-black/70" />
         <div className="relative z-10 flex h-full flex-col justify-between">
           <div />
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <h2 className="font-display text-4xl font-semibold leading-tight">L'élégance allemande, gérée avec précision.</h2>
-            <p className="mt-4 max-w-md text-foreground/80">
+            <p className="mt-4 max-w-md text-white/85">
               Plateforme interne pour piloter le stock, les ventes, les rendez-vous et l'ensemble du back-office Nolte.
             </p>
           </motion.div>
-          <div className="text-xs text-foreground/60">© Nolte Küchen — ERP Interne</div>
+          <div className="text-xs text-white/70">© Nolte Küchen — ERP Interne</div>
         </div>
       </div>
 
