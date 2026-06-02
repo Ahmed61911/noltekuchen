@@ -41,11 +41,8 @@ function LoginPage() {
         <div className="relative z-10 flex h-full flex-col justify-between">
 
 
-        <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center">
-            <img src={logoUrl} alt="Nolte Küchen" className="h-full w-full object-contain invert" />
-          </div>
-          <span className="font-display text-lg font-semibold">Nolte Küchen</span>
+        <div className="flex items-center">
+          <img src={logoUrl} alt="Nolte Küchen" className="h-14 w-auto rounded-md bg-white/95 px-3 py-2 shadow-sm" />
         </div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
           <h2 className="font-display text-4xl font-semibold leading-tight">L'élégance allemande, gérée avec précision.</h2>
