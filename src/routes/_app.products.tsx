@@ -156,6 +156,7 @@ function ProductsPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-16">Image</TableHead>
               <TableHead>{t("reference")}</TableHead>
               <TableHead>{t("name")}</TableHead>
               <TableHead className="text-right">{t("purchase_price")}</TableHead>
@@ -166,9 +167,9 @@ function ProductsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">{t("loading")}</TableCell></TableRow>}
+            {isLoading && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">{t("loading")}</TableCell></TableRow>}
             {!isLoading && filtered.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">{t("no_data")}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">{t("no_data")}</TableCell></TableRow>
             )}
             {filtered.map((p) => {
               const margin = p.selling_price - p.purchase_price;
