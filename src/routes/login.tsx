@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import kitchenAsset from "@/assets/login-kitchen.png.asset.json";
-import logoAsset from "@/assets/nolte-logo.png.asset.json";
+import logoSvg from "@/assets/nolte-logo.svg";
 
 
 
