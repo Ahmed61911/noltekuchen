@@ -41,10 +41,10 @@ export function AppSidebar() {
       <SidebarHeader className="border-b">
         <Link to="/" className="flex items-center gap-3 px-2 py-2.5">
           {collapsed ? (
-            <img src={logoUrl} alt="Nolte Küchen" className="h-7 w-7 object-contain dark:invert" />
+            <img src={logoUrl} alt="Nolte Küchen" className="h-7 w-7 object-contain" />
           ) : (
             <div className="flex flex-col leading-tight">
-              <img src={logoUrl} alt="Nolte Küchen" className="h-6 w-auto dark:invert" />
+              <img src={logoUrl} alt="Nolte Küchen" className="h-6 w-auto" />
               <span className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{t("app_tagline")}</span>
             </div>
           )}
