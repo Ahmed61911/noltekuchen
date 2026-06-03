@@ -43,6 +43,7 @@ export type Database = {
           dimensions: string | null
           id: string
           image_url: string | null
+          images: string[]
           min_stock: number
           name: string
           purchase_price: number
@@ -59,6 +60,7 @@ export type Database = {
           dimensions?: string | null
           id?: string
           image_url?: string | null
+          images?: string[]
           min_stock?: number
           name: string
           purchase_price?: number
@@ -75,6 +77,7 @@ export type Database = {
           dimensions?: string | null
           id?: string
           image_url?: string | null
+          images?: string[]
           min_stock?: number
           name?: string
           purchase_price?: number
