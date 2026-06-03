@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import kitchenAsset from "@/assets/login-kitchen.png.asset.json";
-import logoAsset from "@/assets/nolte-logo.png.asset.json";
+import logoSvg from "@/assets/nolte-logo.svg";
 
 
 
@@ -41,7 +41,7 @@ function LoginPage() {
         <img src={kitchenAsset.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/30 to-black/70" />
         <div className="relative z-10 flex h-full flex-col justify-between">
-          <img src={logoAsset.url} alt="Nolte Küchen" className="h-14 w-auto rounded-md bg-white/95 p-2 shadow-soft" />
+          <img src={logoSvg} alt="Nolte Küchen" className="h-14 w-auto" />
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <h2 className="font-display text-4xl font-semibold leading-tight">L'élégance allemande, gérée avec précision.</h2>
