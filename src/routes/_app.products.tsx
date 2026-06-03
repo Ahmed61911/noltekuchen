@@ -177,6 +177,7 @@ function ProductsPage() {
               const low = p.stock_quantity <= p.min_stock;
               return (
                 <TableRow key={p.id}>
+                  <TableCell><ProductImage path={p.image_url} /></TableCell>
                   <TableCell className="font-mono text-xs">{p.reference}</TableCell>
                   <TableCell className="font-medium">{p.name}</TableCell>
                   <TableCell className="text-right">{p.purchase_price.toFixed(2)} €</TableCell>
