@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Upload, ImageIcon, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Plus, Pencil, Trash2, Search, Upload, ImageIcon, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,9 @@ export const Route = createFileRoute("/_app/products")({
   component: ProductsPage,
 });
 
+const MAX_IMAGES = 4;
+const CURRENCY = "DH";
+
 type Product = {
   id: string;
   reference: string;
@@ -34,12 +37,15 @@ type Product = {
   min_stock: number;
   dimensions: string | null;
   image_url: string | null;
+  images: string[] | null;
 };
 
-const empty: Omit<Product, "id"> = {
+type FormState = Omit<Product, "id" | "image_url" | "images"> & { gallery: string[] };
+
+const empty: FormState = {
   reference: "", name: "", description: "",
   purchase_price: 0, selling_price: 0, stock_quantity: 0, min_stock: 5,
-  dimensions: "", image_url: "",
+  dimensions: "", gallery: [],
 };
 
 function ProductsPage() {
@@ -49,7 +55,7 @@ function ProductsPage() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState<Omit<Product, "id">>(empty);
+  const [form, setForm] = useState<FormState>(empty);
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
@@ -61,12 +67,18 @@ function ProductsPage() {
   });
 
   const upsert = useMutation({
-    mutationFn: async (p: Omit<Product, "id"> & { id?: string }) => {
+    mutationFn: async (p: FormState & { id?: string }) => {
+      const { gallery, ...rest } = p;
+      const payload = {
+        ...rest,
+        image_url: gallery[0] ?? null,
+        images: gallery.slice(1),
+      };
       if (p.id) {
-        const { error } = await supabase.from("products").update(p).eq("id", p.id);
+        const { error } = await supabase.from("products").update(payload).eq("id", p.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("products").insert(p);
+        const { error } = await supabase.from("products").insert(payload);
         if (error) throw error;
       }
     },
@@ -95,11 +107,12 @@ function ProductsPage() {
 
   function startEdit(p: Product) {
     setEditing(p);
+    const gallery = [p.image_url, ...(p.images ?? [])].filter((x): x is string => !!x);
     setForm({
       reference: p.reference, name: p.name, description: p.description ?? "",
       purchase_price: p.purchase_price, selling_price: p.selling_price,
       stock_quantity: p.stock_quantity, min_stock: p.min_stock,
-      dimensions: p.dimensions ?? "", image_url: p.image_url ?? "",
+      dimensions: p.dimensions ?? "", gallery,
     });
     setOpen(true);
   }
@@ -123,7 +136,7 @@ function ProductsPage() {
                   <Plus className="me-1 h-4 w-4" /> {t("add_product")}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editing ? t("edit_product") : t("add_product")}</DialogTitle>
                 </DialogHeader>
@@ -135,7 +148,11 @@ function ProductsPage() {
                   <Field label={t("quantity")}><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: Number(e.target.value) })} /></Field>
                   <Field label={t("min_stock")}><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: Number(e.target.value) })} /></Field>
                   <Field label={t("dimensions")}><Input value={form.dimensions ?? ""} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} placeholder="L × P × H" /></Field>
-                  <Field label={t("image_url")}><ImageUploadField value={form.image_url ?? ""} onChange={(v) => setForm({ ...form, image_url: v })} /></Field>
+                  <div className="sm:col-span-2">
+                    <Field label={`Images (max ${MAX_IMAGES})`}>
+                      <GalleryUploadField value={form.gallery} onChange={(g) => setForm({ ...form, gallery: g })} />
+                    </Field>
+                  </div>
                   <div className="sm:col-span-2">
                     <Field label={t("description")}><Textarea value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
                   </div>
@@ -175,16 +192,17 @@ function ProductsPage() {
               const margin = p.selling_price - p.purchase_price;
               const marginPct = p.purchase_price > 0 ? (margin / p.purchase_price) * 100 : 0;
               const low = p.stock_quantity <= p.min_stock;
+              const gallery = [p.image_url, ...(p.images ?? [])].filter((x): x is string => !!x);
               return (
                 <TableRow key={p.id}>
-                  <TableCell><ProductImage path={p.image_url} /></TableCell>
+                  <TableCell><ProductThumbs paths={gallery} /></TableCell>
                   <TableCell className="font-mono text-xs">{p.reference}</TableCell>
                   <TableCell className="font-medium">{p.name}</TableCell>
-                  <TableCell className="text-right">{p.purchase_price.toFixed(2)} €</TableCell>
-                  <TableCell className="text-right">{p.selling_price.toFixed(2)} €</TableCell>
+                  <TableCell className="text-right">{p.purchase_price.toFixed(2)} {CURRENCY}</TableCell>
+                  <TableCell className="text-right">{p.selling_price.toFixed(2)} {CURRENCY}</TableCell>
                   <TableCell className="text-right">
                     <span className={margin >= 0 ? "text-success" : "text-destructive"}>
-                      {margin.toFixed(2)} € ({marginPct.toFixed(0)}%)
+                      {margin.toFixed(2)} {CURRENCY} ({marginPct.toFixed(0)}%)
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
@@ -223,8 +241,8 @@ function isHttpUrl(v: string | null | undefined) {
   return !!v && /^https?:\/\//i.test(v);
 }
 
-function ProductImage({ path }: { path: string | null }) {
-  const { data: url } = useQuery({
+function useSignedUrl(path: string | null | undefined) {
+  return useQuery({
     queryKey: ["product-image", path],
     enabled: !!path,
     staleTime: 1000 * 60 * 50,
@@ -236,46 +254,77 @@ function ProductImage({ path }: { path: string | null }) {
       return data.signedUrl;
     },
   });
-  if (!path || !url) {
+}
+
+function Thumb({ path }: { path: string }) {
+  const { data: url } = useSignedUrl(path);
+  if (!url) return <div className="h-10 w-10 rounded border bg-muted" />;
+  return <img src={url} alt="" className="h-10 w-10 rounded border object-cover" />;
+}
+
+function ProductThumbs({ paths }: { paths: string[] }) {
+  if (paths.length === 0) {
     return (
       <div className="flex h-12 w-12 items-center justify-center rounded-md border bg-muted text-muted-foreground">
         <ImageIcon className="h-5 w-5" />
       </div>
     );
   }
-  return <img src={url} alt="" className="h-12 w-12 rounded-md object-cover border" />;
+  return (
+    <div className="flex -space-x-2">
+      {paths.slice(0, 4).map((p, i) => (
+        <div key={i} className="ring-2 ring-background rounded">
+          <Thumb path={p} />
+        </div>
+      ))}
+    </div>
+  );
 }
 
-function ImageUploadField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function GalleryThumb({ path, onRemove }: { path: string; onRemove: () => void }) {
+  const { data: url } = useSignedUrl(path);
+  return (
+    <div className="relative h-24 w-24 overflow-hidden rounded-md border bg-muted">
+      {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : <div className="h-full w-full" />}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="absolute top-1 right-1 rounded-full bg-background/80 p-0.5 text-foreground shadow hover:bg-background"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+function GalleryUploadField({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
+  const remaining = MAX_IMAGES - value.length;
 
-  useEffect(() => {
-    let cancelled = false;
-    async function resolve() {
-      if (!value) { setPreview(null); return; }
-      if (isHttpUrl(value)) { setPreview(value); return; }
-      const { data } = await supabase.storage.from(BUCKET).createSignedUrl(value, 60 * 60);
-      if (!cancelled) setPreview(data?.signedUrl ?? null);
+  async function handleFiles(files: FileList) {
+    const slots = MAX_IMAGES - value.length;
+    if (slots <= 0) {
+      toast.error(`Maximum ${MAX_IMAGES} images`);
+      return;
     }
-    resolve();
-    return () => { cancelled = true; };
-  }, [value]);
-
-  async function handleFile(file: File) {
+    const toUpload = Array.from(files).slice(0, slots);
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: file.type,
-      });
-      if (error) throw error;
-      onChange(path);
-      toast.success("Image téléversée");
+      const uploaded: string[] = [];
+      for (const file of toUpload) {
+        const ext = file.name.split(".").pop() || "jpg";
+        const path = `${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type,
+        });
+        if (error) throw error;
+        uploaded.push(path);
+      }
+      onChange([...value, ...uploaded]);
+      toast.success("Images téléversées");
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -283,35 +332,41 @@ function ImageUploadField({ value, onChange }: { value: string; onChange: (v: st
     }
   }
 
+  function removeAt(i: number) {
+    onChange(value.filter((_, idx) => idx !== i));
+  }
+
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border bg-muted overflow-hidden">
-        {preview ? (
-          <img src={preview} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <ImageIcon className="h-6 w-6 text-muted-foreground" />
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {value.map((p, i) => (
+          <GalleryThumb key={p + i} path={p} onRemove={() => removeAt(i)} />
+        ))}
+        {remaining > 0 && (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="flex h-24 w-24 flex-col items-center justify-center rounded-md border border-dashed text-muted-foreground hover:bg-muted disabled:opacity-50"
+          >
+            {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+            <span className="mt-1 text-[10px]">Ajouter</span>
+          </button>
         )}
       </div>
-      <div className="flex flex-col gap-2">
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) handleFile(f);
-            e.target.value = "";
-          }}
-        />
-        <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
-          {uploading ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : <Upload className="me-1 h-4 w-4" />}
-          {value ? "Changer" : "Téléverser"}
-        </Button>
-        {value && (
-          <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>Retirer</Button>
-        )}
-      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) handleFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      <p className="text-xs text-muted-foreground">{value.length}/{MAX_IMAGES} images. La 1ère sera l'image principale.</p>
     </div>
   );
 }
+
