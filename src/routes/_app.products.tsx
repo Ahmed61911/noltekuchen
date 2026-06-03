@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Pencil, Trash2, Search, Upload, ImageIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -135,7 +135,7 @@ function ProductsPage() {
                   <Field label={t("quantity")}><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: Number(e.target.value) })} /></Field>
                   <Field label={t("min_stock")}><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: Number(e.target.value) })} /></Field>
                   <Field label={t("dimensions")}><Input value={form.dimensions ?? ""} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} placeholder="L × P × H" /></Field>
-                  <Field label={t("image_url")}><Input value={form.image_url ?? ""} onChange={(e) => setForm({ ...form, image_url: e.target.value })} /></Field>
+                  <Field label={t("image_url")}><ImageUploadField value={form.image_url ?? ""} onChange={(v) => setForm({ ...form, image_url: v })} /></Field>
                   <div className="sm:col-span-2">
                     <Field label={t("description")}><Textarea value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
                   </div>
@@ -156,6 +156,7 @@ function ProductsPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-16">Image</TableHead>
               <TableHead>{t("reference")}</TableHead>
               <TableHead>{t("name")}</TableHead>
               <TableHead className="text-right">{t("purchase_price")}</TableHead>
@@ -166,9 +167,9 @@ function ProductsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">{t("loading")}</TableCell></TableRow>}
+            {isLoading && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">{t("loading")}</TableCell></TableRow>}
             {!isLoading && filtered.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">{t("no_data")}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">{t("no_data")}</TableCell></TableRow>
             )}
             {filtered.map((p) => {
               const margin = p.selling_price - p.purchase_price;
@@ -176,6 +177,7 @@ function ProductsPage() {
               const low = p.stock_quantity <= p.min_stock;
               return (
                 <TableRow key={p.id}>
+                  <TableCell><ProductImage path={p.image_url} /></TableCell>
                   <TableCell className="font-mono text-xs">{p.reference}</TableCell>
                   <TableCell className="font-medium">{p.name}</TableCell>
                   <TableCell className="text-right">{p.purchase_price.toFixed(2)} €</TableCell>
@@ -211,6 +213,105 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div className="space-y-1.5">
       <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
       {children}
+    </div>
+  );
+}
+
+const BUCKET = "product-images";
+
+function isHttpUrl(v: string | null | undefined) {
+  return !!v && /^https?:\/\//i.test(v);
+}
+
+function ProductImage({ path }: { path: string | null }) {
+  const { data: url } = useQuery({
+    queryKey: ["product-image", path],
+    enabled: !!path,
+    staleTime: 1000 * 60 * 50,
+    queryFn: async () => {
+      if (!path) return null;
+      if (isHttpUrl(path)) return path;
+      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
+      if (error) return null;
+      return data.signedUrl;
+    },
+  });
+  if (!path || !url) {
+    return (
+      <div className="flex h-12 w-12 items-center justify-center rounded-md border bg-muted text-muted-foreground">
+        <ImageIcon className="h-5 w-5" />
+      </div>
+    );
+  }
+  return <img src={url} alt="" className="h-12 w-12 rounded-md object-cover border" />;
+}
+
+function ImageUploadField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function resolve() {
+      if (!value) { setPreview(null); return; }
+      if (isHttpUrl(value)) { setPreview(value); return; }
+      const { data } = await supabase.storage.from(BUCKET).createSignedUrl(value, 60 * 60);
+      if (!cancelled) setPreview(data?.signedUrl ?? null);
+    }
+    resolve();
+    return () => { cancelled = true; };
+  }, [value]);
+
+  async function handleFile(file: File) {
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type,
+      });
+      if (error) throw error;
+      onChange(path);
+      toast.success("Image téléversée");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border bg-muted overflow-hidden">
+        {preview ? (
+          <img src={preview} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <ImageIcon className="h-6 w-6 text-muted-foreground" />
+        )}
+      </div>
+      <div className="flex flex-col gap-2">
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleFile(f);
+            e.target.value = "";
+          }}
+        />
+        <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
+          {uploading ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : <Upload className="me-1 h-4 w-4" />}
+          {value ? "Changer" : "Téléverser"}
+        </Button>
+        {value && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>Retirer</Button>
+        )}
+      </div>
     </div>
   );
 }
