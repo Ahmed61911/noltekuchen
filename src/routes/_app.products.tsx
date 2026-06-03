@@ -370,5 +370,3 @@ function GalleryUploadField({ value, onChange }: { value: string[]; onChange: (v
   );
 }
 
-// keep unused import marker to satisfy lint when icon used elsewhere
-void useEffect;
