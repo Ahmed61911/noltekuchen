@@ -216,3 +216,102 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
+
+const BUCKET = "product-images";
+
+function isHttpUrl(v: string | null | undefined) {
+  return !!v && /^https?:\/\//i.test(v);
+}
+
+function ProductImage({ path }: { path: string | null }) {
+  const { data: url } = useQuery({
+    queryKey: ["product-image", path],
+    enabled: !!path,
+    staleTime: 1000 * 60 * 50,
+    queryFn: async () => {
+      if (!path) return null;
+      if (isHttpUrl(path)) return path;
+      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
+      if (error) return null;
+      return data.signedUrl;
+    },
+  });
+  if (!path || !url) {
+    return (
+      <div className="flex h-12 w-12 items-center justify-center rounded-md border bg-muted text-muted-foreground">
+        <ImageIcon className="h-5 w-5" />
+      </div>
+    );
+  }
+  return <img src={url} alt="" className="h-12 w-12 rounded-md object-cover border" />;
+}
+
+function ImageUploadField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function resolve() {
+      if (!value) { setPreview(null); return; }
+      if (isHttpUrl(value)) { setPreview(value); return; }
+      const { data } = await supabase.storage.from(BUCKET).createSignedUrl(value, 60 * 60);
+      if (!cancelled) setPreview(data?.signedUrl ?? null);
+    }
+    resolve();
+    return () => { cancelled = true; };
+  }, [value]);
+
+  async function handleFile(file: File) {
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type,
+      });
+      if (error) throw error;
+      onChange(path);
+      toast.success("Image téléversée");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border bg-muted overflow-hidden">
+        {preview ? (
+          <img src={preview} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <ImageIcon className="h-6 w-6 text-muted-foreground" />
+        )}
+      </div>
+      <div className="flex flex-col gap-2">
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleFile(f);
+            e.target.value = "";
+          }}
+        />
+        <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
+          {uploading ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : <Upload className="me-1 h-4 w-4" />}
+          {value ? "Changer" : "Téléverser"}
+        </Button>
+        {value && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>Retirer</Button>
+        )}
+      </div>
+    </div>
+  );
+}
