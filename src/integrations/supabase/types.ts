@@ -14,6 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointments: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          description: string | null
+          end_at: string
+          id: string
+          location: string | null
+          notes: string | null
+          reminder_minutes: number | null
+          reminder_sent: boolean
+          start_at: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          end_at: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          reminder_minutes?: number | null
+          reminder_sent?: boolean
+          start_at: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          end_at?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          reminder_minutes?: number | null
+          reminder_sent?: boolean
+          start_at?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -903,6 +965,12 @@ export type Database = {
         | "commercial"
         | "warehouse"
         | "accountant"
+      appointment_status:
+        | "scheduled"
+        | "confirmed"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
       invoice_status: "draft" | "pending" | "paid" | "cancelled"
       movement_type: "in" | "out"
       order_status: "pending" | "validated" | "delivered" | "cancelled"
@@ -1042,6 +1110,13 @@ export const Constants = {
         "commercial",
         "warehouse",
         "accountant",
+      ],
+      appointment_status: [
+        "scheduled",
+        "confirmed",
+        "in_progress",
+        "completed",
+        "cancelled",
       ],
       invoice_status: ["draft", "pending", "paid", "cancelled"],
       movement_type: ["in", "out"],
