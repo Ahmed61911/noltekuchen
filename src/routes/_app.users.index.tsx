@@ -1,10 +1,9 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Users as UsersIcon, UserPlus, Search, MoreHorizontal, ShieldCheck, ShieldOff,
-  KeyRound, Trash2, Edit, History, Eye, Copy, Loader2, UserCheck, UserX, Ban,
+  Search, Pencil, Trash2, Plus, RotateCcw, Eye, EyeOff, Lock, Unlock, KeyRound, Copy, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -22,12 +22,10 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import {
-  listUsers, createUser, resetUserPassword, setUserStatus, setUserRole, deleteUser, updateUser,
+  listUsers, createUser, setUserStatus, setUserRole, deleteUser, updateUser, resetUserPassword,
 } from "@/lib/users.functions";
 
 export const Route = createFileRoute("/_app/users/")({
@@ -35,12 +33,12 @@ export const Route = createFileRoute("/_app/users/")({
 });
 
 const ROLES = [
-  { value: "admin", label: "Administrateur" },
-  { value: "manager", label: "Gestionnaire" },
-  { value: "commercial", label: "Commercial" },
-  { value: "warehouse", label: "Magasinier" },
-  { value: "accountant", label: "Comptable" },
-  { value: "employee", label: "Utilisateur standard" },
+  { value: "admin", label: "Admin", cls: "bg-violet-500/15 text-violet-700 dark:text-violet-300" },
+  { value: "manager", label: "Manager", cls: "bg-blue-500/15 text-blue-700 dark:text-blue-300" },
+  { value: "commercial", label: "Commercial", cls: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300" },
+  { value: "warehouse", label: "Magasinier", cls: "bg-teal-500/15 text-teal-700 dark:text-teal-300" },
+  { value: "accountant", label: "Comptable", cls: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300" },
+  { value: "employee", label: "Employé", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
 ];
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
@@ -49,107 +47,153 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   blocked: { label: "Bloqué", cls: "bg-rose-500/15 text-rose-700 dark:text-rose-400" },
 };
 
+const QUICK_PERMS = [
+  { key: "stock", label: "Gestion du stock", modules: ["stock"] },
+  { key: "sales", label: "Gestion des ventes", modules: ["sales"] },
+  { key: "orders", label: "Gestion des achats", modules: ["orders"] },
+  { key: "products_edit", label: "Modification des produits", modules: ["products"], actions: ["create", "update"] },
+  { key: "delete", label: "Suppression des données", actionsOnly: ["delete"] },
+  { key: "users", label: "Gestion des utilisateurs", modules: ["users"] },
+];
+
 function generatePassword() {
   const upper = "ABCDEFGHJKMNPQRSTUVWXYZ";
   const lower = "abcdefghjkmnpqrstuvwxyz";
   const digits = "23456789";
   const sym = "!@#$%&*?";
   const pick = (s: string) => s[Math.floor(Math.random() * s.length)];
-  const base = pick(upper) + pick(lower) + pick(digits) + pick(sym);
   const all = upper + lower + digits + sym;
-  let rest = "";
-  for (let i = 0; i < 10; i++) rest += pick(all);
-  return (base + rest).split("").sort(() => Math.random() - 0.5).join("");
+  let pwd = pick(upper) + pick(lower) + pick(digits) + pick(sym);
+  for (let i = 0; i < 10; i++) pwd += pick(all);
+  return pwd.split("").sort(() => Math.random() - 0.5).join("");
 }
+
+const AVATAR_COLORS = ["bg-orange-500/20 text-orange-700", "bg-emerald-500/20 text-emerald-700", "bg-amber-500/20 text-amber-700", "bg-blue-500/20 text-blue-700", "bg-rose-500/20 text-rose-700", "bg-violet-500/20 text-violet-700"];
+function colorFor(s: string) { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) & 0xffff; return AVATAR_COLORS[h % AVATAR_COLORS.length]; }
+function initials(s: string) { return s.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase(); }
 
 function UsersPage() {
   const { isAdmin, loading } = useAuth();
   const nav = useNavigate();
   const qc = useQueryClient();
 
-  useEffect(() => {
-    if (!loading && !isAdmin) nav({ to: "/dashboard" });
-  }, [loading, isAdmin, nav]);
+  useEffect(() => { if (!loading && !isAdmin) nav({ to: "/dashboard" }); }, [loading, isAdmin, nav]);
 
   const listFn = useServerFn(listUsers);
   const { data: users = [], isLoading } = useQuery({
-    queryKey: ["users"],
-    queryFn: () => listFn(),
+    queryKey: ["users"], queryFn: () => listFn(), enabled: isAdmin,
+  });
+
+  // permissions catalog for summary
+  const { data: catalog = [] } = useQuery({
+    queryKey: ["perm_catalog"],
+    queryFn: async () => {
+      const { data } = await supabase.from("permissions").select("id, module, action");
+      return data ?? [];
+    },
+    enabled: isAdmin,
+  });
+  const { data: rolePerms = [] } = useQuery({
+    queryKey: ["role_perm_all"],
+    queryFn: async () => {
+      const { data } = await supabase.from("role_permissions").select("role, permission_id");
+      return data ?? [];
+    },
     enabled: isAdmin,
   });
 
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-
-  const filtered = useMemo(() => {
-    return users.filter((u: any) => {
-      if (roleFilter !== "all" && u.role !== roleFilter) return false;
-      if (statusFilter !== "all" && u.status !== statusFilter) return false;
-      if (search) {
-        const s = search.toLowerCase();
-        if (!(u.full_name?.toLowerCase().includes(s) || u.email?.toLowerCase().includes(s) || u.username?.toLowerCase().includes(s))) return false;
-      }
-      return true;
+  const permsByRole = useMemo(() => {
+    const cat = new Map(catalog.map((c: any) => [c.id, c]));
+    const m: Record<string, Set<string>> = {};
+    rolePerms.forEach((rp: any) => {
+      const c: any = cat.get(rp.permission_id);
+      if (!c) return;
+      (m[rp.role] ??= new Set()).add(c.module);
     });
-  }, [users, search, roleFilter, statusFilter]);
+    return m;
+  }, [catalog, rolePerms]);
 
-  const stats = useMemo(() => {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    return {
-      total: users.length,
-      active: users.filter((u: any) => u.status === "active").length,
-      inactive: users.filter((u: any) => u.status === "inactive").length,
-      blocked: users.filter((u: any) => u.status === "blocked").length,
-      today: users.filter((u: any) => u.last_sign_in_at && new Date(u.last_sign_in_at) >= today).length,
-    };
-  }, [users]);
+  function permSummary(role: string) {
+    if (role === "admin") return "Accès complet";
+    const mods = Array.from(permsByRole[role] ?? []);
+    if (mods.length === 0) return "Lecture seule";
+    const labels: Record<string, string> = { stock: "Stock", sales: "Ventes", orders: "Achats", products: "Produits", customers: "Clients", suppliers: "Fournisseurs", reports: "Rapports", users: "Utilisateurs" };
+    return mods.slice(0, 4).map((m) => labels[m] ?? m).join(", ");
+  }
 
-  // Create dialog
-  const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({ email: "", full_name: "", username: "", phone: "", department: "", role: "employee", password: generatePassword() });
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const filtered = useMemo(() => users.filter((u: any) => {
+    if (roleFilter !== "all" && u.role !== roleFilter) return false;
+    if (statusFilter !== "all" && u.status !== statusFilter) return false;
+    if (search) {
+      const s = search.toLowerCase();
+      return u.full_name?.toLowerCase().includes(s) || u.email?.toLowerCase().includes(s);
+    }
+    return true;
+  }), [users, search, roleFilter, statusFilter]);
+
+  // Create / Edit dialog
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const empty = { full_name: "", email: "", password: generatePassword(), role: "employee", phone: "", department: "" };
+  const [form, setForm] = useState(empty);
+  const [showPwd, setShowPwd] = useState(false);
   const [createdPwd, setCreatedPwd] = useState<string | null>(null);
 
-  const createFn = useServerFn(createUser);
-  const createMut = useMutation({
-    mutationFn: (d: any) => createFn({ data: d }),
-    onSuccess: () => {
-      toast.success("Utilisateur créé");
-      setCreatedPwd(form.password);
-      qc.invalidateQueries({ queryKey: ["users"] });
-    },
-    onError: (e: any) => toast.error(e.message || "Erreur"),
-  });
+  function openCreate() {
+    setEditing(null); setForm({ ...empty, password: generatePassword() }); setCreatedPwd(null); setOpen(true);
+  }
+  function openEdit(u: any) {
+    setEditing(u);
+    setForm({ full_name: u.full_name ?? "", email: u.email ?? "", password: "", role: u.role ?? "employee", phone: u.phone ?? "", department: u.department ?? "" });
+    setCreatedPwd(null); setOpen(true);
+  }
 
+  const createFn = useServerFn(createUser);
+  const updateFn = useServerFn(updateUser);
+  const roleFn = useServerFn(setUserRole);
   const resetFn = useServerFn(resetUserPassword);
-  const resetMut = useMutation({
-    mutationFn: (d: any) => resetFn({ data: d }),
-    onSuccess: (_r, v: any) => {
-      toast.success("Mot de passe réinitialisé");
-      setResetResult(v.password);
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      if (editing) {
+        await updateFn({ data: { user_id: editing.id, full_name: form.full_name, phone: form.phone, department: form.department } });
+        if (form.role !== editing.role) await roleFn({ data: { user_id: editing.id, role: form.role } });
+        return { editing: true };
+      }
+      await createFn({ data: form });
+      return { editing: false };
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["users"] });
+      if (!r.editing) { setCreatedPwd(form.password); toast.success("Utilisateur créé"); }
+      else { toast.success("Utilisateur mis à jour"); setOpen(false); }
     },
     onError: (e: any) => toast.error(e.message || "Erreur"),
   });
-  const [resetResult, setResetResult] = useState<string | null>(null);
 
   const statusFn = useServerFn(setUserStatus);
-  const statusMut = useMutation({
-    mutationFn: (d: any) => statusFn({ data: d }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["users"] }); toast.success("Statut mis à jour"); },
-    onError: (e: any) => toast.error(e.message || "Erreur"),
-  });
-
-  const roleFn = useServerFn(setUserRole);
-  const roleMut = useMutation({
-    mutationFn: (d: any) => roleFn({ data: d }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["users"] }); toast.success("Rôle modifié"); },
-    onError: (e: any) => toast.error(e.message || "Erreur"),
-  });
+  const statusMut = useMutation({ mutationFn: (d: any) => statusFn({ data: d }), onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }) });
 
   const delFn = useServerFn(deleteUser);
   const delMut = useMutation({
     mutationFn: (d: any) => delFn({ data: d }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["users"] }); toast.success("Compte supprimé"); },
+    onError: (e: any) => toast.error(e.message || "Erreur"),
+  });
+
+  const [resetTarget, setResetTarget] = useState<any>(null);
+  const [resetPwd, setResetPwd] = useState<string | null>(null);
+  const resetMut = useMutation({
+    mutationFn: async (uid: string) => {
+      const pwd = generatePassword();
+      await resetFn({ data: { user_id: uid, password: pwd } });
+      return pwd;
+    },
+    onSuccess: (pwd) => { setResetPwd(pwd); toast.success("Mot de passe réinitialisé"); },
     onError: (e: any) => toast.error(e.message || "Erreur"),
   });
 
@@ -159,132 +203,98 @@ function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Gestion des utilisateurs</h1>
-          <p className="text-sm text-muted-foreground">Comptes, rôles et permissions</p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">Utilisateurs</h1>
+          <p className="text-sm text-muted-foreground">Gérez les utilisateurs et leurs permissions</p>
         </div>
-        <Button onClick={() => { setForm({ email: "", full_name: "", username: "", phone: "", department: "", role: "employee", password: generatePassword() }); setCreatedPwd(null); setCreateOpen(true); }}>
-          <UserPlus className="h-4 w-4" /> Nouvel utilisateur
-        </Button>
+        <Button onClick={openCreate}><Plus className="h-4 w-4" /> Créer utilisateur</Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard icon={<UsersIcon className="h-5 w-5" />} label="Total" value={stats.total} tint="bg-primary/10 text-primary" />
-        <StatCard icon={<UserCheck className="h-5 w-5" />} label="Actifs" value={stats.active} tint="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" />
-        <StatCard icon={<UserX className="h-5 w-5" />} label="Inactifs" value={stats.inactive} tint="bg-muted text-muted-foreground" />
-        <StatCard icon={<ShieldCheck className="h-5 w-5" />} label="Connexions aujourd'hui" value={stats.today} tint="bg-blue-500/15 text-blue-700 dark:text-blue-400" />
-        <StatCard icon={<Ban className="h-5 w-5" />} label="Bloqués" value={stats.blocked} tint="bg-rose-500/15 text-rose-700 dark:text-rose-400" />
-      </div>
-
-      {/* Filters */}
       <Card className="shadow-card">
-        <CardContent className="flex flex-wrap items-center gap-3 p-4">
-          <div className="relative flex-1 min-w-[240px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Rechercher nom, email, nom d'utilisateur..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="relative flex-1 min-w-[260px]">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Rechercher par nom ou email…" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Rôle</Label>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les rôles</SelectItem>
+                  {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Statut</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="active">Actif</SelectItem>
+                  <SelectItem value="inactive">Inactif</SelectItem>
+                  <SelectItem value="blocked">Bloqué</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button variant="outline" onClick={() => { setSearch(""); setRoleFilter("all"); setStatusFilter("all"); }}>
+              <RotateCcw className="h-4 w-4" /> Réinitialiser
+            </Button>
           </div>
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous rôles</SelectItem>
-              {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous statuts</SelectItem>
-              <SelectItem value="active">Actif</SelectItem>
-              <SelectItem value="inactive">Inactif</SelectItem>
-              <SelectItem value="blocked">Bloqué</SelectItem>
-            </SelectContent>
-          </Select>
         </CardContent>
       </Card>
 
-      {/* Table */}
       <Card className="shadow-card">
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-          ) : filtered.length === 0 ? (
-            <div className="py-16 text-center text-muted-foreground">Aucun utilisateur</div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12"></TableHead>
                   <TableHead>Nom complet</TableHead>
-                  <TableHead>Nom d'utilisateur</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Téléphone</TableHead>
                   <TableHead>Rôle</TableHead>
-                  <TableHead>Département</TableHead>
-                  <TableHead>Créé</TableHead>
-                  <TableHead>Dernière connexion</TableHead>
+                  <TableHead>Permissions</TableHead>
                   <TableHead>Statut</TableHead>
-                  <TableHead className="w-12"></TableHead>
+                  <TableHead>Dernière connexion</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((u: any) => {
+                {filtered.length === 0 ? (
+                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">Aucun utilisateur</TableCell></TableRow>
+                ) : filtered.map((u: any) => {
                   const status = STATUS_BADGE[u.status] ?? STATUS_BADGE.active;
                   const role = ROLES.find((r) => r.value === u.role);
                   return (
                     <TableRow key={u.id}>
                       <TableCell>
-                        <Avatar className="h-8 w-8">
-                          {u.avatar_url ? <AvatarImage src={u.avatar_url} /> : null}
-                          <AvatarFallback className="text-xs">{(u.full_name || u.email || "?").slice(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
+                        <div className="flex items-center gap-3">
+                          <Avatar className={`h-9 w-9 ${colorFor(u.full_name || u.email || "?")}`}>
+                            {u.avatar_url ? <AvatarImage src={u.avatar_url} /> : null}
+                            <AvatarFallback className="bg-transparent text-xs font-medium">{initials(u.full_name || u.email || "??")}</AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium">{u.full_name || "—"}</span>
+                        </div>
                       </TableCell>
-                      <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">{u.username || "—"}</TableCell>
-                      <TableCell>{u.email || "—"}</TableCell>
-                      <TableCell>{u.phone || "—"}</TableCell>
-                      <TableCell><Badge variant="outline">{role?.label ?? u.role}</Badge></TableCell>
-                      <TableCell>{u.department || "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString() : "Jamais"}</TableCell>
+                      <TableCell className="text-muted-foreground">{u.email || "—"}</TableCell>
+                      <TableCell><Badge className={role?.cls}>{role?.label ?? u.role}</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{permSummary(u.role)}</TableCell>
                       <TableCell><Badge className={status.cls}>{status.label}</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "Jamais"}</TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuItem asChild><Link to="/users/$id" params={{ id: u.id }}><Eye className="h-4 w-4 mr-2" /> Voir profil</Link></DropdownMenuItem>
-                            <DropdownMenuItem asChild><Link to="/users/$id" params={{ id: u.id }} search={{ tab: "history" } as any}><History className="h-4 w-4 mr-2" /> Historique</Link></DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <ChangeRoleMenu currentRole={u.role} onChange={(role) => roleMut.mutate({ user_id: u.id, role })} />
-                            <DropdownMenuItem onClick={() => {
-                              const pwd = generatePassword();
-                              resetMut.mutate({ user_id: u.id, password: pwd });
-                            }}>
-                              <KeyRound className="h-4 w-4 mr-2" /> Réinitialiser mot de passe
-                            </DropdownMenuItem>
-                            {u.status === "active" ? (
-                              <DropdownMenuItem onClick={() => statusMut.mutate({ user_id: u.id, status: "inactive" })}>
-                                <UserX className="h-4 w-4 mr-2" /> Désactiver
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem onClick={() => statusMut.mutate({ user_id: u.id, status: "active" })}>
-                                <UserCheck className="h-4 w-4 mr-2" /> Activer
-                              </DropdownMenuItem>
-                            )}
-                            {u.status === "blocked" ? (
-                              <DropdownMenuItem onClick={() => statusMut.mutate({ user_id: u.id, status: "active" })}>
-                                <ShieldCheck className="h-4 w-4 mr-2" /> Débloquer
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem onClick={() => statusMut.mutate({ user_id: u.id, status: "blocked" })}>
-                                <Ban className="h-4 w-4 mr-2" /> Bloquer
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-rose-600 focus:text-rose-600" onClick={() => {
-                              if (confirm(`Supprimer le compte de ${u.full_name || u.email} ?`)) delMut.mutate({ user_id: u.id });
-                            }}><Trash2 className="h-4 w-4 mr-2" /> Supprimer</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="icon" title="Réinitialiser mot de passe" onClick={() => { setResetTarget(u); setResetPwd(null); resetMut.mutate(u.id); }}><KeyRound className="h-4 w-4" /></Button>
+                          {u.status === "blocked" ? (
+                            <Button variant="ghost" size="icon" title="Débloquer" onClick={() => statusMut.mutate({ user_id: u.id, status: "active" })}><Unlock className="h-4 w-4 text-emerald-600" /></Button>
+                          ) : (
+                            <Button variant="ghost" size="icon" title="Bloquer" onClick={() => statusMut.mutate({ user_id: u.id, status: "blocked" })}><Lock className="h-4 w-4" /></Button>
+                          )}
+                          <Button variant="ghost" size="icon" title="Modifier" onClick={() => openEdit(u)}><Pencil className="h-4 w-4 text-blue-600" /></Button>
+                          <Button variant="ghost" size="icon" title="Supprimer" onClick={() => { if (confirm(`Supprimer ${u.full_name || u.email} ?`)) delMut.mutate({ user_id: u.id }); }}><Trash2 className="h-4 w-4 text-rose-600" /></Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -292,16 +302,19 @@ function UsersPage() {
               </TableBody>
             </Table>
           )}
+          <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-muted-foreground">
+            <span>Affichage de {filtered.length} sur {users.length} utilisateurs</span>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Create dialog */}
-      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) setCreatedPwd(null); }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Nouvel utilisateur</DialogTitle></DialogHeader>
+      {/* Create / Edit dialog */}
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setCreatedPwd(null); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>{editing ? "Modifier l'utilisateur" : "Créer un utilisateur"}</DialogTitle></DialogHeader>
           {createdPwd ? (
             <div className="space-y-3">
-              <p className="text-sm">Compte créé. Communiquez le mot de passe temporaire à l'utilisateur :</p>
+              <p className="text-sm">Compte créé. Communiquez le mot de passe temporaire :</p>
               <div className="flex items-center gap-2 rounded-md border bg-muted p-3 font-mono text-sm">
                 <span className="flex-1 break-all">{createdPwd}</span>
                 <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(createdPwd); toast.success("Copié"); }}><Copy className="h-3 w-3" /></Button>
@@ -309,38 +322,68 @@ function UsersPage() {
               <p className="text-xs text-muted-foreground">Ce mot de passe ne sera plus affiché.</p>
             </div>
           ) : (
-            <div className="grid gap-3">
-              <Field label="Nom complet"><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Email"><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
-                <Field label="Nom d'utilisateur"><Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} /></Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Téléphone"><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
-                <Field label="Département"><Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></Field>
-              </div>
-              <Field label="Rôle">
-                <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
-                </Select>
-              </Field>
-              <Field label="Mot de passe temporaire">
-                <div className="flex items-center gap-2">
-                  <Input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="font-mono" />
-                  <Button type="button" variant="outline" size="sm" onClick={() => setForm({ ...form, password: generatePassword() })}>Régénérer</Button>
+            <div className="grid grid-cols-2 gap-5">
+              <div className="space-y-4">
+                <Field label="Nom complet">
+                  <Input placeholder="Entrez le nom complet" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+                </Field>
+                <Field label="Email">
+                  <Input type="email" placeholder="exemple@mail.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} disabled={!!editing} />
+                </Field>
+                {!editing && (
+                  <Field label="Mot de passe">
+                    <div className="relative">
+                      <Input type={showPwd ? "text" : "password"} placeholder="Entrez le mot de passe" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="pr-20 font-mono" />
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2 flex">
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowPwd((v) => !v)}>
+                          {showPwd ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setForm({ ...form, password: generatePassword() })} title="Régénérer">
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Field>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Téléphone"><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
+                  <Field label="Département"><Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></Field>
                 </div>
-              </Field>
+              </div>
+              <div className="space-y-4">
+                <Field label="Rôle">
+                  <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
+                    <SelectTrigger><SelectValue placeholder="Sélectionnez un rôle" /></SelectTrigger>
+                    <SelectContent>{ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </Field>
+                <div className="space-y-2">
+                  <Label className="text-sm">Permissions</Label>
+                  <p className="text-xs text-muted-foreground">Permissions héritées du rôle sélectionné. Détail fin sur la page utilisateur.</p>
+                  <div className="space-y-2 rounded-md border p-3">
+                    {QUICK_PERMS.map((p) => {
+                      const inherited = form.role === "admin" ||
+                        (p.modules && p.modules.some((m) => (permsByRole[form.role] ?? new Set()).has(m)));
+                      return (
+                        <label key={p.key} className="flex items-center gap-2 text-sm">
+                          <Checkbox checked={!!inherited} disabled />
+                          <span className={inherited ? "" : "text-muted-foreground"}>{p.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           <DialogFooter>
             {createdPwd ? (
-              <Button onClick={() => setCreateOpen(false)}>Fermer</Button>
+              <Button onClick={() => setOpen(false)}>Fermer</Button>
             ) : (
               <>
-                <Button variant="outline" onClick={() => setCreateOpen(false)}>Annuler</Button>
-                <Button onClick={() => createMut.mutate(form)} disabled={createMut.isPending || !form.email || !form.full_name || form.password.length < 8}>
-                  {createMut.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Créer
+                <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
+                <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending || !form.full_name || (!editing && (!form.email || form.password.length < 8))}>
+                  {saveMut.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Enregistrer
                 </Button>
               </>
             )}
@@ -348,51 +391,22 @@ function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Reset result dialog */}
-      <Dialog open={resetResult !== null} onOpenChange={(o) => !o && setResetResult(null)}>
+      {/* Reset password result */}
+      <Dialog open={resetPwd !== null} onOpenChange={(o) => { if (!o) { setResetPwd(null); setResetTarget(null); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Mot de passe réinitialisé</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm">Communiquez ce nouveau mot de passe à l'utilisateur :</p>
-            <div className="flex items-center gap-2 rounded-md border bg-muted p-3 font-mono text-sm">
-              <span className="flex-1 break-all">{resetResult}</span>
-              <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(resetResult!); toast.success("Copié"); }}><Copy className="h-3 w-3" /></Button>
-            </div>
+          <p className="text-sm">Nouveau mot de passe pour <span className="font-medium">{resetTarget?.full_name || resetTarget?.email}</span> :</p>
+          <div className="flex items-center gap-2 rounded-md border bg-muted p-3 font-mono text-sm">
+            <span className="flex-1 break-all">{resetPwd}</span>
+            <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(resetPwd!); toast.success("Copié"); }}><Copy className="h-3 w-3" /></Button>
           </div>
-          <DialogFooter><Button onClick={() => setResetResult(null)}>Fermer</Button></DialogFooter>
+          <DialogFooter><Button onClick={() => { setResetPwd(null); setResetTarget(null); }}>Fermer</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
 
-function ChangeRoleMenu({ currentRole, onChange }: { currentRole: string; onChange: (r: string) => void }) {
-  return (
-    <>
-      <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Changer de rôle</div>
-      {ROLES.map((r) => (
-        <DropdownMenuItem key={r.value} disabled={r.value === currentRole} onClick={() => onChange(r.value)}>
-          <ShieldCheck className="h-4 w-4 mr-2 opacity-50" /> {r.label}
-        </DropdownMenuItem>
-      ))}
-    </>
-  );
-}
-
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="space-y-1.5"><Label>{label}</Label>{children}</div>;
-}
-
-function StatCard({ icon, label, value, tint }: { icon: React.ReactNode; label: string; value: number; tint: string }) {
-  return (
-    <Card className="shadow-card">
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className={`grid h-10 w-10 place-items-center rounded-lg ${tint}`}>{icon}</div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-2xl font-semibold tabular-nums">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  return <div className="space-y-1.5"><Label className="text-sm">{label}</Label>{children}</div>;
 }
