@@ -53,8 +53,12 @@ function ProductsPage() {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
+  const [stockFilter, setStockFilter] = useState<"all" | "in" | "low" | "out">("all");
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
+  const [form, setForm] = useState<FormState>(empty);
   const [form, setForm] = useState<FormState>(empty);
 
   const { data: products = [], isLoading } = useQuery({
