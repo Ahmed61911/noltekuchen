@@ -50,7 +50,7 @@ function StockPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stock_movements")
-        .select("id,type,quantity,reason,created_at,products(name,reference)")
+        .select("id,type,quantity,reason,created_at,product_id,products(name,reference)")
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -80,9 +80,7 @@ function StockPage() {
 
   const filteredMovements = (movements as any[]).filter((m) => {
     if (typeFilter !== "all" && m.type !== typeFilter) return false;
-    if (productFilter !== "all" && m.products && (m as any).product_id !== productFilter) {
-      // movements query doesn't select product_id; match via products name fallback
-    }
+    if (productFilter !== "all" && m.product_id !== productFilter) return false;
     if (dateFrom && new Date(m.created_at) < new Date(dateFrom)) return false;
     if (dateTo && new Date(m.created_at) > new Date(dateTo + "T23:59:59")) return false;
     if (q) {
