@@ -164,7 +164,7 @@ function UsersPage() {
         if (form.role !== editing.role) await roleFn({ data: { user_id: editing.id, role: form.role } });
         return { editing: true };
       }
-      await createFn({ data: form });
+      await createFn({ data: form as any });
       return { editing: false };
     },
     onSuccess: (r) => {
