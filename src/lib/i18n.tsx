@@ -10,7 +10,7 @@ const fr: Dict = {
   dashboard: "Tableau de bord",
   products: "Produits",
   stock: "Stock",
-  sales: "Ventes & Commandes",
+  sales: "Ventes",
   appointments: "Rendez-vous",
   suppliers: "Fournisseurs",
   customers: "Demandes clients",
