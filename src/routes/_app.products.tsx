@@ -178,6 +178,26 @@ function ProductsPage() {
         </div>
       </div>
 
+      <Card className="p-3 shadow-card">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={stockFilter} onValueChange={(v) => setStockFilter(v as typeof stockFilter)}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Stock" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous stocks</SelectItem>
+              <SelectItem value="in">En stock</SelectItem>
+              <SelectItem value="low">Stock faible</SelectItem>
+              <SelectItem value="out">Rupture</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input type="number" placeholder="Prix min" className="w-32" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
+          <Input type="number" placeholder="Prix max" className="w-32" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
+          {(q || stockFilter !== "all" || priceMin || priceMax) && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStockFilter("all"); setPriceMin(""); setPriceMax(""); }}>Réinitialiser</Button>
+          )}
+          <span className="ml-auto text-xs text-muted-foreground">{filtered.length} / {products.length}</span>
+        </div>
+      </Card>
+
       <Card className="overflow-hidden shadow-card">
         <Table>
           <TableHeader>
