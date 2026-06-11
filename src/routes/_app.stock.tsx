@@ -134,6 +134,32 @@ function StockPage() {
         </Dialog>
       </div>
 
+      <Card className="p-3 shadow-card">
+        <div className="flex flex-wrap items-center gap-2">
+          <Input className="w-64" placeholder={t("search")} value={q} onChange={e => setQ(e.target.value)} />
+          <Select value={productFilter} onValueChange={setProductFilter}>
+            <SelectTrigger className="w-56"><SelectValue placeholder={t("product")} /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous produits</SelectItem>
+              {products.map(p => <SelectItem key={p.id} value={p.id}>{p.reference} — {p.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
+            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous types</SelectItem>
+              <SelectItem value="in">{t("movement_in")}</SelectItem>
+              <SelectItem value="out">{t("movement_out")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+          <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+          {(q || productFilter !== "all" || typeFilter !== "all" || dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setProductFilter("all"); setTypeFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
+          )}
+        </div>
+      </Card>
+
       <Card className="overflow-hidden shadow-card">
         <Table>
           <TableHeader>
@@ -147,10 +173,10 @@ function StockPage() {
           </TableHeader>
           <TableBody>
             {isLoading && <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">{t("loading")}</TableCell></TableRow>}
-            {!isLoading && movements.length === 0 && (
+            {!isLoading && filteredMovements.length === 0 && (
               <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">{t("no_data")}</TableCell></TableRow>
             )}
-            {movements.map((m) => {
+            {filteredMovements.map((m) => {
               const prod = m.products as { name?: string; reference?: string } | null;
               return (
                 <TableRow key={m.id}>
