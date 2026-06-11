@@ -30,7 +30,7 @@ import {
   listUsers, createUser, resetUserPassword, setUserStatus, setUserRole, deleteUser, updateUser,
 } from "@/lib/users.functions";
 
-export const Route = createFileRoute("/_app/users")({
+export const Route = createFileRoute("/_app/users/")({
   component: UsersPage,
 });
 

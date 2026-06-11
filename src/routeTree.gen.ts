@@ -13,7 +13,6 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppUsersRouteImport } from './routes/_app.users'
 import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
 import { Route as AppStockRouteImport } from './routes/_app.stock'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
@@ -23,6 +22,7 @@ import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppCustomersRouteImport } from './routes/_app.customers'
 import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
+import { Route as AppUsersIndexRouteImport } from './routes/_app.users.index'
 import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
 import { Route as AppOrdersIndexRouteImport } from './routes/_app.orders.index'
 import { Route as AppInvoicesIndexRouteImport } from './routes/_app.invoices.index'
@@ -48,11 +48,6 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AppUsersRoute = AppUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AppRoute,
 } as any)
 const AppSuppliersRoute = AppSuppliersRouteImport.update({
   id: '/suppliers',
@@ -99,6 +94,11 @@ const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
   path: '/appointments',
   getParentRoute: () => AppRoute,
 } as any)
+const AppUsersIndexRoute = AppUsersIndexRouteImport.update({
+  id: '/users/',
+  path: '/users/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSalesIndexRoute = AppSalesIndexRouteImport.update({
   id: '/sales/',
   path: '/sales/',
@@ -143,13 +143,13 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AppReportsRoute
   '/stock': typeof AppStockRoute
   '/suppliers': typeof AppSuppliersRoute
-  '/users': typeof AppUsersRoute
   '/invoices/$id': typeof AppInvoicesIdRoute
   '/orders/$id': typeof AppOrdersIdRoute
   '/sales/$id': typeof AppSalesIdRoute
   '/invoices/': typeof AppInvoicesIndexRoute
   '/orders/': typeof AppOrdersIndexRoute
   '/sales/': typeof AppSalesIndexRoute
+  '/users/': typeof AppUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -164,13 +164,13 @@ export interface FileRoutesByTo {
   '/reports': typeof AppReportsRoute
   '/stock': typeof AppStockRoute
   '/suppliers': typeof AppSuppliersRoute
-  '/users': typeof AppUsersRoute
   '/invoices/$id': typeof AppInvoicesIdRoute
   '/orders/$id': typeof AppOrdersIdRoute
   '/sales/$id': typeof AppSalesIdRoute
   '/invoices': typeof AppInvoicesIndexRoute
   '/orders': typeof AppOrdersIndexRoute
   '/sales': typeof AppSalesIndexRoute
+  '/users': typeof AppUsersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -187,13 +187,13 @@ export interface FileRoutesById {
   '/_app/reports': typeof AppReportsRoute
   '/_app/stock': typeof AppStockRoute
   '/_app/suppliers': typeof AppSuppliersRoute
-  '/_app/users': typeof AppUsersRoute
   '/_app/invoices/$id': typeof AppInvoicesIdRoute
   '/_app/orders/$id': typeof AppOrdersIdRoute
   '/_app/sales/$id': typeof AppSalesIdRoute
   '/_app/invoices/': typeof AppInvoicesIndexRoute
   '/_app/orders/': typeof AppOrdersIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
+  '/_app/users/': typeof AppUsersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -210,13 +210,13 @@ export interface FileRouteTypes {
     | '/reports'
     | '/stock'
     | '/suppliers'
-    | '/users'
     | '/invoices/$id'
     | '/orders/$id'
     | '/sales/$id'
     | '/invoices/'
     | '/orders/'
     | '/sales/'
+    | '/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -231,13 +231,13 @@ export interface FileRouteTypes {
     | '/reports'
     | '/stock'
     | '/suppliers'
-    | '/users'
     | '/invoices/$id'
     | '/orders/$id'
     | '/sales/$id'
     | '/invoices'
     | '/orders'
     | '/sales'
+    | '/users'
   id:
     | '__root__'
     | '/'
@@ -253,13 +253,13 @@ export interface FileRouteTypes {
     | '/_app/reports'
     | '/_app/stock'
     | '/_app/suppliers'
-    | '/_app/users'
     | '/_app/invoices/$id'
     | '/_app/orders/$id'
     | '/_app/sales/$id'
     | '/_app/invoices/'
     | '/_app/orders/'
     | '/_app/sales/'
+    | '/_app/users/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -298,13 +298,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_app/users': {
-      id: '/_app/users'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof AppUsersRouteImport
-      parentRoute: typeof AppRoute
     }
     '/_app/suppliers': {
       id: '/_app/suppliers'
@@ -369,6 +362,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppointmentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/users/': {
+      id: '/_app/users/'
+      path: '/users'
+      fullPath: '/users/'
+      preLoaderRoute: typeof AppUsersIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales/': {
       id: '/_app/sales/'
       path: '/sales'
@@ -424,13 +424,13 @@ interface AppRouteChildren {
   AppReportsRoute: typeof AppReportsRoute
   AppStockRoute: typeof AppStockRoute
   AppSuppliersRoute: typeof AppSuppliersRoute
-  AppUsersRoute: typeof AppUsersRoute
   AppInvoicesIdRoute: typeof AppInvoicesIdRoute
   AppOrdersIdRoute: typeof AppOrdersIdRoute
   AppSalesIdRoute: typeof AppSalesIdRoute
   AppInvoicesIndexRoute: typeof AppInvoicesIndexRoute
   AppOrdersIndexRoute: typeof AppOrdersIndexRoute
   AppSalesIndexRoute: typeof AppSalesIndexRoute
+  AppUsersIndexRoute: typeof AppUsersIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -443,13 +443,13 @@ const AppRouteChildren: AppRouteChildren = {
   AppReportsRoute: AppReportsRoute,
   AppStockRoute: AppStockRoute,
   AppSuppliersRoute: AppSuppliersRoute,
-  AppUsersRoute: AppUsersRoute,
   AppInvoicesIdRoute: AppInvoicesIdRoute,
   AppOrdersIdRoute: AppOrdersIdRoute,
   AppSalesIdRoute: AppSalesIdRoute,
   AppInvoicesIndexRoute: AppInvoicesIndexRoute,
   AppOrdersIndexRoute: AppOrdersIndexRoute,
   AppSalesIndexRoute: AppSalesIndexRoute,
+  AppUsersIndexRoute: AppUsersIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -463,3 +463,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
