@@ -1,117 +1,88 @@
-## Objectif
 
-Séparer la section actuelle `/sales` (stub) en **deux modules distincts** :
-- `/sales` → **Ventes** (transactions encaissées, factures, paiements)
-- `/orders` → **Commandes clients** (cycle de vie : attente → validée → livrée, avec délais)
+# Module Gestion des Utilisateurs
 
-Tout en DH, design cohérent avec le reste de l'ERP (cards, table shadcn, sidebar).
+Refonte complète de `/users` (actuellement un stub) avec RBAC granulaire, audit, et sécurité.
 
----
+## 1. Base de données (migration)
 
-## 1. Base de données (migration Supabase)
+### Étendre `profiles`
+Ajouter colonnes : `username`, `phone`, `avatar_url`, `department`, `status` (`active|inactive|blocked`), `last_login_at`. Trigger pour mettre à jour `last_login_at` via un appel server-fn au sign-in.
 
-### Table `orders` (commandes clients)
-- `order_number` (auto `CMD-YYYY-NNNN`, séquence dédiée)
-- `customer_id` → `customers`
-- `order_date`, `due_date` (dernier jour)
-- `status` enum `order_status` : `pending | validated | delivered | cancelled | late`
-- `payment_status` enum `payment_status` : `unpaid | partial | paid`
-- `subtotal_ht`, `tax_amount`, `total_ttc`, `paid_amount`, `remaining_amount` (généré)
-- `notes`, `created_by`, timestamps
-- `stock_applied` boolean (déduction stock à la livraison)
+### Étendre l'enum `app_role`
+Ajouter : `manager`, `commercial`, `warehouse`, `accountant`. Garder `admin` et `employee` (employee = "utilisateur standard").
 
-### Table `order_items`
-- `order_id`, `product_id`, `description`, `quantity`, `unit_price`, `tax_rate`, `discount_rate`, `line_total_ttc`
+### Nouvelle table `permissions`
+`module` (text: products/stock/orders/sales/customers/suppliers/reports/users) + `action` (text: view/create/update/delete/...) → catalogue de permissions.
 
-### Table `sales` (ventes / transactions encaissées)
-- `sale_number` (`VTE-YYYY-NNNN`)
-- `customer_id` (nullable pour vente comptoir)
-- `sale_date`, `payment_due_date`
-- `payment_method` enum : `cash | card | transfer | check | credit`
-- `payment_status` : `unpaid | partial | paid`
-- `subtotal_ht`, `tax_amount`, `total_ttc`, `paid_amount`, `remaining_amount`
-- `invoice_id` nullable → lien vers `invoices` quand facture générée
-- `order_id` nullable → vente issue d'une commande
-- `created_by`, timestamps
+### Nouvelle table `role_permissions`
+`role` (app_role) + `permission_id` → mapping rôle → permissions. Seed par défaut :
+- **admin** : toutes les permissions
+- **manager** : tout sauf gestion users
+- **commercial** : ventes, clients, commandes, produits (view)
+- **warehouse** : stock (full), produits (view), commandes (view/validate)
+- **accountant** : ventes (view), factures, rapports
+- **employee** : view uniquement sur produits, clients
 
-### Table `sale_items`
-- mêmes colonnes que `order_items` mais `sale_id`
+### Nouvelle table `user_permissions` (overrides)
+Permissions accordées/refusées par utilisateur (override du rôle). `granted` boolean.
 
-### Table `order_payments` / `sale_payments`
-- Historique paiements : `amount`, `method`, `paid_at`, `note`
+### Nouvelle table `audit_logs`
+`user_id`, `action`, `module`, `entity_id`, `old_value` (jsonb), `new_value` (jsonb), `ip_address`, `user_agent`, `created_at`. RLS : admins voient tout, users voient leur propre historique.
 
-### Triggers
-- `apply_order_stock()` : déduit le stock quand `status` passe à `delivered` (via `stock_movements` type `out`)
-- `update_order_payment_status()` : recalcule `payment_status` quand `paid_amount` change
-- `mark_late_orders()` : fonction utilitaire (appelée côté UI via filtre `due_date < now() AND status IN (pending, validated)`)
-- `set_updated_at` sur les deux tables
+### Fonctions SQL
+- `user_has_permission(_user_id, _module, _action)` : SECURITY DEFINER, vérifie d'abord user_permissions (override), puis role_permissions.
+- `log_audit(...)` : helper pour insérer dans audit_logs.
 
-### RLS
-- `authenticated` : ALL
-- `service_role` : ALL
-- GRANTs explicites
+### GRANT + RLS sur toutes les nouvelles tables.
 
----
+## 2. Server functions (`src/lib/users.functions.ts`)
 
-## 2. Pages frontend
+Toutes avec `requireSupabaseAuth` + vérification `has_role('admin')` via `supabaseAdmin` (loaded inside handler) :
+- `listUsers()` : join profiles + user_roles + auth.users (email, last_sign_in)
+- `createUser({ email, full_name, username, phone, role, department, temp_password? })` : génère mot de passe temp si absent, crée via `supabaseAdmin.auth.admin.createUser`, insère profile + role
+- `updateUser(id, fields)`
+- `resetPassword(id)` : génère nouveau mot de passe temporaire, retourne en clair (affiché 1x à l'admin)
+- `setUserStatus(id, status)` : active/inactive/blocked. `blocked` → `supabaseAdmin.auth.admin.updateUserById({ ban_duration: '876000h' })`
+- `deleteUser(id)` : `supabaseAdmin.auth.admin.deleteUser`
+- `setUserRole(id, role)` + log audit
+- `setUserPermissions(id, perms[])`
+- `listAuditLogs({ user_id?, module?, limit, offset })`
+- `userStats()` : total / actifs / inactifs / connexions aujourd'hui / bloqués
 
-### `/orders` — `src/routes/_app.orders.index.tsx`
-**Cartes statistiques (5)** : En attente, Validées, Livrées, Annulées, En retard
+## 3. Routes
 
-**Tableau** : N° / Client / Date / Dernier jour / Délai (badge jours restants — vert/orange/rouge) / Total / Payé / Reste / Statut commande / Statut paiement / Actions
+### `/_app/users` (refonte complète)
+- 5 cartes stats (total, actifs, inactifs, connexions du jour, bloqués)
+- Barre de recherche + filtres (rôle, statut, département)
+- Tableau colonnes : Photo (Avatar), Nom, Username, Email, Téléphone, Rôle (Badge), Département, Date création, Dernière connexion, Statut (Badge couleur)
+- Actions par ligne via DropdownMenu : Voir profil / Modifier / Reset password / Activer-Désactiver / Bloquer-Débloquer / Permissions / Historique / Supprimer
+- Bouton "Nouvel utilisateur" → Dialog (email, nom, username, phone, rôle, département, génération auto mot de passe avec affichage 1x + copie)
+- Pagination (20/page)
+- Export PDF + CSV
 
-**Filtres** : recherche, statut commande, statut paiement, période
+### `/_app/users/$id` (page détail)
+- Tabs : Profil / Permissions / Historique
+- Profil : édition inline
+- Permissions : checklist par module (view/create/update/delete...) avec override visible
+- Historique : table audit_logs filtré sur l'utilisateur
 
-**Actions ligne** : Voir, Modifier, Valider (pending→validated), Livrer (→delivered + stock), Annuler
+### `/_app/audit` (nouveau)
+Journal d'activité global accessible aux admins. Filtres : utilisateur, module, période. Colonnes : utilisateur, action, module, date, IP, diff ancien/nouveau.
 
-**Bouton** : Nouvelle commande (dialog avec sélecteur client + lignes produits dynamiques + calcul TVA/TTC + date échéance)
+## 4. Sidebar
+Mettre à jour le label "Utilisateurs" + ajouter entrée "Journal d'audit" (admin uniquement).
 
-### `/orders/$id` — `src/routes/_app.orders.$id.tsx`
-- Bloc Infos client
-- Tableau produits commandés
-- Historique des changements de statut (timeline)
-- Bloc Paiements (liste + ajout paiement)
-- Boutons changement de statut + génération facture
+## 5. Sécurité
+- Politique mot de passe fort : zod schema min 12 chars, majuscule, minuscule, chiffre, spécial — appliqué côté création/reset.
+- Reset password : voir route `/reset-password` (déjà gérée par Supabase recovery flow — créer si manquante).
+- Activer **leaked password protection** (HIBP) via `supabase--configure_auth`.
+- 2FA : noter dans README que MFA TOTP est disponible via Supabase mais nécessite UI dédiée (hors scope de cette itération — proposer en suivant).
+- Déconnexion auto : hook `useIdleTimeout(30min)` dans `_app.tsx` qui appelle `signOut()`.
+- Audit middleware : wrapper `logAction(module, action, old, new)` appelé dans les server fns sensibles (création/suppression user, changement rôle, etc.).
 
-### `/sales` — `src/routes/_app.sales.index.tsx` (remplace le stub actuel)
-**Cartes statistiques (5)** : CA total, Ventes du jour, Ventes du mois, Encaissé, Restant
+## 6. Hors scope (à proposer ensuite)
+- UI 2FA TOTP complète (enrolment + challenge)
+- Sessions actives multi-device (liste/révocation) — nécessite tracking custom car non exposé par Supabase Auth Admin
 
-**Tableau** : N° / Client / Date / Total / Payé / Reste / Mode paiement / Échéance / Statut paiement / Actions
-
-**Filtres** : recherche, mode, statut, période
-
-**Actions ligne** : Voir détail, Générer facture (crée une `invoice` liée), Imprimer (PDF)
-
-**Bouton** : Nouvelle vente (dialog : client optionnel, lignes produits, mode paiement, montant payé, échéance si crédit)
-
-### `/sales/$id` — `src/routes/_app.sales.$id.tsx`
-- Détail vente + paiements + lien facture
-
----
-
-## 3. Sidebar (`app-sidebar.tsx`)
-Dans `main` :
-- Ventes → `/sales` (icône `ShoppingCart`)
-- Commandes → `/orders` (nouvelle icône `ClipboardList`)
-
----
-
-## 4. PDF
-Réutiliser `src/lib/invoice-pdf.ts` pour Ventes (entête "Bon de vente" ou facture si générée). Nouveau `src/lib/order-pdf.ts` pour bon de commande.
-
----
-
-## 5. Stack technique
-- React 19 + TanStack Start + TanStack Query (`ensureQueryData` + `useSuspenseQuery`)
-- Server functions dans `src/lib/orders.functions.ts` et `src/lib/sales.functions.ts` avec `requireSupabaseAuth`
-- Toutes les valeurs en **DH**
-- Composants shadcn existants (Card, Table, Dialog, Badge, Select)
-- Design identique à `/invoices`
-
----
-
-## Notes
-- La page actuelle `/sales` (stub "Module en préparation") est **remplacée** par le vrai module Ventes.
-- Les commandes ne déduisent le stock qu'à la **livraison** (pas à la validation).
-- Les ventes (encaissement direct) déduisent le stock immédiatement.
-- Une commande livrée + payée peut être convertie en vente automatiquement (option).
+## Stack
+React 19, TanStack Start, TanStack Query, Supabase, Tailwind, shadcn, lucide-react. Devise: DH. i18n FR. Design cohérent avec modules existants (Cards, Badges, DropdownMenu, Dialog).

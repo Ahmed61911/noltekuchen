@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Package, Boxes, ShoppingCart, Calendar,
-  Truck, FileText, BarChart3, History, Users, Settings, Receipt, UserSquare, ClipboardList,
+  Truck, FileText, BarChart3, History, Users, Settings, Receipt, UserSquare, ClipboardList, ShieldCheck,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -100,6 +100,14 @@ export function AppSidebar() {
                     <Link to="/users" className="flex items-center gap-3">
                       <Users className="h-4 w-4" />
                       {!collapsed && <span>{t("users")}</span>}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/audit")}>
+                    <Link to="/audit" className="flex items-center gap-3">
+                      <ShieldCheck className="h-4 w-4" />
+                      {!collapsed && <span>Journal d'audit</span>}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

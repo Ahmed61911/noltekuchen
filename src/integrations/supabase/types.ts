@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          entity_id: string | null
+          id: string
+          ip_address: string | null
+          module: string
+          new_value: Json | null
+          old_value: Json | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          entity_id?: string | null
+          id?: string
+          ip_address?: string | null
+          module: string
+          new_value?: Json | null
+          old_value?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          entity_id?: string | null
+          id?: string
+          ip_address?: string | null
+          module?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -362,6 +401,30 @@ export type Database = {
           },
         ]
       }
+      permissions: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          label: string
+          module: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          label: string
+          module: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          label?: string
+          module?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category_id: string | null
@@ -435,25 +498,69 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          department: string | null
           full_name: string | null
           id: string
+          last_login_at: string | null
+          phone: string | null
+          status: string
           updated_at: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          department?: string | null
           full_name?: string | null
           id: string
+          last_login_at?: string | null
+          phone?: string | null
+          status?: string
           updated_at?: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          department?: string | null
           full_name?: string | null
           id?: string
+          last_login_at?: string | null
+          phone?: string | null
+          status?: string
           updated_at?: string
+          username?: string | null
         }
         Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          permission_id: string
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission_id: string
+          role: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sale_items: {
         Row: {
@@ -715,6 +822,38 @@ export type Database = {
         }
         Relationships: []
       }
+      user_permissions: {
+        Row: {
+          created_at: string
+          granted: boolean
+          id: string
+          permission_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted?: boolean
+          id?: string
+          permission_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted?: boolean
+          id?: string
+          permission_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -751,9 +890,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_has_permission: {
+        Args: { _action: string; _module: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      app_role: "admin" | "employee"
+      app_role:
+        | "admin"
+        | "employee"
+        | "manager"
+        | "commercial"
+        | "warehouse"
+        | "accountant"
       invoice_status: "draft" | "pending" | "paid" | "cancelled"
       movement_type: "in" | "out"
       order_status: "pending" | "validated" | "delivered" | "cancelled"
@@ -886,7 +1035,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "employee"],
+      app_role: [
+        "admin",
+        "employee",
+        "manager",
+        "commercial",
+        "warehouse",
+        "accountant",
+      ],
       invoice_status: ["draft", "pending", "paid", "cancelled"],
       movement_type: ["in", "out"],
       order_status: ["pending", "validated", "delivered", "cancelled"],
