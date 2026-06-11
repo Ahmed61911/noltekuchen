@@ -34,6 +34,11 @@ function StockPage() {
   const [type, setType] = useState<"in" | "out">("in");
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState("");
+  const [productFilter, setProductFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "in" | "out">("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [q, setQ] = useState("");
 
   const { data: products = [] } = useQuery({
     queryKey: ["products-min"],
