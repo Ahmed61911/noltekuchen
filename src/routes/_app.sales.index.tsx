@@ -221,8 +221,8 @@ function SalesPage() {
       status: sale.payment_status === "paid" ? "paid" : "pending",
       subtotal_ht: sale.subtotal_ht, tax_amount: sale.tax_amount,
       discount_amount: 0, total_ttc: sale.total_ttc, notes: sale.notes,
-      customers: cust, items: (items || []) as PdfInvoice["items"],
-    } as PdfInvoice);
+      customer: cust, items: (items || []) as PdfInvoice["items"],
+    });
   };
 
   const filtered = sales.filter(s => {

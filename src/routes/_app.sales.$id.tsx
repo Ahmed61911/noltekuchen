@@ -42,8 +42,8 @@ function SaleDetail() {
     status: sale.payment_status === "paid" ? "paid" : "pending",
     subtotal_ht: sale.subtotal_ht, tax_amount: sale.tax_amount,
     discount_amount: 0, total_ttc: sale.total_ttc, notes: sale.notes,
-    customers: sale.customers, items: items as PdfInvoice["items"],
-  } as PdfInvoice);
+    customer: sale.customers, items: items as PdfInvoice["items"],
+  });
 
   return (
     <div className="space-y-6">

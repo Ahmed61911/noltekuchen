@@ -50,7 +50,7 @@ function OrderDetail() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async (status: string) => {
+    mutationFn: async (status: "pending" | "validated" | "delivered" | "cancelled") => {
       const { error } = await supabase.from("orders").update({ status }).eq("id", id);
       if (error) throw error;
     },
@@ -67,7 +67,7 @@ function OrderDetail() {
     mutationFn: async () => {
       if (amount <= 0) throw new Error("Montant invalide");
       const { error } = await supabase.from("order_payments").insert({
-        order_id: id, amount, method, created_by: user?.id ?? null,
+        order_id: id, amount, method: method as "cash" | "card" | "transfer" | "check" | "credit", created_by: user?.id ?? null,
       });
       if (error) throw error;
     },
