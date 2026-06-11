@@ -119,7 +119,7 @@ export const setUserRole = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: old } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.user_id).maybeSingle();
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id);
-    await supabaseAdmin.from("user_roles").insert({ user_id: data.user_id, role: data.role });
+    await supabaseAdmin.from("user_roles").insert({ user_id: data.user_id, role: data.role as any });
     await supabaseAdmin.from("audit_logs").insert({
       user_id: context.userId, action: "change_role", module: "users",
       entity_id: data.user_id, old_value: old, new_value: { role: data.role },
