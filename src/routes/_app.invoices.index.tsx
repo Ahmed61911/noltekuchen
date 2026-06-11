@@ -79,6 +79,9 @@ function InvoicesPage() {
   const { user } = useAuth();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [customerFilter, setCustomerFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [open, setOpen] = useState(false);
 
   // Form state
@@ -229,6 +232,9 @@ function InvoicesPage() {
   // Filter
   const filtered = invoices.filter(i => {
     if (statusFilter !== "all" && i.status !== statusFilter) return false;
+    if (customerFilter !== "all" && i.customer_id !== customerFilter) return false;
+    if (dateFrom && i.invoice_date < dateFrom) return false;
+    if (dateTo && i.invoice_date > dateTo) return false;
     if (!q) return true;
     const s = q.toLowerCase();
     return i.invoice_number.toLowerCase().includes(s) || (i.customers?.name ?? "").toLowerCase().includes(s);
@@ -397,6 +403,18 @@ function InvoicesPage() {
               <SelectItem value="cancelled">Annulée</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={customerFilter} onValueChange={setCustomerFilter}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Client" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous clients</SelectItem>
+              {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Du" />
+          <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Au" />
+          {(q || statusFilter !== "all" || customerFilter !== "all" || dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStatusFilter("all"); setCustomerFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
+          )}
         </div>
         <Table>
           <TableHeader>

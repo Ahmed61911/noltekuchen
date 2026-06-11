@@ -73,6 +73,9 @@ function SalesPage() {
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
+  const [customerFilter, setCustomerFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [open, setOpen] = useState(false);
 
   const [customerId, setCustomerId] = useState<string>("");
@@ -228,6 +231,9 @@ function SalesPage() {
   const filtered = sales.filter(s => {
     if (statusFilter !== "all" && s.payment_status !== statusFilter) return false;
     if (methodFilter !== "all" && s.payment_method !== methodFilter) return false;
+    if (customerFilter !== "all" && s.customer_id !== customerFilter) return false;
+    if (dateFrom && s.sale_date < dateFrom) return false;
+    if (dateTo && s.sale_date > dateTo) return false;
     if (!q) return true;
     const x = q.toLowerCase();
     return s.sale_number.toLowerCase().includes(x) || (s.customers?.name ?? "").toLowerCase().includes(x);
@@ -403,6 +409,18 @@ function SalesPage() {
               {Object.entries(METHODS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={customerFilter} onValueChange={setCustomerFilter}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Client" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous clients</SelectItem>
+              {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Du" />
+          <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Au" />
+          {(q || statusFilter !== "all" || methodFilter !== "all" || customerFilter !== "all" || dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStatusFilter("all"); setMethodFilter("all"); setCustomerFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
+          )}
         </div>
 
         <div className="rounded-md border">

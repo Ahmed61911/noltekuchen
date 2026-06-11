@@ -13,6 +13,9 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,6 +56,9 @@ function ProductsPage() {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
+  const [stockFilter, setStockFilter] = useState<"all" | "in" | "low" | "out">("all");
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<FormState>(empty);
@@ -101,9 +107,15 @@ function ProductsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const filtered = products.filter((p) =>
-    [p.name, p.reference].some((s) => s.toLowerCase().includes(q.toLowerCase()))
-  );
+  const filtered = products.filter((p) => {
+    if (q && ![p.name, p.reference].some((s) => s.toLowerCase().includes(q.toLowerCase()))) return false;
+    if (stockFilter === "out" && p.stock_quantity > 0) return false;
+    if (stockFilter === "low" && !(p.stock_quantity > 0 && p.stock_quantity <= p.min_stock)) return false;
+    if (stockFilter === "in" && p.stock_quantity <= p.min_stock) return false;
+    if (priceMin && p.selling_price < Number(priceMin)) return false;
+    if (priceMax && p.selling_price > Number(priceMax)) return false;
+    return true;
+  });
 
   function startEdit(p: Product) {
     setEditing(p);
@@ -168,6 +180,26 @@ function ProductsPage() {
           )}
         </div>
       </div>
+
+      <Card className="p-3 shadow-card">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={stockFilter} onValueChange={(v) => setStockFilter(v as typeof stockFilter)}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Stock" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous stocks</SelectItem>
+              <SelectItem value="in">En stock</SelectItem>
+              <SelectItem value="low">Stock faible</SelectItem>
+              <SelectItem value="out">Rupture</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input type="number" placeholder="Prix min" className="w-32" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
+          <Input type="number" placeholder="Prix max" className="w-32" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
+          {(q || stockFilter !== "all" || priceMin || priceMax) && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStockFilter("all"); setPriceMin(""); setPriceMax(""); }}>Réinitialiser</Button>
+          )}
+          <span className="ml-auto text-xs text-muted-foreground">{filtered.length} / {products.length}</span>
+        </div>
+      </Card>
 
       <Card className="overflow-hidden shadow-card">
         <Table>

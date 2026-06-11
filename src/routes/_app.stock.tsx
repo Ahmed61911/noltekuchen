@@ -34,6 +34,11 @@ function StockPage() {
   const [type, setType] = useState<"in" | "out">("in");
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState("");
+  const [productFilter, setProductFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "in" | "out">("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [q, setQ] = useState("");
 
   const { data: products = [] } = useQuery({
     queryKey: ["products-min"],
@@ -45,7 +50,7 @@ function StockPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stock_movements")
-        .select("id,type,quantity,reason,created_at,products(name,reference)")
+        .select("id,type,quantity,reason,created_at,product_id,products(name,reference)")
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -71,6 +76,21 @@ function StockPage() {
       setProductId(""); setType("in"); setQuantity(1); setReason("");
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  const filteredMovements = (movements as any[]).filter((m) => {
+    if (typeFilter !== "all" && m.type !== typeFilter) return false;
+    if (productFilter !== "all" && m.product_id !== productFilter) return false;
+    if (dateFrom && new Date(m.created_at) < new Date(dateFrom)) return false;
+    if (dateTo && new Date(m.created_at) > new Date(dateTo + "T23:59:59")) return false;
+    if (q) {
+      const s = q.toLowerCase();
+      const name = (m.products?.name ?? "").toLowerCase();
+      const ref = (m.products?.reference ?? "").toLowerCase();
+      const reason = (m.reason ?? "").toLowerCase();
+      if (!name.includes(s) && !ref.includes(s) && !reason.includes(s)) return false;
+    }
+    return true;
   });
 
   return (
@@ -129,6 +149,32 @@ function StockPage() {
         </Dialog>
       </div>
 
+      <Card className="p-3 shadow-card">
+        <div className="flex flex-wrap items-center gap-2">
+          <Input className="w-64" placeholder={t("search")} value={q} onChange={e => setQ(e.target.value)} />
+          <Select value={productFilter} onValueChange={setProductFilter}>
+            <SelectTrigger className="w-56"><SelectValue placeholder={t("product")} /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous produits</SelectItem>
+              {products.map(p => <SelectItem key={p.id} value={p.id}>{p.reference} — {p.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
+            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous types</SelectItem>
+              <SelectItem value="in">{t("movement_in")}</SelectItem>
+              <SelectItem value="out">{t("movement_out")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+          <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+          {(q || productFilter !== "all" || typeFilter !== "all" || dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setProductFilter("all"); setTypeFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
+          )}
+        </div>
+      </Card>
+
       <Card className="overflow-hidden shadow-card">
         <Table>
           <TableHeader>
@@ -142,10 +188,10 @@ function StockPage() {
           </TableHeader>
           <TableBody>
             {isLoading && <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">{t("loading")}</TableCell></TableRow>}
-            {!isLoading && movements.length === 0 && (
+            {!isLoading && filteredMovements.length === 0 && (
               <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">{t("no_data")}</TableCell></TableRow>
             )}
-            {movements.map((m) => {
+            {filteredMovements.map((m) => {
               const prod = m.products as { name?: string; reference?: string } | null;
               return (
                 <TableRow key={m.id}>
