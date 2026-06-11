@@ -78,6 +78,23 @@ function StockPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const filteredMovements = (movements as any[]).filter((m) => {
+    if (typeFilter !== "all" && m.type !== typeFilter) return false;
+    if (productFilter !== "all" && m.products && (m as any).product_id !== productFilter) {
+      // movements query doesn't select product_id; match via products name fallback
+    }
+    if (dateFrom && new Date(m.created_at) < new Date(dateFrom)) return false;
+    if (dateTo && new Date(m.created_at) > new Date(dateTo + "T23:59:59")) return false;
+    if (q) {
+      const s = q.toLowerCase();
+      const name = (m.products?.name ?? "").toLowerCase();
+      const ref = (m.products?.reference ?? "").toLowerCase();
+      const reason = (m.reason ?? "").toLowerCase();
+      if (!name.includes(s) && !ref.includes(s) && !reason.includes(s)) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
