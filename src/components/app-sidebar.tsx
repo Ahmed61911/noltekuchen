@@ -103,6 +103,14 @@ export function AppSidebar() {
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/audit")}>
+                    <Link to="/audit" className="flex items-center gap-3">
+                      <ShieldCheck className="h-4 w-4" />
+                      {!collapsed && <span>Journal d'audit</span>}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
