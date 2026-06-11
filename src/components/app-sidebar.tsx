@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Package, Boxes, ShoppingCart, Calendar,
-  Truck, FileText, BarChart3, History, Users, Settings,
+  Truck, FileText, BarChart3, History, Users, Settings, Receipt, UserSquare,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -24,11 +24,12 @@ export function AppSidebar() {
     { to: "/products", icon: Package, label: t("products") },
     { to: "/stock", icon: Boxes, label: t("stock") },
     { to: "/sales", icon: ShoppingCart, label: t("sales") },
+    { to: "/invoices", icon: Receipt, label: "Facturation" },
     { to: "/appointments", icon: Calendar, label: t("appointments") },
   ];
   const ops = [
     { to: "/suppliers", icon: Truck, label: t("suppliers") },
-    { to: "/customers", icon: Users, label: t("customers") },
+    { to: "/customers", icon: UserSquare, label: "Clients" },
     { to: "/documents", icon: FileText, label: t("documents") },
     { to: "/reports", icon: BarChart3, label: t("reports") },
     { to: "/logs", icon: History, label: t("logs") },
