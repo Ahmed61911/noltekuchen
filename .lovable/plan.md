@@ -1,82 +1,117 @@
-## Module Facturation — Plan d'implémentation
+## Objectif
 
-### 1. Base de données (migration Supabase)
+Séparer la section actuelle `/sales` (stub) en **deux modules distincts** :
+- `/sales` → **Ventes** (transactions encaissées, factures, paiements)
+- `/orders` → **Commandes clients** (cycle de vie : attente → validée → livrée, avec délais)
 
-**Table `invoices`**
-- `id`, `invoice_number` (auto, ex: `FAC-2026-0001`), `customer_id` (FK → customers)
-- `invoice_date`, `due_date`
-- `status` enum: `draft | pending | paid | cancelled`
-- `subtotal_ht`, `tax_amount`, `discount_amount`, `total_ttc` (numeric)
-- `notes`, `stock_applied` (bool, pour éviter double décrément)
-- `created_by`, `created_at`, `updated_at`
+Tout en DH, design cohérent avec le reste de l'ERP (cards, table shadcn, sidebar).
 
-**Table `invoice_items`**
-- `id`, `invoice_id` (FK cascade), `product_id` (FK → products)
-- `description`, `quantity`, `unit_price`, `tax_rate` (%), `discount_rate` (%)
-- `line_total_ht`, `line_tax`, `line_total_ttc`
+---
 
-**Fonctions / triggers**
-- `generate_invoice_number()` — séquence annuelle
-- Trigger `apply_invoice_stock()` : quand `status` passe à `paid` ou `pending` (validation), pour chaque ligne :
-  - INSERT dans `stock_movements` (type=`out`, ref invoice_id) → le trigger existant `apply_stock_movement` décrémente le stock
-  - marquer `stock_applied = true`
-- Idempotent : ne refait pas si `stock_applied` déjà true. Si annulation après application → mouvements `in` compensatoires.
+## 1. Base de données (migration Supabase)
 
-**RLS + GRANT**
-- `authenticated` : SELECT/INSERT/UPDATE/DELETE
+### Table `orders` (commandes clients)
+- `order_number` (auto `CMD-YYYY-NNNN`, séquence dédiée)
+- `customer_id` → `customers`
+- `order_date`, `due_date` (dernier jour)
+- `status` enum `order_status` : `pending | validated | delivered | cancelled | late`
+- `payment_status` enum `payment_status` : `unpaid | partial | paid`
+- `subtotal_ht`, `tax_amount`, `total_ttc`, `paid_amount`, `remaining_amount` (généré)
+- `notes`, `created_by`, timestamps
+- `stock_applied` boolean (déduction stock à la livraison)
+
+### Table `order_items`
+- `order_id`, `product_id`, `description`, `quantity`, `unit_price`, `tax_rate`, `discount_rate`, `line_total_ttc`
+
+### Table `sales` (ventes / transactions encaissées)
+- `sale_number` (`VTE-YYYY-NNNN`)
+- `customer_id` (nullable pour vente comptoir)
+- `sale_date`, `payment_due_date`
+- `payment_method` enum : `cash | card | transfer | check | credit`
+- `payment_status` : `unpaid | partial | paid`
+- `subtotal_ht`, `tax_amount`, `total_ttc`, `paid_amount`, `remaining_amount`
+- `invoice_id` nullable → lien vers `invoices` quand facture générée
+- `order_id` nullable → vente issue d'une commande
+- `created_by`, timestamps
+
+### Table `sale_items`
+- mêmes colonnes que `order_items` mais `sale_id`
+
+### Table `order_payments` / `sale_payments`
+- Historique paiements : `amount`, `method`, `paid_at`, `note`
+
+### Triggers
+- `apply_order_stock()` : déduit le stock quand `status` passe à `delivered` (via `stock_movements` type `out`)
+- `update_order_payment_status()` : recalcule `payment_status` quand `paid_amount` change
+- `mark_late_orders()` : fonction utilitaire (appelée côté UI via filtre `due_date < now() AND status IN (pending, validated)`)
+- `set_updated_at` sur les deux tables
+
+### RLS
+- `authenticated` : ALL
 - `service_role` : ALL
+- GRANTs explicites
 
-### 2. Route & navigation
+---
 
-- Nouveau fichier `src/routes/_app.invoices.tsx` (liste + dashboard intégré)
-- Nouveau fichier `src/routes/_app.invoices.$id.tsx` (détail + édition + PDF)
-- Ajouter entrée "Facturation" (icône `Receipt` ou `FileText`) dans `app-sidebar.tsx` groupe Principal
-- Ajouter clés i18n `invoices`, etc.
+## 2. Pages frontend
 
-### 3. Page Liste `/invoices`
+### `/orders` — `src/routes/_app.orders.index.tsx`
+**Cartes statistiques (5)** : En attente, Validées, Livrées, Annulées, En retard
 
-- KPI cards en haut : CA total, CA mois courant, Factures payées (count + montant), Impayées, Reste à encaisser
-- Barre recherche (numéro / client) + filtres statut + date
-- Table : N°, Client, Date, Échéance, Total TTC, Statut (badge coloré), Actions (Voir / PDF / Supprimer)
-- Bouton "Nouvelle facture" → ouvre Dialog formulaire
+**Tableau** : N° / Client / Date / Dernier jour / Délai (badge jours restants — vert/orange/rouge) / Total / Payé / Reste / Statut commande / Statut paiement / Actions
 
-### 4. Formulaire facture (Dialog)
+**Filtres** : recherche, statut commande, statut paiement, période
 
-- Sélecteur client (combobox depuis `customers`)
-- Date facture / Date échéance (default +30j)
-- Lignes produits dynamiques (ajouter/retirer) :
-  - Produit (combobox → auto-remplit prix, TVA par défaut 20%)
-  - Quantité, PU, TVA %, Remise %
-  - Calcul ligne : `HT = qty*pu*(1-remise/100)`, `TVA = HT*tva/100`, `TTC = HT+TVA`
-- Récap auto : Sous-total HT, TVA totale, Total TTC
-- Statut initial (Brouillon / En attente)
-- Notes
+**Actions ligne** : Voir, Modifier, Valider (pending→validated), Livrer (→delivered + stock), Annuler
 
-### 5. Détail facture `/invoices/$id`
+**Bouton** : Nouvelle commande (dialog avec sélecteur client + lignes produits dynamiques + calcul TVA/TTC + date échéance)
 
-- En-tête société + client
-- Tableau lignes
-- Totaux
-- Actions : Changer statut (passer à Payée déclenche stock), Éditer, Supprimer, Télécharger PDF
+### `/orders/$id` — `src/routes/_app.orders.$id.tsx`
+- Bloc Infos client
+- Tableau produits commandés
+- Historique des changements de statut (timeline)
+- Bloc Paiements (liste + ajout paiement)
+- Boutons changement de statut + génération facture
 
-### 6. PDF
+### `/sales` — `src/routes/_app.sales.index.tsx` (remplace le stub actuel)
+**Cartes statistiques (5)** : CA total, Ventes du jour, Ventes du mois, Encaissé, Restant
 
-- Génération côté client avec `jspdf` + `jspdf-autotable` (légers, edge-safe, déjà compatibles)
-- Layout : logo Nolte, infos facture, table lignes, totaux, mentions
+**Tableau** : N° / Client / Date / Total / Payé / Reste / Mode paiement / Échéance / Statut paiement / Actions
 
-### 7. Intégration Stock
+**Filtres** : recherche, mode, statut, période
 
-Géré côté DB via trigger (voir §1). Côté UI : au changement de statut vers "Payée" depuis Brouillon/En attente, afficher toast "Stock mis à jour".
+**Actions ligne** : Voir détail, Générer facture (crée une `invoice` liée), Imprimer (PDF)
 
-### 8. Devise
+**Bouton** : Nouvelle vente (dialog : client optionnel, lignes produits, mode paiement, montant payé, échéance si crédit)
 
-DH partout (cohérent avec existant).
+### `/sales/$id` — `src/routes/_app.sales.$id.tsx`
+- Détail vente + paiements + lien facture
 
-### Détails techniques
+---
 
-- Server functions dans `src/lib/invoices.functions.ts` avec `requireSupabaseAuth`
-- TanStack Query : `["invoices"]`, `["invoice", id]`, `["invoice-stats"]`
-- Composants UI shadcn existants (Dialog, Table, Badge, Card, Select, Combobox via Command)
-- Types regenerés après migration
+## 3. Sidebar (`app-sidebar.tsx`)
+Dans `main` :
+- Ventes → `/sales` (icône `ShoppingCart`)
+- Commandes → `/orders` (nouvelle icône `ClipboardList`)
 
-Confirmez pour lancer la migration puis l'implémentation.
+---
+
+## 4. PDF
+Réutiliser `src/lib/invoice-pdf.ts` pour Ventes (entête "Bon de vente" ou facture si générée). Nouveau `src/lib/order-pdf.ts` pour bon de commande.
+
+---
+
+## 5. Stack technique
+- React 19 + TanStack Start + TanStack Query (`ensureQueryData` + `useSuspenseQuery`)
+- Server functions dans `src/lib/orders.functions.ts` et `src/lib/sales.functions.ts` avec `requireSupabaseAuth`
+- Toutes les valeurs en **DH**
+- Composants shadcn existants (Card, Table, Dialog, Badge, Select)
+- Design identique à `/invoices`
+
+---
+
+## Notes
+- La page actuelle `/sales` (stub "Module en préparation") est **remplacée** par le vrai module Ventes.
+- Les commandes ne déduisent le stock qu'à la **livraison** (pas à la validation).
+- Les ventes (encaissement direct) déduisent le stock immédiatement.
+- Une commande livrée + payée peut être convertie en vente automatiquement (option).
