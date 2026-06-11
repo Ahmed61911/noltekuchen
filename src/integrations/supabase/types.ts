@@ -175,6 +175,91 @@ export type Database = {
         }
         Relationships: []
       }
+      document_history: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          document_id: string
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          document_id: string
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          document_id?: string
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_history_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          category: Database["public"]["Enums"]["document_category"]
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          description: string | null
+          file_path: string
+          file_size: number
+          file_type: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["document_category"]
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          file_path: string
+          file_size?: number
+          file_type?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["document_category"]
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          file_path?: string
+          file_size?: number
+          file_type?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           created_at: string
@@ -971,6 +1056,14 @@ export type Database = {
         | "in_progress"
         | "completed"
         | "cancelled"
+      document_category:
+        | "factures"
+        | "devis"
+        | "contrats"
+        | "projets_cuisines"
+        | "sav"
+        | "photos"
+        | "autres"
       invoice_status: "draft" | "pending" | "paid" | "cancelled"
       movement_type: "in" | "out"
       order_status: "pending" | "validated" | "delivered" | "cancelled"
@@ -1117,6 +1210,15 @@ export const Constants = {
         "in_progress",
         "completed",
         "cancelled",
+      ],
+      document_category: [
+        "factures",
+        "devis",
+        "contrats",
+        "projets_cuisines",
+        "sav",
+        "photos",
+        "autres",
       ],
       invoice_status: ["draft", "pending", "paid", "cancelled"],
       movement_type: ["in", "out"],
