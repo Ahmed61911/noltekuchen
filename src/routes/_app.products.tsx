@@ -104,9 +104,15 @@ function ProductsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const filtered = products.filter((p) =>
-    [p.name, p.reference].some((s) => s.toLowerCase().includes(q.toLowerCase()))
-  );
+  const filtered = products.filter((p) => {
+    if (q && ![p.name, p.reference].some((s) => s.toLowerCase().includes(q.toLowerCase()))) return false;
+    if (stockFilter === "out" && p.stock_quantity > 0) return false;
+    if (stockFilter === "low" && !(p.stock_quantity > 0 && p.stock_quantity <= p.min_stock)) return false;
+    if (stockFilter === "in" && p.stock_quantity <= p.min_stock) return false;
+    if (priceMin && p.selling_price < Number(priceMin)) return false;
+    if (priceMax && p.selling_price > Number(priceMax)) return false;
+    return true;
+  });
 
   function startEdit(p: Product) {
     setEditing(p);
