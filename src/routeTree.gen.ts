@@ -21,6 +21,7 @@ import { Route as AppLogsRouteImport } from './routes/_app.logs'
 import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppCustomersRouteImport } from './routes/_app.customers'
+import { Route as AppAuditRouteImport } from './routes/_app.audit'
 import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
 import { Route as AppUsersIndexRouteImport } from './routes/_app.users.index'
 import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
@@ -90,6 +91,11 @@ const AppCustomersRoute = AppCustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAuditRoute = AppAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
   id: '/appointments',
   path: '/appointments',
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/appointments': typeof AppAppointmentsRoute
+  '/audit': typeof AppAuditRoute
   '/customers': typeof AppCustomersRoute
   '/dashboard': typeof AppDashboardRoute
   '/documents': typeof AppDocumentsRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/appointments': typeof AppAppointmentsRoute
+  '/audit': typeof AppAuditRoute
   '/customers': typeof AppCustomersRoute
   '/dashboard': typeof AppDashboardRoute
   '/documents': typeof AppDocumentsRoute
@@ -187,6 +195,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/_app/appointments': typeof AppAppointmentsRoute
+  '/_app/audit': typeof AppAuditRoute
   '/_app/customers': typeof AppCustomersRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/documents': typeof AppDocumentsRoute
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/appointments'
+    | '/audit'
     | '/customers'
     | '/dashboard'
     | '/documents'
@@ -233,6 +243,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/appointments'
+    | '/audit'
     | '/customers'
     | '/dashboard'
     | '/documents'
@@ -256,6 +267,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/_app/appointments'
+    | '/_app/audit'
     | '/_app/customers'
     | '/_app/dashboard'
     | '/_app/documents'
@@ -367,6 +379,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCustomersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/audit': {
+      id: '/_app/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AppAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/appointments': {
       id: '/_app/appointments'
       path: '/appointments'
@@ -435,6 +454,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAppointmentsRoute: typeof AppAppointmentsRoute
+  AppAuditRoute: typeof AppAuditRoute
   AppCustomersRoute: typeof AppCustomersRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppDocumentsRoute: typeof AppDocumentsRoute
@@ -455,6 +475,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAppointmentsRoute: AppAppointmentsRoute,
+  AppAuditRoute: AppAuditRoute,
   AppCustomersRoute: AppCustomersRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppDocumentsRoute: AppDocumentsRoute,
