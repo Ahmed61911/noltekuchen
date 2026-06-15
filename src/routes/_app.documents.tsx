@@ -412,7 +412,7 @@ function DocumentsPage() {
       </Dialog>
 
       {/* Preview dialog */}
-      <Dialog open={!!previewDoc} onOpenChange={(o) => { if (!o) { setPreviewDoc(null); setPreviewUrl(""); } }}>
+      <Dialog open={!!previewDoc} onOpenChange={(o) => { if (!o) { if (previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl); setPreviewDoc(null); setPreviewUrl(""); } }}>
         <DialogContent className="max-w-5xl">
           <DialogHeader><DialogTitle className="flex items-center gap-2">
             {previewDoc?.name}
