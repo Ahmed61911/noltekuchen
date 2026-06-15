@@ -12,12 +12,30 @@ export type PdfInvoice = {
   discount_amount: number;
   total_ttc: number;
   notes: string | null;
-  customer: { name: string; email: string | null; phone: string | null; address: string | null; city: string | null; postal_code: string | null } | null;
-  items: Array<{ description: string; quantity: number; unit_price: number; tax_rate: number; discount_rate: number; line_total_ht: number; line_total_ttc: number }>;
+  customer: {
+    name: string;
+    email: string | null;
+    phone: string | null;
+    address: string | null;
+    city: string | null;
+    postal_code: string | null;
+  } | null;
+  items: Array<{
+    description: string;
+    quantity: number;
+    unit_price: number;
+    tax_rate: number;
+    discount_rate: number;
+    line_total_ht: number;
+    line_total_ttc: number;
+  }>;
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  draft: "Brouillon", pending: "En attente", paid: "Payée", cancelled: "Annulée",
+  draft: "Brouillon",
+  pending: "En attente",
+  paid: "Payée",
+  cancelled: "Annulée",
 };
 
 const fmt = (n: number) =>
@@ -43,138 +61,296 @@ async function loadLogo(): Promise<string | null> {
   }
 }
 
+// Brand color (blue accent like template)
+const ACCENT: [number, number, number] = [37, 99, 175]; // deep blue
+const ACCENT_DARK: [number, number, number] = [20, 60, 120];
+const TEXT_DARK: [number, number, number] = [30, 30, 30];
+const TEXT_MUTED: [number, number, number] = [110, 110, 110];
+
 export async function generateInvoicePdf(inv: PdfInvoice) {
   const doc = new jsPDF();
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
-  // Brand band
-  doc.setFillColor(255, 237, 0); // Nolte yellow
-  doc.rect(0, 0, pageW, 4, "F");
+  // Top accent bar
+  doc.setFillColor(...ACCENT);
+  doc.rect(0, 0, pageW, 6, "F");
 
-  // Logo
+  // ===== HEADER =====
   const logo = await loadLogo();
   if (logo) {
     try {
-      doc.addImage(logo, "PNG", 14, 12, 42, 19);
+      doc.addImage(logo, "PNG", 14, 14, 38, 17);
     } catch {
       /* ignore */
     }
-  } else {
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    doc.text("NOLTE KÜCHEN", 14, 24);
   }
-
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(110);
-  doc.text("ERP Interne — Nolte Küchen", 14, 36);
-
-  // Invoice title block
-  doc.setTextColor(20);
-  doc.setFontSize(20);
+  doc.setFontSize(13);
   doc.setFont("helvetica", "bold");
-  doc.text("FACTURE", pageW - 14, 20, { align: "right" });
-  doc.setFontSize(10);
+  doc.setTextColor(...ACCENT);
+  doc.text("NOLTE", 14, 38);
+  doc.setTextColor(...TEXT_DARK);
+  doc.text(" KÜCHEN", 14 + doc.getTextWidth("NOLTE"), 38);
   doc.setFont("helvetica", "normal");
-  doc.text(inv.invoice_number, pageW - 14, 27, { align: "right" });
-  doc.setTextColor(110);
-  doc.text(`Statut : ${STATUS_LABELS[inv.status] ?? inv.status}`, pageW - 14, 33, { align: "right" });
-  doc.setTextColor(20);
+  doc.setFontSize(7);
+  doc.setTextColor(...TEXT_MUTED);
+  doc.text("CUISINES ALLEMANDES D'EXCEPTION", 14, 43);
 
-  // Separator
-  doc.setDrawColor(230);
-  doc.line(14, 44, pageW - 14, 44);
+  // Company contact (right)
+  const rightX = pageW - 14;
+  doc.setFontSize(9);
+  doc.setTextColor(...TEXT_DARK);
+  doc.text("Casablanca, Maroc", rightX, 18, { align: "right" });
+  doc.setTextColor(...TEXT_MUTED);
+  doc.text("contact@nolte-kuchen.ma", rightX, 24, { align: "right" });
+  doc.text("+212 5 22 00 00 00", rightX, 30, { align: "right" });
+  doc.text("www.nolte-kuchen.ma", rightX, 36, { align: "right" });
 
-  // Customer + dates
-  let y = 54;
+  // ===== INVOICE TITLE =====
+  let y = 58;
+  doc.setDrawColor(...ACCENT);
+  doc.setLineWidth(1.2);
+  doc.line(14, y - 6, 14, y + 2);
+  doc.setFontSize(26);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...ACCENT);
+  doc.text("FACTURE", 18, y);
+
+  // Invoice meta (left)
+  y += 10;
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...TEXT_DARK);
+  doc.text("N° FACTURE", 14, y);
+  doc.text(":", 44, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(inv.invoice_number, 48, y);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("DATE", 14, y + 5);
+  doc.text(":", 44, y + 5);
+  doc.setFont("helvetica", "normal");
+  doc.text(new Date(inv.invoice_date).toLocaleDateString("fr-FR"), 48, y + 5);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("ÉCHÉANCE", 14, y + 10);
+  doc.text(":", 44, y + 10);
+  doc.setFont("helvetica", "normal");
+  doc.text(new Date(inv.due_date).toLocaleDateString("fr-FR"), 48, y + 10);
+
+  // Client block (right)
+  const clientX = pageW / 2 + 6;
+  doc.setDrawColor(...ACCENT);
+  doc.setLineWidth(1);
+  doc.line(clientX - 4, y - 4, clientX - 4, y + 22);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("Facturé à", 14, y);
-  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...ACCENT);
+  doc.text("FACTURÉ À :", clientX, y);
+  doc.setTextColor(...TEXT_DARK);
+  doc.setFontSize(9);
+  let cy = y + 6;
   if (inv.customer) {
-    y += 6; doc.text(inv.customer.name, 14, y);
-    if (inv.customer.address) { y += 5; doc.text(inv.customer.address, 14, y); }
-    if (inv.customer.postal_code || inv.customer.city) {
-      y += 5;
-      doc.text(`${inv.customer.postal_code ?? ""} ${inv.customer.city ?? ""}`.trim(), 14, y);
+    doc.setFont("helvetica", "bold");
+    doc.text(inv.customer.name, clientX, cy);
+    doc.setFont("helvetica", "normal");
+    if (inv.customer.address) {
+      cy += 5;
+      doc.text(inv.customer.address, clientX, cy);
     }
-    if (inv.customer.email) { y += 5; doc.text(inv.customer.email, 14, y); }
-    if (inv.customer.phone) { y += 5; doc.text(inv.customer.phone, 14, y); }
+    if (inv.customer.postal_code || inv.customer.city) {
+      cy += 5;
+      doc.text(`${inv.customer.postal_code ?? ""} ${inv.customer.city ?? ""}`.trim(), clientX, cy);
+    }
+    if (inv.customer.email) {
+      cy += 5;
+      doc.setTextColor(...TEXT_MUTED);
+      doc.text(inv.customer.email, clientX, cy);
+    }
+    if (inv.customer.phone) {
+      cy += 5;
+      doc.text(inv.customer.phone, clientX, cy);
+    }
   } else {
-    y += 6; doc.text("—", 14, y);
+    doc.text("—", clientX, cy);
   }
 
+  // ===== DUE TOTAL BANNER =====
+  y += 22;
+  doc.setFillColor(...ACCENT);
+  doc.rect(14, y, 70, 14, "F");
+  doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
-  doc.text("Date facture :", pageW - 70, 54);
-  doc.setFont("helvetica", "normal");
-  doc.text(inv.invoice_date, pageW - 14, 54, { align: "right" });
-  doc.setFont("helvetica", "bold");
-  doc.text("Échéance :", pageW - 70, 60);
-  doc.setFont("helvetica", "normal");
-  doc.text(inv.due_date, pageW - 14, 60, { align: "right" });
+  doc.setTextColor(255, 255, 255);
+  doc.text("TOTAL À PAYER", 18, y + 5);
+  doc.setFontSize(14);
+  doc.text(fmt(inv.total_ttc), 18, y + 11);
 
-  // Items table
+  // Status badge
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  const statusLabel = STATUS_LABELS[inv.status] ?? inv.status;
+  doc.setFillColor(...ACCENT_DARK);
+  const sw = doc.getTextWidth(statusLabel) + 8;
+  doc.roundedRect(pageW - 14 - sw, y + 3, sw, 8, 1.5, 1.5, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.text(statusLabel, pageW - 14 - sw / 2, y + 8.5, { align: "center" });
+
+  // ===== ITEMS TABLE =====
+  y += 22;
   autoTable(doc, {
-    startY: Math.max(y + 10, 84),
-    head: [["Description", "Qté", "PU", "TVA %", "Rem %", "Total HT"]],
+    startY: y,
+    head: [["Description", "Prix", "Qté", "TVA", "Total HT"]],
     body: inv.items.map((it) => [
       it.description,
-      String(it.quantity),
       fmt(it.unit_price),
+      String(it.quantity),
       `${it.tax_rate}%`,
-      `${it.discount_rate}%`,
       fmt(it.line_total_ht),
     ]),
-    headStyles: { fillColor: [26, 23, 27], textColor: 255 },
-    styles: { fontSize: 9, cellPadding: 3 },
-    columnStyles: {
-      1: { halign: "right" },
-      2: { halign: "right" },
-      3: { halign: "right" },
-      4: { halign: "right" },
-      5: { halign: "right" },
+    headStyles: {
+      fillColor: ACCENT,
+      textColor: 255,
+      fontStyle: "bold",
+      halign: "center",
+      fontSize: 9,
+      cellPadding: 4,
     },
+    bodyStyles: {
+      fontSize: 9,
+      cellPadding: 4,
+      textColor: TEXT_DARK,
+    },
+    alternateRowStyles: { fillColor: [245, 248, 252] },
+    columnStyles: {
+      0: { halign: "left" },
+      1: { halign: "center" },
+      2: { halign: "center" },
+      3: { halign: "center" },
+      4: { halign: "right", fontStyle: "bold" },
+    },
+    theme: "plain",
+    margin: { left: 14, right: 14 },
   });
 
-  // Totals
-  const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
-  const labelX = pageW - 70;
-  const valX = pageW - 14;
-  doc.setFontSize(10);
+  // ===== TOTALS =====
+  const finalY =
+    (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+  const totalsX = pageW - 84;
+  const totalsW = 70;
+
+  doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text("Sous-total HT :", labelX, finalY);
-  doc.text(fmt(inv.subtotal_ht), valX, finalY, { align: "right" });
-  doc.text("TVA :", labelX, finalY + 6);
-  doc.text(fmt(inv.tax_amount), valX, finalY + 6, { align: "right" });
-  let totalsY = finalY + 12;
+  doc.setTextColor(...TEXT_DARK);
+
+  const drawTotalRow = (label: string, value: string, atY: number, bold = false) => {
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.text(label, totalsX, atY);
+    doc.text(value, totalsX + totalsW, atY, { align: "right" });
+  };
+
+  let ty = finalY;
+  drawTotalRow("Sous-total HT", fmt(inv.subtotal_ht), ty);
+  ty += 6;
+  drawTotalRow(`TVA`, fmt(inv.tax_amount), ty);
   if (inv.discount_amount > 0) {
-    doc.text("Remise :", labelX, totalsY);
-    doc.text("-" + fmt(inv.discount_amount), valX, totalsY, { align: "right" });
-    totalsY += 6;
+    ty += 6;
+    drawTotalRow("Remise", "-" + fmt(inv.discount_amount), ty);
   }
-  doc.setDrawColor(200);
-  doc.line(labelX, totalsY + 2, valX, totalsY + 2);
+  ty += 4;
+
+  // Grand total bar
+  ty += 4;
+  doc.setFillColor(...ACCENT);
+  doc.rect(totalsX - 4, ty - 5, totalsW + 4, 10, "F");
+  doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text("Total TTC :", labelX, totalsY + 10);
-  doc.text(fmt(inv.total_ttc), valX, totalsY + 10, { align: "right" });
+  doc.setFontSize(10);
+  doc.text("TOTAL TTC", totalsX, ty + 1);
+  doc.text(fmt(inv.total_ttc), totalsX + totalsW, ty + 1, { align: "right" });
+
+  // ===== PAYMENT METHOD + TERMS =====
+  const leftY = finalY;
+  doc.setTextColor(...ACCENT);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setDrawColor(...ACCENT);
+  doc.setLineWidth(1);
+  doc.line(14, leftY - 5, 14, leftY + 3);
+  doc.text("Mode de paiement :", 18, leftY);
+
+  doc.setTextColor(...TEXT_DARK);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("Banque", 18, leftY + 7);
+  doc.setFont("helvetica", "normal");
+  doc.text("Attijariwafa Bank", 50, leftY + 7);
+  doc.setFont("helvetica", "bold");
+  doc.text("RIB", 18, leftY + 12);
+  doc.setFont("helvetica", "normal");
+  doc.text("007 780 0001234567890123 45", 50, leftY + 12);
+  doc.setFont("helvetica", "bold");
+  doc.text("Titulaire", 18, leftY + 17);
+  doc.setFont("helvetica", "normal");
+  doc.text("Nolte Küchen SARL", 50, leftY + 17);
+  doc.setFont("helvetica", "bold");
+  doc.text("SWIFT", 18, leftY + 22);
+  doc.setFont("helvetica", "normal");
+  doc.text("BCMAMAMC", 50, leftY + 22);
+
+  // ===== TERMS & NOTES =====
+  const termsY = Math.max(ty + 18, leftY + 36);
+  doc.setDrawColor(...ACCENT);
+  doc.setLineWidth(1);
+  doc.line(14, termsY - 5, 14, termsY + 3);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...ACCENT);
+  doc.text("Conditions générales :", 18, termsY);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...TEXT_DARK);
+  const terms = [
+    "1. Paiement à réception de la facture sauf accord préalable.",
+    "2. Pénalités de retard de 1,5% par mois en cas de non-paiement à l'échéance.",
+    "3. TVA non récupérable pour les particuliers. Garantie selon conditions du constructeur.",
+  ];
+  terms.forEach((t, i) => doc.text(t, 18, termsY + 7 + i * 5));
 
   if (inv.notes) {
+    const notesY = termsY + 7 + terms.length * 5 + 4;
+    doc.setFont("helvetica", "bold");
+    doc.text("Notes :", 18, notesY);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(80);
-    doc.text("Notes : " + inv.notes, 14, totalsY + 24);
-    doc.setTextColor(20);
+    const split = doc.splitTextToSize(inv.notes, pageW - 36);
+    doc.text(split, 18, notesY + 5);
   }
 
-  // Footer
-  doc.setFillColor(255, 237, 0);
-  doc.rect(0, pageH - 14, pageW, 4, "F");
+  // Signature (right)
+  doc.setDrawColor(180);
+  doc.setLineWidth(0.3);
+  doc.line(pageW - 70, termsY + 18, pageW - 14, termsY + 18);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(...TEXT_DARK);
+  doc.text("Direction commerciale", pageW - 42, termsY + 23, { align: "center" });
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.setTextColor(120);
-  doc.text("Merci pour votre confiance — Nolte Küchen", pageW / 2, pageH - 6, { align: "center" });
+  doc.setTextColor(...TEXT_MUTED);
+  doc.text("Nolte Küchen", pageW - 42, termsY + 28, { align: "center" });
+
+  // ===== FOOTER =====
+  doc.setFillColor(...ACCENT);
+  doc.rect(0, pageH - 8, pageW, 8, "F");
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text(
+    "Merci pour votre confiance — Nolte Küchen",
+    pageW / 2,
+    pageH - 3,
+    { align: "center" }
+  );
 
   doc.save(`${inv.invoice_number}.pdf`);
 }
