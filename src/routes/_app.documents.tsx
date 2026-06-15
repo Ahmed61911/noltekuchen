@@ -197,29 +197,31 @@ function DocumentsPage() {
     onError: (e: any) => toast.error(e.message ?? "Erreur"),
   });
 
-  const signedUrl = async (path: string, download?: string) => {
-    const { data, error } = await supabase.storage.from("documents")
-      .createSignedUrl(path, 60 * 5, download ? { download } : undefined);
-    if (error) throw error;
-    return data.signedUrl;
-  };
-
   const handleDownload = async (d: Doc) => {
     try {
-      const url = await signedUrl(d.file_path, d.name);
-      window.open(url, "_blank");
+      const { data, error } = await supabase.storage.from("documents").download(d.file_path);
+      if (error) throw error;
+      const blob = new Blob([data], { type: d.file_type || "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = d.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       await supabase.from("document_history").insert({
         document_id: d.id, action: "downloaded", details: null,
         user_id: (await supabase.auth.getUser()).data.user?.id ?? null,
       });
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e: any) { toast.error(e.message ?? "Téléchargement impossible"); }
   };
 
   const handlePreview = async (d: Doc) => {
     try {
-      const url = await signedUrl(d.file_path);
+      const { data, error } = await supabase.storage.from("documents").download(d.file_path);
+      if (error) throw error;
+      const blob = new Blob([data], { type: d.file_type || "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
       setPreviewUrl(url); setPreviewDoc(d);
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e: any) { toast.error(e.message ?? "Aperçu impossible"); }
   };
 
   return (
@@ -410,7 +412,7 @@ function DocumentsPage() {
       </Dialog>
 
       {/* Preview dialog */}
-      <Dialog open={!!previewDoc} onOpenChange={(o) => { if (!o) { setPreviewDoc(null); setPreviewUrl(""); } }}>
+      <Dialog open={!!previewDoc} onOpenChange={(o) => { if (!o) { if (previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl); setPreviewDoc(null); setPreviewUrl(""); } }}>
         <DialogContent className="max-w-5xl">
           <DialogHeader><DialogTitle className="flex items-center gap-2">
             {previewDoc?.name}
