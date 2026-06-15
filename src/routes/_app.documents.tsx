@@ -521,6 +521,8 @@ function DocumentsPage() {
             {previewDoc && previewUrl && (
               previewDoc.file_type?.startsWith("image/") ? (
                 <img src={previewUrl} alt={previewDoc.name} className="mx-auto max-h-full" />
+              ) : previewDoc.file_type?.includes("pdf") || previewDoc.name.toLowerCase().endsWith(".pdf") ? (
+                <PdfPreview url={previewUrl} name={previewDoc.name} />
               ) : (
                 <iframe src={previewUrl} title={previewDoc.name} className="h-full w-full" />
               )
