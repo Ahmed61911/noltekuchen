@@ -31,13 +31,6 @@ export type PdfInvoice = {
   }>;
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Brouillon",
-  pending: "En attente",
-  paid: "Payée",
-  cancelled: "Annulée",
-};
-
 const fmt = (n: number) =>
   new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2 }).format(Number(n) || 0) + " DH";
 
@@ -61,296 +54,244 @@ async function loadLogo(): Promise<string | null> {
   }
 }
 
-// Brand color (blue accent like template)
-const ACCENT: [number, number, number] = [37, 99, 175]; // deep blue
-const ACCENT_DARK: [number, number, number] = [20, 60, 120];
-const TEXT_DARK: [number, number, number] = [30, 30, 30];
-const TEXT_MUTED: [number, number, number] = [110, 110, 110];
+// Muted slate-gray palette inspired by the reference template
+const SLATE: [number, number, number] = [96, 113, 130];
+const SLATE_DARK: [number, number, number] = [70, 86, 102];
+const TEXT_DARK: [number, number, number] = [55, 65, 75];
+const TEXT_MUTED: [number, number, number] = [130, 140, 150];
+const BORDER: [number, number, number] = [210, 215, 220];
 
 export async function generateInvoicePdf(inv: PdfInvoice) {
   const doc = new jsPDF();
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-
-  // Top accent bar
-  doc.setFillColor(...ACCENT);
-  doc.rect(0, 0, pageW, 6, "F");
+  const M = 18; // outer margin
 
   // ===== HEADER =====
   const logo = await loadLogo();
   if (logo) {
     try {
-      doc.addImage(logo, "PNG", 14, 14, 38, 17);
+      doc.addImage(logo, "PNG", M, 18, 30, 13);
     } catch {
       /* ignore */
     }
   }
-  doc.setFontSize(13);
+  // Brand block (left)
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(...ACCENT);
-  doc.text("NOLTE", 14, 38);
+  doc.setFontSize(12);
   doc.setTextColor(...TEXT_DARK);
-  doc.text(" KÜCHEN", 14 + doc.getTextWidth("NOLTE"), 38);
+  doc.text("NOLTE", M, 38);
+  doc.setTextColor(...SLATE);
+  doc.text(" KÜCHEN", M + doc.getTextWidth("NOLTE"), 38);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(...TEXT_MUTED);
-  doc.text("CUISINES ALLEMANDES D'EXCEPTION", 14, 43);
+  doc.text("CUISINES ALLEMANDES D'EXCEPTION", M, 43);
+  doc.text("Casablanca, Maroc", M, 49);
+  doc.text("contact@nolte-kuchen.ma  •  +212 5 22 00 00 00", M, 54);
 
-  // Company contact (right)
-  const rightX = pageW - 14;
-  doc.setFontSize(9);
+  // INVOICE title (right)
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(38);
+  doc.setTextColor(...SLATE_DARK);
+  doc.text("INVOICE", pageW - M, 36, { align: "right" });
+
+  // Meta strip (right)
+  const stripY = 44;
+  const stripW = 86;
+  const stripX = pageW - M - stripW;
+  doc.setFillColor(...SLATE);
+  doc.rect(stripX, stripY, stripW, 8, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  const half = stripW / 2;
+  doc.text(`FACTURE N° ${inv.invoice_number}`, stripX + half / 2, stripY + 5.2, { align: "center" });
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(0.3);
+  doc.line(stripX + half, stripY + 2, stripX + half, stripY + 6);
+  doc.text(
+    `DATE ${new Date(inv.invoice_date).toLocaleDateString("fr-FR")}`,
+    stripX + half + half / 2,
+    stripY + 5.2,
+    { align: "center" }
+  );
+
+  // ===== BILL TO =====
+  let y = 70;
+  doc.setFillColor(...SLATE);
+  doc.rect(M, y, 22, 6, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text("Facturé à :", M + 11, y + 4, { align: "center" });
+
+  y += 11;
   doc.setTextColor(...TEXT_DARK);
-  doc.text("Casablanca, Maroc", rightX, 18, { align: "right" });
-  doc.setTextColor(...TEXT_MUTED);
-  doc.text("contact@nolte-kuchen.ma", rightX, 24, { align: "right" });
-  doc.text("+212 5 22 00 00 00", rightX, 30, { align: "right" });
-  doc.text("www.nolte-kuchen.ma", rightX, 36, { align: "right" });
-
-  // ===== INVOICE TITLE =====
-  let y = 58;
-  doc.setDrawColor(...ACCENT);
-  doc.setLineWidth(1.2);
-  doc.line(14, y - 6, 14, y + 2);
-  doc.setFontSize(26);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...ACCENT);
-  doc.text("FACTURE", 18, y);
-
-  // Invoice meta (left)
-  y += 10;
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...TEXT_DARK);
-  doc.text("N° FACTURE", 14, y);
-  doc.text(":", 44, y);
-  doc.setFont("helvetica", "normal");
-  doc.text(inv.invoice_number, 48, y);
-
-  doc.setFont("helvetica", "bold");
-  doc.text("DATE", 14, y + 5);
-  doc.text(":", 44, y + 5);
-  doc.setFont("helvetica", "normal");
-  doc.text(new Date(inv.invoice_date).toLocaleDateString("fr-FR"), 48, y + 5);
-
-  doc.setFont("helvetica", "bold");
-  doc.text("ÉCHÉANCE", 14, y + 10);
-  doc.text(":", 44, y + 10);
-  doc.setFont("helvetica", "normal");
-  doc.text(new Date(inv.due_date).toLocaleDateString("fr-FR"), 48, y + 10);
-
-  // Client block (right)
-  const clientX = pageW / 2 + 6;
-  doc.setDrawColor(...ACCENT);
-  doc.setLineWidth(1);
-  doc.line(clientX - 4, y - 4, clientX - 4, y + 22);
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.setTextColor(...ACCENT);
-  doc.text("FACTURÉ À :", clientX, y);
-  doc.setTextColor(...TEXT_DARK);
-  doc.setFontSize(9);
-  let cy = y + 6;
+  doc.setFont("helvetica", "bold");
   if (inv.customer) {
-    doc.setFont("helvetica", "bold");
-    doc.text(inv.customer.name, clientX, cy);
+    doc.text(inv.customer.name, M, y);
     doc.setFont("helvetica", "normal");
-    if (inv.customer.address) {
-      cy += 5;
-      doc.text(inv.customer.address, clientX, cy);
-    }
+    doc.setFontSize(8);
+    doc.setTextColor(...TEXT_MUTED);
+    let cy = y + 5;
+    if (inv.customer.address) { doc.text(inv.customer.address, M, cy); cy += 4; }
     if (inv.customer.postal_code || inv.customer.city) {
-      cy += 5;
-      doc.text(`${inv.customer.postal_code ?? ""} ${inv.customer.city ?? ""}`.trim(), clientX, cy);
+      doc.text(`${inv.customer.postal_code ?? ""} ${inv.customer.city ?? ""}`.trim(), M, cy);
+      cy += 4;
     }
-    if (inv.customer.email) {
-      cy += 5;
-      doc.setTextColor(...TEXT_MUTED);
-      doc.text(inv.customer.email, clientX, cy);
-    }
-    if (inv.customer.phone) {
-      cy += 5;
-      doc.text(inv.customer.phone, clientX, cy);
-    }
+    if (inv.customer.email) { doc.text(inv.customer.email, M, cy); cy += 4; }
+    if (inv.customer.phone) { doc.text(inv.customer.phone, M, cy); }
   } else {
-    doc.text("—", clientX, cy);
+    doc.text("—", M, y);
   }
 
-  // ===== DUE TOTAL BANNER =====
-  y += 22;
-  doc.setFillColor(...ACCENT);
-  doc.rect(14, y, 70, 14, "F");
+  // Échéance (right)
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
+  doc.setTextColor(...TEXT_MUTED);
+  doc.text("Échéance :", pageW - M, y - 4, { align: "right" });
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(255, 255, 255);
-  doc.text("TOTAL À PAYER", 18, y + 5);
-  doc.setFontSize(14);
-  doc.text(fmt(inv.total_ttc), 18, y + 11);
-
-  // Status badge
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  const statusLabel = STATUS_LABELS[inv.status] ?? inv.status;
-  doc.setFillColor(...ACCENT_DARK);
-  const sw = doc.getTextWidth(statusLabel) + 8;
-  doc.roundedRect(pageW - 14 - sw, y + 3, sw, 8, 1.5, 1.5, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.text(statusLabel, pageW - 14 - sw / 2, y + 8.5, { align: "center" });
+  doc.setFontSize(10);
+  doc.setTextColor(...TEXT_DARK);
+  doc.text(new Date(inv.due_date).toLocaleDateString("fr-FR"), pageW - M, y + 2, { align: "right" });
 
   // ===== ITEMS TABLE =====
-  y += 22;
+  const tableY = 100;
   autoTable(doc, {
-    startY: y,
-    head: [["Description", "Prix", "Qté", "TVA", "Total HT"]],
+    startY: tableY,
+    head: [["QTÉ", "DESCRIPTION", "PRIX", "TOTAL"]],
     body: inv.items.map((it) => [
+      String(it.quantity),
       it.description,
       fmt(it.unit_price),
-      String(it.quantity),
-      `${it.tax_rate}%`,
       fmt(it.line_total_ht),
     ]),
     headStyles: {
-      fillColor: ACCENT,
+      fillColor: SLATE,
       textColor: 255,
       fontStyle: "bold",
-      halign: "center",
-      fontSize: 9,
-      cellPadding: 4,
+      fontSize: 8.5,
+      cellPadding: { top: 4, bottom: 4, left: 5, right: 5 },
+      lineColor: BORDER,
+      lineWidth: 0.2,
     },
     bodyStyles: {
       fontSize: 9,
-      cellPadding: 4,
+      cellPadding: { top: 5, bottom: 5, left: 5, right: 5 },
       textColor: TEXT_DARK,
+      lineColor: BORDER,
+      lineWidth: 0.2,
+      minCellHeight: 11,
     },
-    alternateRowStyles: { fillColor: [245, 248, 252] },
     columnStyles: {
-      0: { halign: "left" },
-      1: { halign: "center" },
-      2: { halign: "center" },
-      3: { halign: "center" },
-      4: { halign: "right", fontStyle: "bold" },
+      0: { halign: "center", cellWidth: 22 },
+      1: { halign: "left" },
+      2: { halign: "right", cellWidth: 32 },
+      3: { halign: "right", cellWidth: 36 },
     },
-    theme: "plain",
-    margin: { left: 14, right: 14 },
+    theme: "grid",
+    margin: { left: M, right: M },
   });
 
   // ===== TOTALS =====
-  const finalY =
-    (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
-  const totalsX = pageW - 84;
-  const totalsW = 70;
+  const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+  const totalsLabelX = pageW - M - 68;
+  const totalsValueX = pageW - M - 4;
 
-  doc.setFontSize(9);
+  let ty = finalY + 8;
   doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
   doc.setTextColor(...TEXT_DARK);
+  doc.text("Sous-total HT", totalsLabelX, ty);
+  doc.text(fmt(inv.subtotal_ht), totalsValueX, ty, { align: "right" });
 
-  const drawTotalRow = (label: string, value: string, atY: number, bold = false) => {
-    doc.setFont("helvetica", bold ? "bold" : "normal");
-    doc.text(label, totalsX, atY);
-    doc.text(value, totalsX + totalsW, atY, { align: "right" });
-  };
-
-  let ty = finalY;
-  drawTotalRow("Sous-total HT", fmt(inv.subtotal_ht), ty);
   ty += 6;
-  drawTotalRow(`TVA`, fmt(inv.tax_amount), ty);
+  doc.text("TVA", totalsLabelX, ty);
+  doc.text(fmt(inv.tax_amount), totalsValueX, ty, { align: "right" });
+
   if (inv.discount_amount > 0) {
     ty += 6;
-    drawTotalRow("Remise", "-" + fmt(inv.discount_amount), ty);
+    doc.text("Remise", totalsLabelX, ty);
+    doc.text("-" + fmt(inv.discount_amount), totalsValueX, ty, { align: "right" });
   }
-  ty += 4;
 
-  // Grand total bar
-  ty += 4;
-  doc.setFillColor(...ACCENT);
-  doc.rect(totalsX - 4, ty - 5, totalsW + 4, 10, "F");
+  // ===== THANK YOU + TOTAL bar =====
+  ty += 8;
+  const barH = 12;
+  // Left thank-you portion
+  const thankW = (pageW - M * 2) * 0.55;
+  doc.setFillColor(...SLATE);
+  doc.rect(M, ty, thankW, barH, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
+  doc.text("MERCI POUR VOTRE CONFIANCE", M + 6, ty + barH / 2 + 1.2);
+
+  // Right total portion
+  const totalX = M + thankW;
+  const totalW = pageW - M - totalX;
+  doc.setFillColor(...SLATE_DARK);
+  doc.rect(totalX, ty, totalW, barH, "F");
   doc.setFontSize(10);
-  doc.text("TOTAL TTC", totalsX, ty + 1);
-  doc.text(fmt(inv.total_ttc), totalsX + totalsW, ty + 1, { align: "right" });
+  doc.text("TOTAL", totalX + 6, ty + barH / 2 + 1.2);
+  doc.setFontSize(11);
+  doc.text(fmt(inv.total_ttc), totalX + totalW - 4, ty + barH / 2 + 1.4, { align: "right" });
 
-  // ===== PAYMENT METHOD + TERMS =====
-  const leftY = finalY;
-  doc.setTextColor(...ACCENT);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setDrawColor(...ACCENT);
-  doc.setLineWidth(1);
-  doc.line(14, leftY - 5, 14, leftY + 3);
-  doc.text("Mode de paiement :", 18, leftY);
-
-  doc.setTextColor(...TEXT_DARK);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text("Banque", 18, leftY + 7);
-  doc.setFont("helvetica", "normal");
-  doc.text("Attijariwafa Bank", 50, leftY + 7);
-  doc.setFont("helvetica", "bold");
-  doc.text("RIB", 18, leftY + 12);
-  doc.setFont("helvetica", "normal");
-  doc.text("007 780 0001234567890123 45", 50, leftY + 12);
-  doc.setFont("helvetica", "bold");
-  doc.text("Titulaire", 18, leftY + 17);
-  doc.setFont("helvetica", "normal");
-  doc.text("Nolte Küchen SARL", 50, leftY + 17);
-  doc.setFont("helvetica", "bold");
-  doc.text("SWIFT", 18, leftY + 22);
-  doc.setFont("helvetica", "normal");
-  doc.text("BCMAMAMC", 50, leftY + 22);
-
-  // ===== TERMS & NOTES =====
-  const termsY = Math.max(ty + 18, leftY + 36);
-  doc.setDrawColor(...ACCENT);
-  doc.setLineWidth(1);
-  doc.line(14, termsY - 5, 14, termsY + 3);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(...ACCENT);
-  doc.text("Conditions générales :", 18, termsY);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...TEXT_DARK);
-  const terms = [
-    "1. Paiement à réception de la facture sauf accord préalable.",
-    "2. Pénalités de retard de 1,5% par mois en cas de non-paiement à l'échéance.",
-    "3. TVA non récupérable pour les particuliers. Garantie selon conditions du constructeur.",
-  ];
-  terms.forEach((t, i) => doc.text(t, 18, termsY + 7 + i * 5));
-
-  if (inv.notes) {
-    const notesY = termsY + 7 + terms.length * 5 + 4;
-    doc.setFont("helvetica", "bold");
-    doc.text("Notes :", 18, notesY);
-    doc.setFont("helvetica", "normal");
-    const split = doc.splitTextToSize(inv.notes, pageW - 36);
-    doc.text(split, 18, notesY + 5);
-  }
-
-  // Signature (right)
-  doc.setDrawColor(180);
-  doc.setLineWidth(0.3);
-  doc.line(pageW - 70, termsY + 18, pageW - 14, termsY + 18);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(...TEXT_DARK);
-  doc.text("Direction commerciale", pageW - 42, termsY + 23, { align: "center" });
+  // ===== TERMS + SIGNATURE =====
+  let termsY = ty + barH + 10;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...TEXT_MUTED);
-  doc.text("Nolte Küchen", pageW - 42, termsY + 28, { align: "center" });
+  const terms = [
+    "Paiement à réception de la facture, sauf accord préalable.",
+    "Pénalités de retard de 1,5 % par mois en cas de non-paiement à l'échéance.",
+    "RIB : 007 780 0001234567890123 45 — Attijariwafa Bank — SWIFT : BCMAMAMC",
+  ];
+  terms.forEach((t, i) => doc.text(t, M, termsY + i * 4));
 
-  // ===== FOOTER =====
-  doc.setFillColor(...ACCENT);
-  doc.rect(0, pageH - 8, pageW, 8, "F");
+  if (inv.notes) {
+    const notesY = termsY + terms.length * 4 + 4;
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...TEXT_DARK);
+    doc.text("Notes :", M, notesY);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...TEXT_MUTED);
+    const split = doc.splitTextToSize(inv.notes, pageW - M * 2 - 70);
+    doc.text(split, M, notesY + 4);
+  }
+
+  // Signature line (right)
+  const sigY = termsY + 14;
+  doc.setDrawColor(...TEXT_MUTED);
+  doc.setLineWidth(0.3);
+  doc.line(pageW - M - 60, sigY, pageW - M, sigY);
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.setTextColor(255, 255, 255);
-  doc.text(
-    "Merci pour votre confiance — Nolte Küchen",
-    pageW / 2,
-    pageH - 3,
-    { align: "center" }
-  );
+  doc.setTextColor(...TEXT_MUTED);
+  doc.text("Signature", pageW - M - 30, sigY + 4, { align: "center" });
+
+  // ===== Decorative wave footer =====
+  doc.setDrawColor(...SLATE);
+  doc.setLineWidth(0.4);
+  const waveY = pageH - 18;
+  const steps = 60;
+  for (let i = 0; i < steps; i++) {
+    const x1 = M + ((pageW - M * 2) * i) / steps;
+    const x2 = M + ((pageW - M * 2) * (i + 1)) / steps;
+    const y1 = waveY + Math.sin((i / steps) * Math.PI * 4) * 2;
+    const y2 = waveY + Math.sin(((i + 1) / steps) * Math.PI * 4) * 2;
+    doc.line(x1, y1, x2, y2);
+  }
+  doc.setDrawColor(...BORDER);
+  for (let i = 0; i < steps; i++) {
+    const x1 = M + ((pageW - M * 2) * i) / steps;
+    const x2 = M + ((pageW - M * 2) * (i + 1)) / steps;
+    const y1 = waveY + 3 + Math.sin((i / steps) * Math.PI * 4 + 0.6) * 2;
+    const y2 = waveY + 3 + Math.sin(((i + 1) / steps) * Math.PI * 4 + 0.6) * 2;
+    doc.line(x1, y1, x2, y2);
+  }
 
   doc.save(`${inv.invoice_number}.pdf`);
 }
