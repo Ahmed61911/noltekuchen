@@ -91,7 +91,7 @@ function PdfPreview({ url, name }: { url: string; name: string }) {
     import("pdfjs-dist")
       .then((pdfjs) => {
         pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-        return pdfjs.getDocument(url).promise;
+        return pdfjs.getDocument({ url }).promise;
       })
       .then((loadedPdf) => {
         if (cancelled) return;
