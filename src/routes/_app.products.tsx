@@ -308,7 +308,7 @@ function Thumb({ path }: { path: string }) {
   return <img src={url} alt="" className="h-10 w-10 rounded border object-cover" />;
 }
 
-function ProductThumbs({ paths }: { paths: string[] }) {
+function ProductThumbs({ paths, onClick }: { paths: string[]; onClick?: (index: number) => void }) {
   if (paths.length === 0) {
     return (
       <div className="flex h-12 w-12 items-center justify-center rounded-md border bg-muted text-muted-foreground">
@@ -319,10 +319,87 @@ function ProductThumbs({ paths }: { paths: string[] }) {
   return (
     <div className="flex -space-x-2">
       {paths.slice(0, 4).map((p, i) => (
-        <div key={i} className="ring-2 ring-background rounded">
+        <button
+          key={i}
+          type="button"
+          onClick={() => onClick?.(i)}
+          className="ring-2 ring-background rounded cursor-pointer"
+        >
           <Thumb path={p} />
-        </div>
+        </button>
       ))}
+    </div>
+  );
+}
+
+function ImageViewer({ paths, startIndex, onClose }: { paths: string[]; startIndex: number; onClose: () => void }) {
+  const [index, setIndex] = useState(startIndex);
+  const currentPath = paths[index];
+  const { data: url } = useSignedUrl(currentPath);
+
+  function prev() {
+    setIndex((i) => (i > 0 ? i - 1 : paths.length - 1));
+  }
+  function next() {
+    setIndex((i) => (i < paths.length - 1 ? i + 1 : 0));
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+      >
+        <X className="h-6 w-6" />
+      </button>
+
+      {paths.length > 1 && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); prev(); }}
+          className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+      )}
+
+      {paths.length > 1 && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); next(); }}
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
+      )}
+
+      <div
+        className="flex max-h-[85vh] max-w-[90vw] items-center justify-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {url ? (
+          <img src={url} alt="" className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain shadow-2xl" />
+        ) : (
+          <div className="h-64 w-64 rounded-lg bg-white/10 animate-pulse" />
+        )}
+      </div>
+
+      {paths.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+          {paths.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setIndex(i); }}
+              className={`h-2 w-2 rounded-full transition-colors ${i === index ? "bg-white" : "bg-white/40 hover:bg-white/60"}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
