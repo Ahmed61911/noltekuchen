@@ -124,7 +124,7 @@ function Dashboard() {
         <Stat icon={Boxes} label={t("total_stock")} value={fmt.format(data?.totalStock ?? 0)} tone="primary" />
         <Stat icon={TrendingUp} label={t("stock_in")} value={fmt.format(data?.stockIn ?? 0)} tone="success" />
         <Stat icon={TrendingDown} label={t("stock_out")} value={fmt.format(data?.stockOut ?? 0)} tone="navy" />
-        <Stat icon={DollarSign} label={t("revenue")} value={fmtMoney.format(data?.revenue ?? 0)} tone="info" />
+        <Stat icon={DollarSign} label={t("revenue")} value={fmtMoney(data?.revenue ?? 0)} tone="info" />
 
       </div>
 
