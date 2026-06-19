@@ -21,6 +21,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
+import { logAction } from "@/lib/audit-log";
 
 export const Route = createFileRoute("/_app/products")({
   component: ProductsPage,
@@ -83,9 +84,11 @@ function ProductsPage() {
       if (p.id) {
         const { error } = await supabase.from("products").update(payload).eq("id", p.id);
         if (error) throw error;
+        await logAction({ action: "update", module: "products", entity_id: p.id, new_value: payload, description: `Produit ${payload.reference} modifié` });
       } else {
-        const { error } = await supabase.from("products").insert(payload);
+        const { data, error } = await supabase.from("products").insert(payload).select("id").single();
         if (error) throw error;
+        await logAction({ action: "create", module: "products", entity_id: data?.id, new_value: payload, description: `Produit ${payload.reference} créé` });
       }
     },
     onSuccess: () => {
@@ -100,8 +103,10 @@ function ProductsPage() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
+      const prev = products.find((p) => p.id === id);
       const { error } = await supabase.from("products").delete().eq("id", id);
       if (error) throw error;
+      await logAction({ action: "delete", module: "products", entity_id: id, old_value: (prev as unknown as Record<string, unknown>) ?? null, description: `Produit ${prev?.reference ?? id} supprimé` });
     },
     onSuccess: () => { toast.success(t("deleted")); qc.invalidateQueries({ queryKey: ["products"] }); },
     onError: (e: Error) => toast.error(e.message),

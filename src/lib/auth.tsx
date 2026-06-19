@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { logAction } from "@/lib/audit-log";
 
 type Role = "admin" | "employee";
 
@@ -25,16 +26,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let currentUid: string | null = null;
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((e, s) => {
       setSession(s);
       setUser(s?.user ?? null);
       const newUid = s?.user?.id ?? null;
       if (newUid !== currentUid) {
+        const prevUid = currentUid;
         currentUid = newUid;
         if (newUid) {
           setTimeout(() => loadRoles(newUid), 0);
+          if (e === "SIGNED_IN") setTimeout(() => logAction({ action: "login", module: "auth", description: "Connexion" }), 0);
         } else {
           setRoles([]);
+          if (prevUid && e === "SIGNED_OUT") {
+            setTimeout(() => logAction({ action: "logout", module: "auth", description: "Déconnexion" }), 0);
+          }
         }
       }
     });

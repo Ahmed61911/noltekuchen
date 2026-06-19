@@ -61,8 +61,8 @@ export async function logAction(p: LogParams): Promise<void> {
       action: p.action,
       module: p.module,
       entity_id: p.entity_id ?? null,
-      old_value: p.old_value ?? null,
-      new_value,
+      old_value: (p.old_value ?? null) as never,
+      new_value: new_value as never,
       ip_address: ip,
       user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
     });
