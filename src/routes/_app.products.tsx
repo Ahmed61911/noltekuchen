@@ -233,7 +233,7 @@ function ProductsPage() {
               const gallery = [p.image_url, ...(p.images ?? [])].filter((x): x is string => !!x);
               return (
                 <TableRow key={p.id}>
-                  <TableCell><ProductThumbs paths={gallery} /></TableCell>
+                  <TableCell><ProductThumbs paths={gallery} onClick={(i) => setViewer({ paths: gallery, index: i })} /></TableCell>
                   <TableCell className="font-mono text-xs">{p.reference}</TableCell>
                   <TableCell className="font-medium">{p.name}</TableCell>
                   <TableCell className="text-right">{p.purchase_price.toFixed(2)} {CURRENCY}</TableCell>
