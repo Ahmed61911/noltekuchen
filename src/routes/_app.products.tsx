@@ -260,6 +260,14 @@ function ProductsPage() {
           </TableBody>
         </Table>
       </Card>
+
+      {viewer && (
+        <ImageViewer
+          paths={viewer.paths}
+          startIndex={viewer.index}
+          onClose={() => setViewer(null)}
+        />
+      )}
     </div>
   );
 }
