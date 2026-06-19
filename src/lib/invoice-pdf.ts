@@ -31,8 +31,16 @@ export type PdfInvoice = {
   }>;
 };
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2 }).format(Number(n) || 0) + " DH";
+// Manual formatter — avoid Intl fr-FR because it inserts NARROW NO-BREAK SPACE (U+202F)
+// as the thousands separator, which jsPDF's built-in Helvetica renders as an oversized
+// gap (looks like letter-spacing between digits). We use a regular ASCII space instead.
+const fmt = (n: number) => {
+  const v = Number(n) || 0;
+  const sign = v < 0 ? "-" : "";
+  const [intPart, decPart] = Math.abs(v).toFixed(2).split(".");
+  const withThousands = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return `${sign}${withThousands},${decPart} DH`;
+};
 
 let cachedLogo: string | null = null;
 async function loadLogo(): Promise<string | null> {
