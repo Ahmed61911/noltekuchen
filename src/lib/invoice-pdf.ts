@@ -194,11 +194,12 @@ export async function generateInvoicePdf(inv: PdfInvoice) {
       minCellHeight: 11,
     },
     columnStyles: {
-      0: { halign: "center", cellWidth: 22 },
-      1: { halign: "left" },
-      2: { halign: "right", cellWidth: 32 },
-      3: { halign: "right", cellWidth: 36 },
+      0: { halign: "center", cellWidth: 16, overflow: "hidden" },
+      1: { halign: "left", overflow: "linebreak" },
+      2: { halign: "right", cellWidth: 38, overflow: "visible" },
+      3: { halign: "right", cellWidth: 42, overflow: "visible" },
     },
+    styles: { overflow: "linebreak", font: "helvetica" },
     theme: "grid",
     margin: { left: M, right: M },
   });
