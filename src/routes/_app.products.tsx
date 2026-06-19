@@ -63,6 +63,7 @@ function ProductsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<FormState>(empty);
+  const [viewer, setViewer] = useState<{ paths: string[]; index: number } | null>(null);
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
