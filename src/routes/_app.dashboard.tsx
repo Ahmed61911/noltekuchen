@@ -73,7 +73,12 @@ function useDashboardData() {
 }
 
 const fmt = new Intl.NumberFormat("fr-FR");
-const fmtMoney = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+const fmtMoney = (n: number) => {
+  const v = Number(n) || 0;
+  const sign = v < 0 ? "-" : "";
+  const [intPart, decPart] = Math.abs(v).toFixed(2).split(".");
+  return `${sign}${intPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ")},${decPart} DH`;
+};
 
 function Stat({ icon: Icon, label, value, tone, delta }: { icon: typeof Boxes; label: string; value: string; tone: "primary" | "navy" | "success" | "info"; delta?: string }) {
   const tones = {
