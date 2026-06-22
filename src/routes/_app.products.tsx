@@ -234,8 +234,20 @@ function ProductsPage() {
           </Select>
           <Input type="number" placeholder="Prix min" className="w-32" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
           <Input type="number" placeholder="Prix max" className="w-32" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
-          {(q || stockFilter !== "all" || priceMin || priceMax) && (
-            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStockFilter("all"); setPriceMin(""); setPriceMax(""); }}>Réinitialiser</Button>
+          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Dépôt" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les dépôts</SelectItem>
+              <SelectItem value="none">Sans dépôt</SelectItem>
+              {warehouses.map((w) => (
+                <SelectItem key={w.id} value={w.id}>{w.name}{!w.is_active ? " (inactif)" : ""}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input type="number" placeholder="Prix min" className="w-32" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
+          <Input type="number" placeholder="Prix max" className="w-32" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
+          {(q || stockFilter !== "all" || priceMin || priceMax || warehouseFilter !== "all") && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStockFilter("all"); setPriceMin(""); setPriceMax(""); setWarehouseFilter("all"); }}>Réinitialiser</Button>
           )}
           <span className="ml-auto text-xs text-muted-foreground">{filtered.length} / {products.length}</span>
         </div>
@@ -248,6 +260,7 @@ function ProductsPage() {
               <TableHead className="w-16">Image</TableHead>
               <TableHead>{t("reference")}</TableHead>
               <TableHead>{t("name")}</TableHead>
+              <TableHead>Dépôt</TableHead>
               <TableHead className="text-right">{t("purchase_price")}</TableHead>
               <TableHead className="text-right">{t("selling_price")}</TableHead>
               <TableHead className="text-right">{t("margin")}</TableHead>
