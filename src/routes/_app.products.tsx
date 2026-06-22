@@ -42,14 +42,17 @@ type Product = {
   dimensions: string | null;
   image_url: string | null;
   images: string[] | null;
+  warehouse_id: string | null;
 };
+
+type Warehouse = { id: string; name: string; is_active: boolean };
 
 type FormState = Omit<Product, "id" | "image_url" | "images"> & { gallery: string[] };
 
 const empty: FormState = {
   reference: "", name: "", description: "",
   purchase_price: 0, selling_price: 0, stock_quantity: 0, min_stock: 5,
-  dimensions: "", gallery: [],
+  dimensions: "", gallery: [], warehouse_id: null,
 };
 
 function ProductsPage() {
@@ -60,10 +63,24 @@ function ProductsPage() {
   const [stockFilter, setStockFilter] = useState<"all" | "in" | "low" | "out">("all");
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
+  const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<FormState>(empty);
   const [viewer, setViewer] = useState<{ paths: string[]; index: number } | null>(null);
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses", "active-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("warehouses")
+        .select("id, name, is_active")
+        .order("name");
+      if (error) throw error;
+      return data as Warehouse[];
+    },
+  });
+  const warehouseMap = new Map(warehouses.map((w) => [w.id, w.name]));
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
@@ -120,6 +137,9 @@ function ProductsPage() {
     if (stockFilter === "in" && p.stock_quantity <= p.min_stock) return false;
     if (priceMin && p.selling_price < Number(priceMin)) return false;
     if (priceMax && p.selling_price > Number(priceMax)) return false;
+    if (warehouseFilter !== "all") {
+      if (warehouseFilter === "none" ? p.warehouse_id !== null : p.warehouse_id !== warehouseFilter) return false;
+    }
     return true;
   });
 
@@ -130,7 +150,7 @@ function ProductsPage() {
       reference: p.reference, name: p.name, description: p.description ?? "",
       purchase_price: p.purchase_price, selling_price: p.selling_price,
       stock_quantity: p.stock_quantity, min_stock: p.min_stock,
-      dimensions: p.dimensions ?? "", gallery,
+      dimensions: p.dimensions ?? "", gallery, warehouse_id: p.warehouse_id ?? null,
     });
     setOpen(true);
   }
@@ -166,6 +186,20 @@ function ProductsPage() {
                   <Field label={t("quantity")}><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: Number(e.target.value) })} /></Field>
                   <Field label={t("min_stock")}><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: Number(e.target.value) })} /></Field>
                   <Field label={t("dimensions")}><Input value={form.dimensions ?? ""} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} placeholder="L × P × H" /></Field>
+                  <Field label="Dépôt">
+                    <Select
+                      value={form.warehouse_id ?? "none"}
+                      onValueChange={(v) => setForm({ ...form, warehouse_id: v === "none" ? null : v })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Aucun</SelectItem>
+                        {warehouses.filter((w) => w.is_active || w.id === form.warehouse_id).map((w) => (
+                          <SelectItem key={w.id} value={w.id}>{w.name}{!w.is_active ? " (inactif)" : ""}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
                   <div className="sm:col-span-2">
                     <Field label={`Images (max ${MAX_IMAGES})`}>
                       <GalleryUploadField value={form.gallery} onChange={(g) => setForm({ ...form, gallery: g })} />
@@ -200,8 +234,20 @@ function ProductsPage() {
           </Select>
           <Input type="number" placeholder="Prix min" className="w-32" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
           <Input type="number" placeholder="Prix max" className="w-32" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
-          {(q || stockFilter !== "all" || priceMin || priceMax) && (
-            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStockFilter("all"); setPriceMin(""); setPriceMax(""); }}>Réinitialiser</Button>
+          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Dépôt" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les dépôts</SelectItem>
+              <SelectItem value="none">Sans dépôt</SelectItem>
+              {warehouses.map((w) => (
+                <SelectItem key={w.id} value={w.id}>{w.name}{!w.is_active ? " (inactif)" : ""}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input type="number" placeholder="Prix min" className="w-32" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
+          <Input type="number" placeholder="Prix max" className="w-32" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
+          {(q || stockFilter !== "all" || priceMin || priceMax || warehouseFilter !== "all") && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStockFilter("all"); setPriceMin(""); setPriceMax(""); setWarehouseFilter("all"); }}>Réinitialiser</Button>
           )}
           <span className="ml-auto text-xs text-muted-foreground">{filtered.length} / {products.length}</span>
         </div>
@@ -214,6 +260,7 @@ function ProductsPage() {
               <TableHead className="w-16">Image</TableHead>
               <TableHead>{t("reference")}</TableHead>
               <TableHead>{t("name")}</TableHead>
+              <TableHead>Dépôt</TableHead>
               <TableHead className="text-right">{t("purchase_price")}</TableHead>
               <TableHead className="text-right">{t("selling_price")}</TableHead>
               <TableHead className="text-right">{t("margin")}</TableHead>
@@ -222,9 +269,9 @@ function ProductsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">{t("loading")}</TableCell></TableRow>}
+            {isLoading && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-10">{t("loading")}</TableCell></TableRow>}
             {!isLoading && filtered.length === 0 && (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">{t("no_data")}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-10">{t("no_data")}</TableCell></TableRow>
             )}
             {filtered.map((p) => {
               const margin = p.selling_price - p.purchase_price;
@@ -236,6 +283,11 @@ function ProductsPage() {
                   <TableCell><ProductThumbs paths={gallery} onClick={(i) => setViewer({ paths: gallery, index: i })} /></TableCell>
                   <TableCell className="font-mono text-xs">{p.reference}</TableCell>
                   <TableCell className="font-medium">{p.name}</TableCell>
+                  <TableCell className="text-sm">
+                    {p.warehouse_id
+                      ? <Badge variant="outline">{warehouseMap.get(p.warehouse_id) ?? "—"}</Badge>
+                      : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
                   <TableCell className="text-right">{p.purchase_price.toFixed(2)} {CURRENCY}</TableCell>
                   <TableCell className="text-right">{p.selling_price.toFixed(2)} {CURRENCY}</TableCell>
                   <TableCell className="text-right">

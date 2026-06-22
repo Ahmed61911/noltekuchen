@@ -22,7 +22,8 @@ export type AuditModule =
   | "users"
   | "auth"
   | "reports"
-  | "appointments";
+  | "appointments"
+  | "warehouses";
 
 type LogParams = {
   action: AuditAction;
