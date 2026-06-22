@@ -186,6 +186,20 @@ function ProductsPage() {
                   <Field label={t("quantity")}><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: Number(e.target.value) })} /></Field>
                   <Field label={t("min_stock")}><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: Number(e.target.value) })} /></Field>
                   <Field label={t("dimensions")}><Input value={form.dimensions ?? ""} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} placeholder="L × P × H" /></Field>
+                  <Field label="Dépôt">
+                    <Select
+                      value={form.warehouse_id ?? "none"}
+                      onValueChange={(v) => setForm({ ...form, warehouse_id: v === "none" ? null : v })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Aucun</SelectItem>
+                        {warehouses.filter((w) => w.is_active || w.id === form.warehouse_id).map((w) => (
+                          <SelectItem key={w.id} value={w.id}>{w.name}{!w.is_active ? " (inactif)" : ""}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
                   <div className="sm:col-span-2">
                     <Field label={`Images (max ${MAX_IMAGES})`}>
                       <GalleryUploadField value={form.gallery} onChange={(g) => setForm({ ...form, gallery: g })} />
