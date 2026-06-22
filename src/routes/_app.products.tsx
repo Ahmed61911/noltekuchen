@@ -137,6 +137,9 @@ function ProductsPage() {
     if (stockFilter === "in" && p.stock_quantity <= p.min_stock) return false;
     if (priceMin && p.selling_price < Number(priceMin)) return false;
     if (priceMax && p.selling_price > Number(priceMax)) return false;
+    if (warehouseFilter !== "all") {
+      if (warehouseFilter === "none" ? p.warehouse_id !== null : p.warehouse_id !== warehouseFilter) return false;
+    }
     return true;
   });
 
