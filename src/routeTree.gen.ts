@@ -13,6 +13,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppWarehousesRouteImport } from './routes/_app.warehouses'
 import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
 import { Route as AppStockRouteImport } from './routes/_app.stock'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
@@ -50,6 +51,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppWarehousesRoute = AppWarehousesRouteImport.update({
+  id: '/warehouses',
+  path: '/warehouses',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppSuppliersRoute = AppSuppliersRouteImport.update({
   id: '/suppliers',
@@ -156,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AppReportsRoute
   '/stock': typeof AppStockRoute
   '/suppliers': typeof AppSuppliersRoute
+  '/warehouses': typeof AppWarehousesRoute
   '/invoices/$id': typeof AppInvoicesIdRoute
   '/orders/$id': typeof AppOrdersIdRoute
   '/sales/$id': typeof AppSalesIdRoute
@@ -179,6 +186,7 @@ export interface FileRoutesByTo {
   '/reports': typeof AppReportsRoute
   '/stock': typeof AppStockRoute
   '/suppliers': typeof AppSuppliersRoute
+  '/warehouses': typeof AppWarehousesRoute
   '/invoices/$id': typeof AppInvoicesIdRoute
   '/orders/$id': typeof AppOrdersIdRoute
   '/sales/$id': typeof AppSalesIdRoute
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/_app/reports': typeof AppReportsRoute
   '/_app/stock': typeof AppStockRoute
   '/_app/suppliers': typeof AppSuppliersRoute
+  '/_app/warehouses': typeof AppWarehousesRoute
   '/_app/invoices/$id': typeof AppInvoicesIdRoute
   '/_app/orders/$id': typeof AppOrdersIdRoute
   '/_app/sales/$id': typeof AppSalesIdRoute
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/stock'
     | '/suppliers'
+    | '/warehouses'
     | '/invoices/$id'
     | '/orders/$id'
     | '/sales/$id'
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/stock'
     | '/suppliers'
+    | '/warehouses'
     | '/invoices/$id'
     | '/orders/$id'
     | '/sales/$id'
@@ -276,6 +287,7 @@ export interface FileRouteTypes {
     | '/_app/reports'
     | '/_app/stock'
     | '/_app/suppliers'
+    | '/_app/warehouses'
     | '/_app/invoices/$id'
     | '/_app/orders/$id'
     | '/_app/sales/$id'
@@ -322,6 +334,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/warehouses': {
+      id: '/_app/warehouses'
+      path: '/warehouses'
+      fullPath: '/warehouses'
+      preLoaderRoute: typeof AppWarehousesRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/suppliers': {
       id: '/_app/suppliers'
@@ -463,6 +482,7 @@ interface AppRouteChildren {
   AppReportsRoute: typeof AppReportsRoute
   AppStockRoute: typeof AppStockRoute
   AppSuppliersRoute: typeof AppSuppliersRoute
+  AppWarehousesRoute: typeof AppWarehousesRoute
   AppInvoicesIdRoute: typeof AppInvoicesIdRoute
   AppOrdersIdRoute: typeof AppOrdersIdRoute
   AppSalesIdRoute: typeof AppSalesIdRoute
@@ -484,6 +504,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppReportsRoute: AppReportsRoute,
   AppStockRoute: AppStockRoute,
   AppSuppliersRoute: AppSuppliersRoute,
+  AppWarehousesRoute: AppWarehousesRoute,
   AppInvoicesIdRoute: AppInvoicesIdRoute,
   AppOrdersIdRoute: AppOrdersIdRoute,
   AppSalesIdRoute: AppSalesIdRoute,
