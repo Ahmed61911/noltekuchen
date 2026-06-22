@@ -589,6 +589,7 @@ export type Database = {
           stock_quantity: number
           supplier_id: string | null
           updated_at: string
+          warehouse_id: string | null
         }
         Insert: {
           category_id?: string | null
@@ -606,6 +607,7 @@ export type Database = {
           stock_quantity?: number
           supplier_id?: string | null
           updated_at?: string
+          warehouse_id?: string | null
         }
         Update: {
           category_id?: string | null
@@ -623,6 +625,7 @@ export type Database = {
           stock_quantity?: number
           supplier_id?: string | null
           updated_at?: string
+          warehouse_id?: string | null
         }
         Relationships: [
           {
@@ -637,6 +640,13 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]
@@ -1019,6 +1029,39 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      warehouses: {
+        Row: {
+          address: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          manager: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          manager?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          manager?: string | null
+          name?: string
+          updated_at?: string
         }
         Relationships: []
       }
