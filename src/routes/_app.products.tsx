@@ -42,14 +42,17 @@ type Product = {
   dimensions: string | null;
   image_url: string | null;
   images: string[] | null;
+  warehouse_id: string | null;
 };
+
+type Warehouse = { id: string; name: string; is_active: boolean };
 
 type FormState = Omit<Product, "id" | "image_url" | "images"> & { gallery: string[] };
 
 const empty: FormState = {
   reference: "", name: "", description: "",
   purchase_price: 0, selling_price: 0, stock_quantity: 0, min_stock: 5,
-  dimensions: "", gallery: [],
+  dimensions: "", gallery: [], warehouse_id: null,
 };
 
 function ProductsPage() {
