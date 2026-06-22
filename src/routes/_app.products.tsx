@@ -133,7 +133,7 @@ function ProductsPage() {
       reference: p.reference, name: p.name, description: p.description ?? "",
       purchase_price: p.purchase_price, selling_price: p.selling_price,
       stock_quantity: p.stock_quantity, min_stock: p.min_stock,
-      dimensions: p.dimensions ?? "", gallery,
+      dimensions: p.dimensions ?? "", gallery, warehouse_id: p.warehouse_id ?? null,
     });
     setOpen(true);
   }
