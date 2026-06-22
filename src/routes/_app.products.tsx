@@ -269,9 +269,9 @@ function ProductsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">{t("loading")}</TableCell></TableRow>}
+            {isLoading && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-10">{t("loading")}</TableCell></TableRow>}
             {!isLoading && filtered.length === 0 && (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">{t("no_data")}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-10">{t("no_data")}</TableCell></TableRow>
             )}
             {filtered.map((p) => {
               const margin = p.selling_price - p.purchase_price;
@@ -283,6 +283,11 @@ function ProductsPage() {
                   <TableCell><ProductThumbs paths={gallery} onClick={(i) => setViewer({ paths: gallery, index: i })} /></TableCell>
                   <TableCell className="font-mono text-xs">{p.reference}</TableCell>
                   <TableCell className="font-medium">{p.name}</TableCell>
+                  <TableCell className="text-sm">
+                    {p.warehouse_id
+                      ? <Badge variant="outline">{warehouseMap.get(p.warehouse_id) ?? "—"}</Badge>
+                      : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
                   <TableCell className="text-right">{p.purchase_price.toFixed(2)} {CURRENCY}</TableCell>
                   <TableCell className="text-right">{p.selling_price.toFixed(2)} {CURRENCY}</TableCell>
                   <TableCell className="text-right">
