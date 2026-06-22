@@ -63,10 +63,24 @@ function ProductsPage() {
   const [stockFilter, setStockFilter] = useState<"all" | "in" | "low" | "out">("all");
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
+  const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<FormState>(empty);
   const [viewer, setViewer] = useState<{ paths: string[]; index: number } | null>(null);
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses", "active-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("warehouses")
+        .select("id, name, is_active")
+        .order("name");
+      if (error) throw error;
+      return data as Warehouse[];
+    },
+  });
+  const warehouseMap = new Map(warehouses.map((w) => [w.id, w.name]));
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
