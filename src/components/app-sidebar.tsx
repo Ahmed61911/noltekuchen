@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Package, Boxes, ShoppingCart, Calendar,
-  Truck, FileText, BarChart3, History, Users, Settings, Receipt, UserSquare, ClipboardList, ShieldCheck,
+  Truck, FileText, BarChart3, History, Users, Settings, Receipt, UserSquare, ClipboardList, ShieldCheck, Warehouse,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
