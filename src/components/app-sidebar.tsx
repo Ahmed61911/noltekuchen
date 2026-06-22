@@ -31,6 +31,7 @@ export function AppSidebar() {
   const ops = [
     { to: "/suppliers", icon: Truck, label: t("suppliers") },
     { to: "/customers", icon: UserSquare, label: "Clients" },
+    { to: "/warehouses", icon: Warehouse, label: "Dépôts" },
     { to: "/documents", icon: FileText, label: t("documents") },
     { to: "/reports", icon: BarChart3, label: t("reports") },
     { to: "/logs", icon: History, label: t("logs") },
