@@ -82,7 +82,7 @@ function ProductsPage() {
       return data as Warehouse[];
     },
   });
-  const warehouseMap = new Map(warehouses.map((w) => [w.id, w.name]));
+  const warehouseMap = new Map(warehouses.map((w) => [w.id, w]));
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
