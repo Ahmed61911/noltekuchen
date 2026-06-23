@@ -339,9 +339,14 @@ function ProductsPage() {
                   <TableCell className="font-mono text-xs">{p.reference}</TableCell>
                   <TableCell className="font-medium">{p.name}</TableCell>
                   <TableCell className="text-sm">
-                    {p.warehouse_id
-                      ? <Badge variant="outline">{warehouseMap.get(p.warehouse_id) ?? "—"}</Badge>
-                      : <span className="text-muted-foreground">—</span>}
+                    {p.warehouse_id && warehouseMap.get(p.warehouse_id) ? (
+                      <div className="flex flex-col gap-0.5">
+                        <Badge variant="outline" className="w-fit">{warehouseMap.get(p.warehouse_id)!.name}</Badge>
+                        {warehouseMap.get(p.warehouse_id)!.description && (
+                          <span className="text-xs text-muted-foreground">{warehouseMap.get(p.warehouse_id)!.description}</span>
+                        )}
+                      </div>
+                    ) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell className="text-right">{p.purchase_price.toFixed(2)} {CURRENCY}</TableCell>
                   <TableCell className="text-right">{p.selling_price.toFixed(2)} {CURRENCY}</TableCell>
