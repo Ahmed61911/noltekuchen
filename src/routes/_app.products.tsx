@@ -76,7 +76,7 @@ function ProductsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("warehouses")
-        .select("id, name, is_active")
+        .select("id, name, description, is_active")
         .order("name");
       if (error) throw error;
       return data as Warehouse[];
