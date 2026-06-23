@@ -192,9 +192,6 @@ function ProductsPage() {
                   <Field label="Code produit / SKU *">
                     <Input value={form.sku ?? ""} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="SKU unique" />
                   </Field>
-                  <Field label={t("name")}>
-                    <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-                  </Field>
                   <Field label="Prix d'achat (DH) *">
                     <Input type="number" min="0" step="0.01" value={form.purchase_price}
                       onChange={(e) => setForm({ ...form, purchase_price: Math.max(0, Number(e.target.value)) })} />
@@ -259,13 +256,14 @@ function ProductsPage() {
                       if (!form.brand?.trim()) errs.push("Marque");
                       if (!form.reference.trim()) errs.push("Référence");
                       if (!form.sku?.trim()) errs.push("Code produit / SKU");
-                      if (!form.name.trim()) errs.push("Nom");
+                      const autoName = `${form.brand?.trim() ?? ""} ${form.reference.trim()}`.trim();
                       if (!form.dimensions?.trim()) errs.push("Dimensions");
                       if (!form.warehouse_id) errs.push("Dépôt");
                       if (form.purchase_price < 0 || form.selling_price < 0) errs.push("Prix négatif interdit");
                       if (form.stock_quantity < 0 || form.min_stock < 0) errs.push("Quantité négative interdite");
                       if (errs.length) { toast.error("Champs requis : " + errs.join(", ")); return; }
-                      upsert.mutate(editing ? { ...form, id: editing.id } : form);
+                      const payload = { ...form, name: autoName || form.reference };
+                      upsert.mutate(editing ? { ...payload, id: editing.id } : payload);
                     }}
                     disabled={upsert.isPending}
                   >
