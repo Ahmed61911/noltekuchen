@@ -574,6 +574,7 @@ export type Database = {
       }
       products: {
         Row: {
+          brand: string | null
           category_id: string | null
           created_at: string
           description: string | null
@@ -586,12 +587,14 @@ export type Database = {
           purchase_price: number
           reference: string
           selling_price: number
+          sku: string | null
           stock_quantity: number
           supplier_id: string | null
           updated_at: string
           warehouse_id: string | null
         }
         Insert: {
+          brand?: string | null
           category_id?: string | null
           created_at?: string
           description?: string | null
@@ -604,12 +607,14 @@ export type Database = {
           purchase_price?: number
           reference: string
           selling_price?: number
+          sku?: string | null
           stock_quantity?: number
           supplier_id?: string | null
           updated_at?: string
           warehouse_id?: string | null
         }
         Update: {
+          brand?: string | null
           category_id?: string | null
           created_at?: string
           description?: string | null
@@ -622,6 +627,7 @@ export type Database = {
           purchase_price?: number
           reference?: string
           selling_price?: number
+          sku?: string | null
           stock_quantity?: number
           supplier_id?: string | null
           updated_at?: string
