@@ -192,9 +192,6 @@ function ProductsPage() {
                   <Field label="Code produit / SKU *">
                     <Input value={form.sku ?? ""} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="SKU unique" />
                   </Field>
-                  <Field label={t("name")}>
-                    <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-                  </Field>
                   <Field label="Prix d'achat (DH) *">
                     <Input type="number" min="0" step="0.01" value={form.purchase_price}
                       onChange={(e) => setForm({ ...form, purchase_price: Math.max(0, Number(e.target.value)) })} />
