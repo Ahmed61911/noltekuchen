@@ -34,6 +34,8 @@ type Product = {
   id: string;
   reference: string;
   name: string;
+  brand: string | null;
+  sku: string | null;
   description: string | null;
   purchase_price: number;
   selling_price: number;
@@ -45,12 +47,12 @@ type Product = {
   warehouse_id: string | null;
 };
 
-type Warehouse = { id: string; name: string; is_active: boolean };
+type Warehouse = { id: string; name: string; description: string | null; is_active: boolean };
 
 type FormState = Omit<Product, "id" | "image_url" | "images"> & { gallery: string[] };
 
 const empty: FormState = {
-  reference: "", name: "", description: "",
+  reference: "", name: "", brand: "", sku: "", description: "",
   purchase_price: 0, selling_price: 0, stock_quantity: 0, min_stock: 5,
   dimensions: "", gallery: [], warehouse_id: null,
 };
