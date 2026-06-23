@@ -262,7 +262,8 @@ function ProductsPage() {
                       if (form.purchase_price < 0 || form.selling_price < 0) errs.push("Prix négatif interdit");
                       if (form.stock_quantity < 0 || form.min_stock < 0) errs.push("Quantité négative interdite");
                       if (errs.length) { toast.error("Champs requis : " + errs.join(", ")); return; }
-                      upsert.mutate(editing ? { ...form, id: editing.id } : form);
+                      const payload = { ...form, name: autoName || form.reference };
+                      upsert.mutate(editing ? { ...payload, id: editing.id } : payload);
                     }}
                     disabled={upsert.isPending}
                   >
