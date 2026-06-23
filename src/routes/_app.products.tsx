@@ -34,6 +34,8 @@ type Product = {
   id: string;
   reference: string;
   name: string;
+  brand: string | null;
+  sku: string | null;
   description: string | null;
   purchase_price: number;
   selling_price: number;
@@ -45,12 +47,12 @@ type Product = {
   warehouse_id: string | null;
 };
 
-type Warehouse = { id: string; name: string; is_active: boolean };
+type Warehouse = { id: string; name: string; description: string | null; is_active: boolean };
 
 type FormState = Omit<Product, "id" | "image_url" | "images"> & { gallery: string[] };
 
 const empty: FormState = {
-  reference: "", name: "", description: "",
+  reference: "", name: "", brand: "", sku: "", description: "",
   purchase_price: 0, selling_price: 0, stock_quantity: 0, min_stock: 5,
   dimensions: "", gallery: [], warehouse_id: null,
 };
@@ -74,13 +76,13 @@ function ProductsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("warehouses")
-        .select("id, name, is_active")
+        .select("id, name, description, is_active")
         .order("name");
       if (error) throw error;
       return data as Warehouse[];
     },
   });
-  const warehouseMap = new Map(warehouses.map((w) => [w.id, w.name]));
+  const warehouseMap = new Map(warehouses.map((w) => [w.id, w]));
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
@@ -147,7 +149,9 @@ function ProductsPage() {
     setEditing(p);
     const gallery = [p.image_url, ...(p.images ?? [])].filter((x): x is string => !!x);
     setForm({
-      reference: p.reference, name: p.name, description: p.description ?? "",
+      reference: p.reference, name: p.name,
+      brand: p.brand ?? "", sku: p.sku ?? "",
+      description: p.description ?? "",
       purchase_price: p.purchase_price, selling_price: p.selling_price,
       stock_quantity: p.stock_quantity, min_stock: p.min_stock,
       dimensions: p.dimensions ?? "", gallery, warehouse_id: p.warehouse_id ?? null,
@@ -174,44 +178,97 @@ function ProductsPage() {
                   <Plus className="me-1 h-4 w-4" /> {t("add_product")}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editing ? t("edit_product") : t("add_product")}</DialogTitle>
                 </DialogHeader>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label={t("reference")}><Input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} /></Field>
-                  <Field label={t("name")}><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
-                  <Field label={t("purchase_price")}><Input type="number" step="0.01" value={form.purchase_price} onChange={(e) => setForm({ ...form, purchase_price: Number(e.target.value) })} /></Field>
-                  <Field label={t("selling_price")}><Input type="number" step="0.01" value={form.selling_price} onChange={(e) => setForm({ ...form, selling_price: Number(e.target.value) })} /></Field>
-                  <Field label={t("quantity")}><Input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: Number(e.target.value) })} /></Field>
-                  <Field label={t("min_stock")}><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: Number(e.target.value) })} /></Field>
-                  <Field label={t("dimensions")}><Input value={form.dimensions ?? ""} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} placeholder="L × P × H" /></Field>
-                  <Field label="Dépôt">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Marque *">
+                    <Input value={form.brand ?? ""} onChange={(e) => setForm({ ...form, brand: e.target.value })} placeholder="Ex : Bosch" />
+                  </Field>
+                  <Field label="Référence *">
+                    <Input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
+                  </Field>
+                  <Field label="Code produit / SKU *">
+                    <Input value={form.sku ?? ""} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="SKU unique" />
+                  </Field>
+                  <Field label={t("name")}>
+                    <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                  </Field>
+                  <Field label="Prix d'achat (DH) *">
+                    <Input type="number" min="0" step="0.01" value={form.purchase_price}
+                      onChange={(e) => setForm({ ...form, purchase_price: Math.max(0, Number(e.target.value)) })} />
+                  </Field>
+                  <Field label="Prix de vente (DH) *">
+                    <Input type="number" min="0" step="0.01" value={form.selling_price}
+                      onChange={(e) => setForm({ ...form, selling_price: Math.max(0, Number(e.target.value)) })} />
+                  </Field>
+                  <Field label="Quantité *">
+                    <Input type="number" min="0" step="1" value={form.stock_quantity}
+                      onChange={(e) => setForm({ ...form, stock_quantity: Math.max(0, Math.floor(Number(e.target.value))) })} />
+                  </Field>
+                  <Field label="Seuil minimum *">
+                    <Input type="number" min="0" step="1" value={form.min_stock}
+                      onChange={(e) => setForm({ ...form, min_stock: Math.max(0, Math.floor(Number(e.target.value))) })} />
+                  </Field>
+                  <Field label="Dimensions (L × P × H) *">
+                    <Input value={form.dimensions ?? ""} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} placeholder="60 × 40 × 200 cm" />
+                  </Field>
+                  <Field label="Dépôt *">
                     <Select
-                      value={form.warehouse_id ?? "none"}
-                      onValueChange={(v) => setForm({ ...form, warehouse_id: v === "none" ? null : v })}
+                      value={form.warehouse_id ?? ""}
+                      onValueChange={(v) => setForm({ ...form, warehouse_id: v })}
                     >
-                      <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Sélectionner un dépôt" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">Aucun</SelectItem>
                         {warehouses.filter((w) => w.is_active || w.id === form.warehouse_id).map((w) => (
-                          <SelectItem key={w.id} value={w.id}>{w.name}{!w.is_active ? " (inactif)" : ""}</SelectItem>
+                          <SelectItem key={w.id} value={w.id}>
+                            {w.name}{w.description ? ` – ${w.description}` : ""}{!w.is_active ? " (inactif)" : ""}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </Field>
+                  <div className="sm:col-span-2 rounded-md border bg-muted/40 px-3 py-2 text-sm flex items-center justify-between">
+                    <span className="text-muted-foreground">Marge calculée</span>
+                    <span className={form.selling_price - form.purchase_price >= 0 ? "font-semibold text-success" : "font-semibold text-destructive"}>
+                      {(form.selling_price - form.purchase_price).toFixed(2)} DH
+                      {form.purchase_price > 0 && (
+                        <span className="ms-2 text-xs text-muted-foreground">
+                          ({(((form.selling_price - form.purchase_price) / form.purchase_price) * 100).toFixed(0)}%)
+                        </span>
+                      )}
+                    </span>
+                  </div>
                   <div className="sm:col-span-2">
                     <Field label={`Images (max ${MAX_IMAGES})`}>
                       <GalleryUploadField value={form.gallery} onChange={(g) => setForm({ ...form, gallery: g })} />
                     </Field>
                   </div>
                   <div className="sm:col-span-2">
-                    <Field label={t("description")}><Textarea value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
+                    <Field label={t("description")}>
+                      <Textarea rows={3} value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                    </Field>
                   </div>
                 </div>
                 <DialogFooter>
                   <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-                  <Button onClick={() => upsert.mutate(editing ? { ...form, id: editing.id } : form)} disabled={upsert.isPending}>
+                  <Button
+                    onClick={() => {
+                      const errs: string[] = [];
+                      if (!form.brand?.trim()) errs.push("Marque");
+                      if (!form.reference.trim()) errs.push("Référence");
+                      if (!form.sku?.trim()) errs.push("Code produit / SKU");
+                      if (!form.name.trim()) errs.push("Nom");
+                      if (!form.dimensions?.trim()) errs.push("Dimensions");
+                      if (!form.warehouse_id) errs.push("Dépôt");
+                      if (form.purchase_price < 0 || form.selling_price < 0) errs.push("Prix négatif interdit");
+                      if (form.stock_quantity < 0 || form.min_stock < 0) errs.push("Quantité négative interdite");
+                      if (errs.length) { toast.error("Champs requis : " + errs.join(", ")); return; }
+                      upsert.mutate(editing ? { ...form, id: editing.id } : form);
+                    }}
+                    disabled={upsert.isPending}
+                  >
                     {t("save")}
                   </Button>
                 </DialogFooter>
@@ -244,8 +301,6 @@ function ProductsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Input type="number" placeholder="Prix min" className="w-32" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
-          <Input type="number" placeholder="Prix max" className="w-32" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
           {(q || stockFilter !== "all" || priceMin || priceMax || warehouseFilter !== "all") && (
             <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStockFilter("all"); setPriceMin(""); setPriceMax(""); setWarehouseFilter("all"); }}>Réinitialiser</Button>
           )}
@@ -284,9 +339,14 @@ function ProductsPage() {
                   <TableCell className="font-mono text-xs">{p.reference}</TableCell>
                   <TableCell className="font-medium">{p.name}</TableCell>
                   <TableCell className="text-sm">
-                    {p.warehouse_id
-                      ? <Badge variant="outline">{warehouseMap.get(p.warehouse_id) ?? "—"}</Badge>
-                      : <span className="text-muted-foreground">—</span>}
+                    {p.warehouse_id && warehouseMap.get(p.warehouse_id) ? (
+                      <div className="flex flex-col gap-0.5">
+                        <Badge variant="outline" className="w-fit">{warehouseMap.get(p.warehouse_id)!.name}</Badge>
+                        {warehouseMap.get(p.warehouse_id)!.description && (
+                          <span className="text-xs text-muted-foreground">{warehouseMap.get(p.warehouse_id)!.description}</span>
+                        )}
+                      </div>
+                    ) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell className="text-right">{p.purchase_price.toFixed(2)} {CURRENCY}</TableCell>
                   <TableCell className="text-right">{p.selling_price.toFixed(2)} {CURRENCY}</TableCell>
