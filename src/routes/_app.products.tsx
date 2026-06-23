@@ -149,7 +149,9 @@ function ProductsPage() {
     setEditing(p);
     const gallery = [p.image_url, ...(p.images ?? [])].filter((x): x is string => !!x);
     setForm({
-      reference: p.reference, name: p.name, description: p.description ?? "",
+      reference: p.reference, name: p.name,
+      brand: p.brand ?? "", sku: p.sku ?? "",
+      description: p.description ?? "",
       purchase_price: p.purchase_price, selling_price: p.selling_price,
       stock_quantity: p.stock_quantity, min_stock: p.min_stock,
       dimensions: p.dimensions ?? "", gallery, warehouse_id: p.warehouse_id ?? null,
