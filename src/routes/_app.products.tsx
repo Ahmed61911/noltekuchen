@@ -301,8 +301,6 @@ function ProductsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Input type="number" placeholder="Prix min" className="w-32" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
-          <Input type="number" placeholder="Prix max" className="w-32" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
           {(q || stockFilter !== "all" || priceMin || priceMax || warehouseFilter !== "all") && (
             <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStockFilter("all"); setPriceMin(""); setPriceMax(""); setWarehouseFilter("all"); }}>Réinitialiser</Button>
           )}
