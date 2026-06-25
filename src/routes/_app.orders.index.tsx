@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   Plus, Search, Trash2, Eye, Loader2, ClipboardList, CheckCircle2,
-  Truck, XCircle, Clock, AlertTriangle,
+  Truck, XCircle, Clock, AlertTriangle, PackagePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
