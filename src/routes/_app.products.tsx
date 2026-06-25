@@ -208,7 +208,7 @@ function ProductsPage() {
                     <Input type="number" min="0" step="1" value={form.min_stock}
                       onChange={(e) => setForm({ ...form, min_stock: Math.max(0, Math.floor(Number(e.target.value))) })} />
                   </Field>
-                  <Field label="Dimensions (L × P × H) *">
+                  <Field label="Dimensions (L × P × H)">
                     <Input value={form.dimensions ?? ""} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} placeholder="60 × 40 × 200 cm" />
                   </Field>
                   <Field label="Dépôt *">
