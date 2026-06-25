@@ -226,17 +226,6 @@ function ProductsPage() {
                       </SelectContent>
                     </Select>
                   </Field>
-                  <div className="sm:col-span-2 rounded-md border bg-muted/40 px-3 py-2 text-sm flex items-center justify-between">
-                    <span className="text-muted-foreground">Marge calculée</span>
-                    <span className={form.selling_price - form.purchase_price >= 0 ? "font-semibold text-success" : "font-semibold text-destructive"}>
-                      {(form.selling_price - form.purchase_price).toFixed(2)} DH
-                      {form.purchase_price > 0 && (
-                        <span className="ms-2 text-xs text-muted-foreground">
-                          ({(((form.selling_price - form.purchase_price) / form.purchase_price) * 100).toFixed(0)}%)
-                        </span>
-                      )}
-                    </span>
-                  </div>
                   <div className="sm:col-span-2">
                     <Field label={`Images (max ${MAX_IMAGES})`}>
                       <GalleryUploadField value={form.gallery} onChange={(g) => setForm({ ...form, gallery: g })} />
