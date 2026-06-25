@@ -208,7 +208,7 @@ function ProductsPage() {
                     <Input type="number" min="0" step="1" value={form.min_stock}
                       onChange={(e) => setForm({ ...form, min_stock: Math.max(0, Math.floor(Number(e.target.value))) })} />
                   </Field>
-                  <Field label="Dimensions (L × P × H) *">
+                  <Field label="Dimensions (L × P × H)">
                     <Input value={form.dimensions ?? ""} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} placeholder="60 × 40 × 200 cm" />
                   </Field>
                   <Field label="Dépôt *">
@@ -226,17 +226,6 @@ function ProductsPage() {
                       </SelectContent>
                     </Select>
                   </Field>
-                  <div className="sm:col-span-2 rounded-md border bg-muted/40 px-3 py-2 text-sm flex items-center justify-between">
-                    <span className="text-muted-foreground">Marge calculée</span>
-                    <span className={form.selling_price - form.purchase_price >= 0 ? "font-semibold text-success" : "font-semibold text-destructive"}>
-                      {(form.selling_price - form.purchase_price).toFixed(2)} DH
-                      {form.purchase_price > 0 && (
-                        <span className="ms-2 text-xs text-muted-foreground">
-                          ({(((form.selling_price - form.purchase_price) / form.purchase_price) * 100).toFixed(0)}%)
-                        </span>
-                      )}
-                    </span>
-                  </div>
                   <div className="sm:col-span-2">
                     <Field label={`Images (max ${MAX_IMAGES})`}>
                       <GalleryUploadField value={form.gallery} onChange={(g) => setForm({ ...form, gallery: g })} />
@@ -257,7 +246,7 @@ function ProductsPage() {
                       if (!form.reference.trim()) errs.push("Référence");
                       if (!form.sku?.trim()) errs.push("Code produit / SKU");
                       const autoName = `${form.brand?.trim() ?? ""} ${form.reference.trim()}`.trim();
-                      if (!form.dimensions?.trim()) errs.push("Dimensions");
+                      
                       if (!form.warehouse_id) errs.push("Dépôt");
                       if (form.purchase_price < 0 || form.selling_price < 0) errs.push("Prix négatif interdit");
                       if (form.stock_quantity < 0 || form.min_stock < 0) errs.push("Quantité négative interdite");
