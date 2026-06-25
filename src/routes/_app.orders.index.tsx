@@ -246,9 +246,14 @@ function OrdersPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Produits</Label>
-                <Button size="sm" variant="outline" onClick={() => setLines([...lines, emptyLine()])}>
-                  <Plus className="mr-1 h-3 w-3" /> Ligne
-                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => { setPickerSel({}); setPickerQ(""); setPickerOpen(true); }}>
+                    <PackagePlus className="mr-1 h-3 w-3" /> Plusieurs produits
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setLines([...lines, emptyLine()])}>
+                    <Plus className="mr-1 h-3 w-3" /> Ligne
+                  </Button>
+                </div>
               </div>
               <div className="rounded-md border">
                 <Table>
