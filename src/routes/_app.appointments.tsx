@@ -90,6 +90,9 @@ function AppointmentsPage() {
   const [customerFilter, setCustomerFilter] = useState<string>("all");
   const [view, setView] = useState<"month" | "week" | "day" | "list">("month");
   const [cursor, setCursor] = useState<Date>(new Date());
+  const [details, setDetails] = useState<Appointment | null>(null);
+  const [confirmDel, setConfirmDel] = useState<Appointment | null>(null);
+
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ["appointments"],
