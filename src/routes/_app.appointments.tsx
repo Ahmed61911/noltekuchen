@@ -308,14 +308,15 @@ function AppointmentsPage() {
         </div>
 
         <TabsContent value="month" className="mt-4">
-          <MonthView cursor={cursor} appointments={appointments} onPick={(d) => openCreate({ start_at: d.toISOString(), end_at: new Date(d.getTime() + 60 * 60_000).toISOString() })} onClick={openEdit} />
+          <MonthView cursor={cursor} appointments={appointments} onPick={(d) => openCreate({ start_at: d.toISOString(), end_at: new Date(d.getTime() + 60 * 60_000).toISOString() })} onClick={setDetails} />
         </TabsContent>
         <TabsContent value="week" className="mt-4">
-          <WeekView cursor={cursor} appointments={appointments} onClick={openEdit} />
+          <WeekView cursor={cursor} appointments={appointments} onClick={setDetails} />
         </TabsContent>
         <TabsContent value="day" className="mt-4">
-          <DayView cursor={cursor} appointments={appointments} onClick={openEdit} />
+          <DayView cursor={cursor} appointments={appointments} onClick={setDetails} />
         </TabsContent>
+
 
         <TabsContent value="list" className="mt-4">
           <Card className="p-4">
