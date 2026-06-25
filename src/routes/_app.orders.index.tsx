@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   Plus, Search, Trash2, Eye, Loader2, ClipboardList, CheckCircle2,
-  Truck, XCircle, Clock, AlertTriangle,
+  Truck, XCircle, Clock, AlertTriangle, PackagePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -84,6 +84,9 @@ function OrdersPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [open, setOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerQ, setPickerQ] = useState("");
+  const [pickerSel, setPickerSel] = useState<Record<string, number>>({});
 
   const [customerId, setCustomerId] = useState<string>("");
   const [orderDate, setOrderDate] = useState(new Date().toISOString().slice(0, 10));
@@ -243,9 +246,14 @@ function OrdersPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Produits</Label>
-                <Button size="sm" variant="outline" onClick={() => setLines([...lines, emptyLine()])}>
-                  <Plus className="mr-1 h-3 w-3" /> Ligne
-                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => { setPickerSel({}); setPickerQ(""); setPickerOpen(true); }}>
+                    <PackagePlus className="mr-1 h-3 w-3" /> Plusieurs produits
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setLines([...lines, emptyLine()])}>
+                    <Plus className="mr-1 h-3 w-3" /> Ligne
+                  </Button>
+                </div>
               </div>
               <div className="rounded-md border">
                 <Table>
@@ -313,7 +321,89 @@ function OrdersPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Ajouter plusieurs produits</DialogTitle>
+            </DialogHeader>
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input className="pl-8" placeholder="Rechercher un produit…" value={pickerQ} onChange={e => setPickerQ(e.target.value)} />
+            </div>
+            <div className="flex-1 overflow-y-auto rounded-md border">
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead className="w-10"></TableHead>
+                  <TableHead>Produit</TableHead>
+                  <TableHead className="text-right">Prix</TableHead>
+                  <TableHead className="w-28">Qté</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {products
+                    .filter(p => !pickerQ || p.name.toLowerCase().includes(pickerQ.toLowerCase()))
+                    .map(p => {
+                      const checked = pickerSel[p.id] !== undefined;
+                      return (
+                        <TableRow key={p.id}>
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                const nx = { ...pickerSel };
+                                if (e.target.checked) nx[p.id] = 1;
+                                else delete nx[p.id];
+                                setPickerSel(nx);
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell className="text-sm">{p.name}</TableCell>
+                          <TableCell className="text-right text-sm tabular-nums">{fmt(Number(p.selling_price))}</TableCell>
+                          <TableCell>
+                            <Input
+                              className="h-8"
+                              type="number"
+                              min={1}
+                              disabled={!checked}
+                              value={checked ? pickerSel[p.id] : 1}
+                              onChange={(e) => setPickerSel({ ...pickerSel, [p.id]: Math.max(1, Number(e.target.value)) })}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                </TableBody>
+              </Table>
+            </div>
+            <DialogFooter>
+              <span className="mr-auto text-sm text-muted-foreground self-center">
+                {Object.keys(pickerSel).length} sélectionné(s)
+              </span>
+              <Button variant="outline" onClick={() => setPickerOpen(false)}>Annuler</Button>
+              <Button
+                disabled={Object.keys(pickerSel).length === 0}
+                onClick={() => {
+                  const newLines: LineForm[] = Object.entries(pickerSel).map(([pid, qty]) => {
+                    const p = products.find(x => x.id === pid)!;
+                    return {
+                      product_id: p.id, description: p.name, quantity: qty,
+                      unit_price: Number(p.selling_price), tax_rate: 20, discount_rate: 0,
+                    };
+                  });
+                  const base = lines.filter(l => l.description || l.unit_price > 0);
+                  setLines(base.length ? [...base, ...newLines] : newLines);
+                  setPickerOpen(false);
+                  toast.success(`${newLines.length} produit(s) ajouté(s)`);
+                }}
+              >
+                Ajouter
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
+
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Kpi icon={Clock} label="En attente" value={kpis.pending} accent="amber" />
