@@ -378,9 +378,15 @@ function AppointmentsPage() {
                         </Select>
                       </TableCell>
                       <TableCell className="text-right">
+                        {a.status !== "completed" && a.status !== "cancelled" && (
+                          <Button size="sm" variant="ghost" className="text-emerald-600 hover:text-emerald-700" onClick={() => setStatus.mutate({ id: a.id, status: a.status === "scheduled" ? "confirmed" : "completed" })}>
+                            <CheckCircle2 className="h-4 w-4 mr-1" />Valider
+                          </Button>
+                        )}
                         <Button size="icon" variant="ghost" onClick={() => openEdit(a)}><Pencil className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => { if (confirm("Supprimer ce rendez-vous ?")) remove.mutate(a.id); }}><Trash2 className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => setConfirmDel(a)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                       </TableCell>
+
                     </TableRow>
                   );
                 })}
