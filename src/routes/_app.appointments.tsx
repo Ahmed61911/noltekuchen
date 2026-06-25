@@ -90,6 +90,9 @@ function AppointmentsPage() {
   const [customerFilter, setCustomerFilter] = useState<string>("all");
   const [view, setView] = useState<"month" | "week" | "day" | "list">("month");
   const [cursor, setCursor] = useState<Date>(new Date());
+  const [details, setDetails] = useState<Appointment | null>(null);
+  const [confirmDel, setConfirmDel] = useState<Appointment | null>(null);
+
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ["appointments"],
@@ -305,14 +308,15 @@ function AppointmentsPage() {
         </div>
 
         <TabsContent value="month" className="mt-4">
-          <MonthView cursor={cursor} appointments={appointments} onPick={(d) => openCreate({ start_at: d.toISOString(), end_at: new Date(d.getTime() + 60 * 60_000).toISOString() })} onClick={openEdit} />
+          <MonthView cursor={cursor} appointments={appointments} onPick={(d) => openCreate({ start_at: d.toISOString(), end_at: new Date(d.getTime() + 60 * 60_000).toISOString() })} onClick={setDetails} />
         </TabsContent>
         <TabsContent value="week" className="mt-4">
-          <WeekView cursor={cursor} appointments={appointments} onClick={openEdit} />
+          <WeekView cursor={cursor} appointments={appointments} onClick={setDetails} />
         </TabsContent>
         <TabsContent value="day" className="mt-4">
-          <DayView cursor={cursor} appointments={appointments} onClick={openEdit} />
+          <DayView cursor={cursor} appointments={appointments} onClick={setDetails} />
         </TabsContent>
+
 
         <TabsContent value="list" className="mt-4">
           <Card className="p-4">
@@ -374,9 +378,15 @@ function AppointmentsPage() {
                         </Select>
                       </TableCell>
                       <TableCell className="text-right">
+                        {a.status !== "completed" && a.status !== "cancelled" && (
+                          <Button size="sm" variant="ghost" className="text-emerald-600 hover:text-emerald-700" onClick={() => setStatus.mutate({ id: a.id, status: a.status === "scheduled" ? "confirmed" : "completed" })}>
+                            <CheckCircle2 className="h-4 w-4 mr-1" />Valider
+                          </Button>
+                        )}
                         <Button size="icon" variant="ghost" onClick={() => openEdit(a)}><Pencil className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => { if (confirm("Supprimer ce rendez-vous ?")) remove.mutate(a.id); }}><Trash2 className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => setConfirmDel(a)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                       </TableCell>
+
                     </TableRow>
                   );
                 })}
@@ -385,9 +395,64 @@ function AppointmentsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Quick actions dialog (from calendar click) */}
+      <Dialog open={!!details} onOpenChange={(v) => !v && setDetails(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{details?.title}</DialogTitle>
+          </DialogHeader>
+          {details && (
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className={statusMeta(details.status).color}>{statusMeta(details.status).label}</Badge>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" />{fmtDateTime(details.start_at)} → {fmtDateTime(details.end_at)}</div>
+              {details.location && <div className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4" />{details.location}</div>}
+              {details.customer_id && <div className="flex items-center gap-2 text-muted-foreground"><User className="h-4 w-4" />{customerName(details.customer_id)}</div>}
+              {details.description && <p className="rounded-md bg-muted/40 p-2 text-xs">{details.description}</p>}
+            </div>
+          )}
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="destructive" onClick={() => { setConfirmDel(details); setDetails(null); }}>
+              <Trash2 className="mr-2 h-4 w-4" />Supprimer
+            </Button>
+            <Button variant="outline" onClick={() => { if (details) { openEdit(details); setDetails(null); } }}>
+              <Pencil className="mr-2 h-4 w-4" />Modifier
+            </Button>
+            {details && details.status !== "completed" && details.status !== "cancelled" && (
+              <Button onClick={() => {
+                const next: Status = details.status === "scheduled" ? "confirmed" : "completed";
+                setStatus.mutate({ id: details.id, status: next });
+                toast.success(next === "confirmed" ? "Rendez-vous confirmé" : "Rendez-vous terminé");
+                setDetails(null);
+              }}>
+                <CheckCircle2 className="mr-2 h-4 w-4" />Valider
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <Dialog open={!!confirmDel} onOpenChange={(v) => !v && setConfirmDel(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Supprimer ce rendez-vous ?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">« {confirmDel?.title} » sera supprimé définitivement.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDel(null)}>Annuler</Button>
+            <Button variant="destructive" onClick={() => { if (confirmDel) { remove.mutate(confirmDel.id); setConfirmDel(null); } }}>
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
 
 function KpiCard({ icon: Icon, label, value, accent }: { icon: typeof CheckCircle2; label: string; value: number; accent: string }) {
   return (
