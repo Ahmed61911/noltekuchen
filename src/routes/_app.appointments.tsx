@@ -395,9 +395,64 @@ function AppointmentsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Quick actions dialog (from calendar click) */}
+      <Dialog open={!!details} onOpenChange={(v) => !v && setDetails(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{details?.title}</DialogTitle>
+          </DialogHeader>
+          {details && (
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className={statusMeta(details.status).color}>{statusMeta(details.status).label}</Badge>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" />{fmtDateTime(details.start_at)} → {fmtDateTime(details.end_at)}</div>
+              {details.location && <div className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4" />{details.location}</div>}
+              {details.customer_id && <div className="flex items-center gap-2 text-muted-foreground"><User className="h-4 w-4" />{customerName(details.customer_id)}</div>}
+              {details.description && <p className="rounded-md bg-muted/40 p-2 text-xs">{details.description}</p>}
+            </div>
+          )}
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="destructive" onClick={() => { setConfirmDel(details); setDetails(null); }}>
+              <Trash2 className="mr-2 h-4 w-4" />Supprimer
+            </Button>
+            <Button variant="outline" onClick={() => { if (details) { openEdit(details); setDetails(null); } }}>
+              <Pencil className="mr-2 h-4 w-4" />Modifier
+            </Button>
+            {details && details.status !== "completed" && details.status !== "cancelled" && (
+              <Button onClick={() => {
+                const next: Status = details.status === "scheduled" ? "confirmed" : "completed";
+                setStatus.mutate({ id: details.id, status: next });
+                toast.success(next === "confirmed" ? "Rendez-vous confirmé" : "Rendez-vous terminé");
+                setDetails(null);
+              }}>
+                <CheckCircle2 className="mr-2 h-4 w-4" />Valider
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <Dialog open={!!confirmDel} onOpenChange={(v) => !v && setConfirmDel(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Supprimer ce rendez-vous ?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">« {confirmDel?.title} » sera supprimé définitivement.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDel(null)}>Annuler</Button>
+            <Button variant="destructive" onClick={() => { if (confirmDel) { remove.mutate(confirmDel.id); setConfirmDel(null); } }}>
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
 
 function KpiCard({ icon: Icon, label, value, accent }: { icon: typeof CheckCircle2; label: string; value: number; accent: string }) {
   return (
