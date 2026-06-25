@@ -246,7 +246,7 @@ function ProductsPage() {
                       if (!form.reference.trim()) errs.push("Référence");
                       if (!form.sku?.trim()) errs.push("Code produit / SKU");
                       const autoName = `${form.brand?.trim() ?? ""} ${form.reference.trim()}`.trim();
-                      if (!form.dimensions?.trim()) errs.push("Dimensions");
+                      
                       if (!form.warehouse_id) errs.push("Dépôt");
                       if (form.purchase_price < 0 || form.selling_price < 0) errs.push("Prix négatif interdit");
                       if (form.stock_quantity < 0 || form.min_stock < 0) errs.push("Quantité négative interdite");
