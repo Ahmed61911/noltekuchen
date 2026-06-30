@@ -40,7 +40,7 @@ export function AppSidebar() {
   const isActive = (p: string) => (p === "/" ? path === "/" : path.startsWith(p));
 
   return (
-    <Sidebar collapsible="icon" className="border-r">
+    <Sidebar collapsible="icon" side={lang === "ar" ? "right" : "left"} className="border-r">
       <SidebarHeader className="border-b">
         <Link to="/" className="flex items-center gap-3 px-2 py-2.5">
           {collapsed ? (
