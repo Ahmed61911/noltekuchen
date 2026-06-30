@@ -224,3 +224,40 @@
     color: transparent;
   }
 }
+
+/* ===== RTL global adjustments ===== */
+/* Map physical left/right utilities to logical equivalents under [dir="rtl"]
+   so legacy classes still flip correctly across the whole app. */
+[dir="rtl"] .text-left { text-align: right; }
+[dir="rtl"] .text-right { text-align: left; }
+
+/* Mirror directional icons (chevrons, arrows from lucide) inside RTL */
+[dir="rtl"] .rtl-flip,
+[dir="rtl"] svg.lucide-chevron-right,
+[dir="rtl"] svg.lucide-chevron-left,
+[dir="rtl"] svg.lucide-arrow-right,
+[dir="rtl"] svg.lucide-arrow-left,
+[dir="rtl"] svg.lucide-arrow-up-right,
+[dir="rtl"] svg.lucide-arrow-down-right {
+  transform: scaleX(-1);
+}
+
+/* Keep charts (Recharts) in LTR for axis/legend readability */
+[dir="rtl"] .recharts-wrapper,
+[dir="rtl"] .recharts-surface {
+  direction: ltr;
+}
+
+/* Tables: align text start by default in RTL */
+[dir="rtl"] table th,
+[dir="rtl"] table td {
+  text-align: right;
+}
+
+/* Sidebar border-r becomes border-l in RTL */
+[dir="rtl"] [data-slot="sidebar-container"].border-r,
+[dir="rtl"] aside.border-r {
+  border-right-width: 0;
+  border-left-width: 1px;
+}
+
