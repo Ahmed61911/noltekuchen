@@ -13,7 +13,7 @@ import { useAuth } from "@/lib/auth";
 import logoUrl from "@/assets/nolte-logo.svg";
 
 export function AppSidebar() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { isAdmin } = useAuth();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
