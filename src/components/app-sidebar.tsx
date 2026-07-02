@@ -107,6 +107,14 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/roles")}>
+                    <Link to="/roles" className="flex items-center gap-3">
+                      <Shield className="h-4 w-4" />
+                      {!collapsed && <span>Rôles & permissions</span>}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={isActive("/audit")}>
                     <Link to="/audit" className="flex items-center gap-3">
                       <ShieldCheck className="h-4 w-4" />
