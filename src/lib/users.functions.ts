@@ -27,11 +27,11 @@ export const listUsers = createServerFn({ method: "GET" })
       .select("id, full_name, username, phone, avatar_url, department, status, last_login_at, created_at");
     if (pErr) throw pErr;
 
-    const { data: roles } = await supabaseAdmin.from("user_roles").select("user_id, role");
+    const { data: roles } = await supabaseAdmin.from("user_roles").select("user_id, role, role_key");
     const { data: usersResp } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
     const authMap = new Map(usersResp.users.map((u) => [u.id, u]));
     const roleMap = new Map<string, string>();
-    (roles ?? []).forEach((r: any) => roleMap.set(r.user_id, r.role));
+    (roles ?? []).forEach((r: any) => roleMap.set(r.user_id, r.role_key ?? r.role));
 
     return (profiles ?? []).map((p: any) => {
       const auth = authMap.get(p.id);
