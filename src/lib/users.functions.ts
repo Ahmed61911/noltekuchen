@@ -69,7 +69,8 @@ export const createUser = createServerFn({ method: "POST" })
     }).eq("id", uid);
 
     await supabaseAdmin.from("user_roles").delete().eq("user_id", uid);
-    await supabaseAdmin.from("user_roles").insert({ user_id: uid, role: data.role });
+    const enumRole = ["admin","manager","commercial","warehouse","accountant","employee"].includes(data.role) ? data.role : "employee";
+    await supabaseAdmin.from("user_roles").insert({ user_id: uid, role: enumRole as any, role_key: data.role });
 
     await supabaseAdmin.from("audit_logs").insert({
       user_id: context.userId, action: "create_user", module: "users",
