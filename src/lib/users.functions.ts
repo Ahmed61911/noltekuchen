@@ -111,15 +111,18 @@ export const setUserStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const ENUM_ROLES = new Set(["admin", "manager", "commercial", "warehouse", "accountant", "employee"]);
+
 export const setUserRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { user_id: string; role: string }) => d)
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: old } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.user_id).maybeSingle();
+    const { data: old } = await supabaseAdmin.from("user_roles").select("role, role_key").eq("user_id", data.user_id).maybeSingle();
+    const enumRole = ENUM_ROLES.has(data.role) ? data.role : "employee";
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id);
-    await supabaseAdmin.from("user_roles").insert({ user_id: data.user_id, role: data.role as any });
+    await supabaseAdmin.from("user_roles").insert({ user_id: data.user_id, role: enumRole as any, role_key: data.role });
     await supabaseAdmin.from("audit_logs").insert({
       user_id: context.userId, action: "change_role", module: "users",
       entity_id: data.user_id, old_value: old, new_value: { role: data.role },
