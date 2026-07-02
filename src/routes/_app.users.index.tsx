@@ -234,7 +234,7 @@ function UsersPage() {
                 <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous les rôles</SelectItem>
-                  {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                  {(rolesList as any[]).map((r) => <SelectItem key={r.key} value={r.key}>{r.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -279,7 +279,7 @@ function UsersPage() {
                   <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">Aucun utilisateur</TableCell></TableRow>
                 ) : filtered.map((u: any) => {
                   const status = STATUS_BADGE[u.status] ?? STATUS_BADGE.active;
-                  const role = ROLES.find((r) => r.value === u.role);
+                  const role = roleByKey.get(u.role);
                   return (
                     <TableRow key={u.id}>
                       <TableCell>
@@ -292,7 +292,7 @@ function UsersPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{u.email || "—"}</TableCell>
-                      <TableCell><Badge className={role?.cls}>{role?.label ?? u.role}</Badge></TableCell>
+                      <TableCell><Badge className={roleColor(u.role)}>{role?.label ?? u.role}</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground">{permSummary(u.role)}</TableCell>
                       <TableCell><Badge className={status.cls}>{status.label}</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground">{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "Jamais"}</TableCell>
@@ -366,7 +366,17 @@ function UsersPage() {
                 <Field label="Rôle">
                   <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
                     <SelectTrigger><SelectValue placeholder="Sélectionnez un rôle" /></SelectTrigger>
-                    <SelectContent>{ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                      {(rolesList as any[]).map((r) => <SelectItem key={r.key} value={r.key}>{r.label}</SelectItem>)}
+                      <SelectSeparator />
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-primary hover:bg-accent"
+                        onClick={(e) => { e.preventDefault(); nav({ to: "/roles" }); }}
+                      >
+                        <Plus className="h-4 w-4" /> Ajouter un nouveau rôle
+                      </button>
+                    </SelectContent>
                   </Select>
                 </Field>
                 <div className="space-y-2">
