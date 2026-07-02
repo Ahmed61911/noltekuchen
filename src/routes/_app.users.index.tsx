@@ -1,9 +1,9 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Search, Pencil, Trash2, Plus, RotateCcw, Eye, EyeOff, Lock, Unlock, KeyRound, Copy, Loader2,
+  Search, Pencil, Trash2, Plus, RotateCcw, Eye, EyeOff, Lock, Unlock, KeyRound, Copy, Loader2, Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator,
 } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -27,19 +27,21 @@ import { useAuth } from "@/lib/auth";
 import {
   listUsers, createUser, setUserStatus, setUserRole, deleteUser, updateUser, resetUserPassword,
 } from "@/lib/users.functions";
+import { listRoles } from "@/lib/roles.functions";
 
 export const Route = createFileRoute("/_app/users/")({
   component: UsersPage,
 });
 
-const ROLES = [
-  { value: "admin", label: "Admin", cls: "bg-violet-500/15 text-violet-700 dark:text-violet-300" },
-  { value: "manager", label: "Manager", cls: "bg-blue-500/15 text-blue-700 dark:text-blue-300" },
-  { value: "commercial", label: "Commercial", cls: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300" },
-  { value: "warehouse", label: "Magasinier", cls: "bg-teal-500/15 text-teal-700 dark:text-teal-300" },
-  { value: "accountant", label: "Comptable", cls: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300" },
-  { value: "employee", label: "Employé", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
-];
+const ROLE_COLORS: Record<string, string> = {
+  admin: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  manager: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  commercial: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
+  warehouse: "bg-teal-500/15 text-teal-700 dark:text-teal-300",
+  accountant: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300",
+  employee: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+};
+function roleColor(key: string) { return ROLE_COLORS[key] ?? "bg-slate-500/15 text-slate-700 dark:text-slate-300"; }
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   active: { label: "Actif", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
