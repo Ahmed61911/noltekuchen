@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Package, Boxes, ShoppingCart, Calendar,
-  Truck, FileText, BarChart3, History, Users, Settings, Receipt, UserSquare, ClipboardList, ShieldCheck, Warehouse,
+  Truck, FileText, BarChart3, History, Users, Settings, Receipt, UserSquare, ClipboardList, ShieldCheck, Warehouse, Shield,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -10,32 +10,34 @@ import {
 } from "@/components/ui/sidebar";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
+import { usePermissions } from "@/lib/permissions";
 import logoUrl from "@/assets/nolte-logo.svg";
 
 export function AppSidebar() {
   const { t, lang } = useI18n();
   const { isAdmin } = useAuth();
+  const { can } = usePermissions();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const path = useRouterState({ select: (r) => r.location.pathname });
 
   const main = [
-    { to: "/", icon: LayoutDashboard, label: t("dashboard") },
-    { to: "/products", icon: Package, label: t("products") },
-    { to: "/stock", icon: Boxes, label: t("stock") },
-    { to: "/orders", icon: ClipboardList, label: "Commandes" },
-    { to: "/sales", icon: ShoppingCart, label: t("sales") },
-    { to: "/invoices", icon: Receipt, label: "Facturation" },
-    { to: "/appointments", icon: Calendar, label: t("appointments") },
-  ];
+    { to: "/", icon: LayoutDashboard, label: t("dashboard"), module: null },
+    { to: "/products", icon: Package, label: t("products"), module: "products" },
+    { to: "/stock", icon: Boxes, label: t("stock"), module: "stock" },
+    { to: "/orders", icon: ClipboardList, label: "Commandes", module: "orders" },
+    { to: "/sales", icon: ShoppingCart, label: t("sales"), module: "sales" },
+    { to: "/invoices", icon: Receipt, label: "Facturation", module: "sales" },
+    { to: "/appointments", icon: Calendar, label: t("appointments"), module: null },
+  ].filter((it) => !it.module || can(it.module, "view"));
   const ops = [
-    { to: "/suppliers", icon: Truck, label: t("suppliers") },
-    { to: "/customers", icon: UserSquare, label: "Clients" },
-    { to: "/warehouses", icon: Warehouse, label: "Dépôts" },
-    { to: "/documents", icon: FileText, label: t("documents") },
-    { to: "/reports", icon: BarChart3, label: t("reports") },
-    { to: "/logs", icon: History, label: t("logs") },
-  ];
+    { to: "/suppliers", icon: Truck, label: t("suppliers"), module: "suppliers" },
+    { to: "/customers", icon: UserSquare, label: "Clients", module: "customers" },
+    { to: "/warehouses", icon: Warehouse, label: "Dépôts", module: "stock" },
+    { to: "/documents", icon: FileText, label: t("documents"), module: null },
+    { to: "/reports", icon: BarChart3, label: t("reports"), module: "reports" },
+    { to: "/logs", icon: History, label: t("logs"), module: null },
+  ].filter((it) => !it.module || can(it.module, "view"));
 
   const isActive = (p: string) => (p === "/" ? path === "/" : path.startsWith(p));
 
@@ -101,6 +103,14 @@ export function AppSidebar() {
                     <Link to="/users" className="flex items-center gap-3">
                       <Users className="h-4 w-4" />
                       {!collapsed && <span>{t("users")}</span>}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/roles")}>
+                    <Link to="/roles" className="flex items-center gap-3">
+                      <Shield className="h-4 w-4" />
+                      {!collapsed && <span>Rôles & permissions</span>}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

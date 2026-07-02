@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Search, Pencil, Trash2, Plus, RotateCcw, Eye, EyeOff, Lock, Unlock, KeyRound, Copy, Loader2,
+  Search, Pencil, Trash2, Plus, RotateCcw, Eye, EyeOff, Lock, Unlock, KeyRound, Copy, Loader2, Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator,
 } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -27,19 +27,21 @@ import { useAuth } from "@/lib/auth";
 import {
   listUsers, createUser, setUserStatus, setUserRole, deleteUser, updateUser, resetUserPassword,
 } from "@/lib/users.functions";
+import { listRoles } from "@/lib/roles.functions";
 
 export const Route = createFileRoute("/_app/users/")({
   component: UsersPage,
 });
 
-const ROLES = [
-  { value: "admin", label: "Admin", cls: "bg-violet-500/15 text-violet-700 dark:text-violet-300" },
-  { value: "manager", label: "Manager", cls: "bg-blue-500/15 text-blue-700 dark:text-blue-300" },
-  { value: "commercial", label: "Commercial", cls: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300" },
-  { value: "warehouse", label: "Magasinier", cls: "bg-teal-500/15 text-teal-700 dark:text-teal-300" },
-  { value: "accountant", label: "Comptable", cls: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300" },
-  { value: "employee", label: "Employé", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
-];
+const ROLE_COLORS: Record<string, string> = {
+  admin: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  manager: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  commercial: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
+  warehouse: "bg-teal-500/15 text-teal-700 dark:text-teal-300",
+  accountant: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300",
+  employee: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+};
+function roleColor(key: string) { return ROLE_COLORS[key] ?? "bg-slate-500/15 text-slate-700 dark:text-slate-300"; }
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   active: { label: "Actif", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
@@ -83,6 +85,16 @@ function UsersPage() {
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["users"], queryFn: () => listFn(), enabled: isAdmin,
   });
+
+  const rolesFn = useServerFn(listRoles);
+  const { data: rolesList = [] } = useQuery({
+    queryKey: ["roles"], queryFn: () => rolesFn(), enabled: isAdmin,
+  });
+  const roleByKey = useMemo(() => {
+    const m = new Map<string, { key: string; label: string; is_system: boolean }>();
+    (rolesList as any[]).forEach((r) => m.set(r.key, r));
+    return m;
+  }, [rolesList]);
 
   // permissions catalog for summary
   const { data: catalog = [] } = useQuery({
@@ -222,7 +234,7 @@ function UsersPage() {
                 <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous les rôles</SelectItem>
-                  {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                  {(rolesList as any[]).map((r) => <SelectItem key={r.key} value={r.key}>{r.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -267,7 +279,7 @@ function UsersPage() {
                   <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">Aucun utilisateur</TableCell></TableRow>
                 ) : filtered.map((u: any) => {
                   const status = STATUS_BADGE[u.status] ?? STATUS_BADGE.active;
-                  const role = ROLES.find((r) => r.value === u.role);
+                  const role = roleByKey.get(u.role);
                   return (
                     <TableRow key={u.id}>
                       <TableCell>
@@ -280,7 +292,7 @@ function UsersPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{u.email || "—"}</TableCell>
-                      <TableCell><Badge className={role?.cls}>{role?.label ?? u.role}</Badge></TableCell>
+                      <TableCell><Badge className={roleColor(u.role)}>{role?.label ?? u.role}</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground">{permSummary(u.role)}</TableCell>
                       <TableCell><Badge className={status.cls}>{status.label}</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground">{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "Jamais"}</TableCell>
@@ -354,7 +366,17 @@ function UsersPage() {
                 <Field label="Rôle">
                   <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
                     <SelectTrigger><SelectValue placeholder="Sélectionnez un rôle" /></SelectTrigger>
-                    <SelectContent>{ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                      {(rolesList as any[]).map((r) => <SelectItem key={r.key} value={r.key}>{r.label}</SelectItem>)}
+                      <SelectSeparator />
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-primary hover:bg-accent"
+                        onClick={(e) => { e.preventDefault(); nav({ to: "/roles" }); }}
+                      >
+                        <Plus className="h-4 w-4" /> Ajouter un nouveau rôle
+                      </button>
+                    </SelectContent>
                   </Select>
                 </Field>
                 <div className="space-y-2">

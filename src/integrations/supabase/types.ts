@@ -725,6 +725,30 @@ export type Database = {
           },
         ]
       }
+      roles: {
+        Row: {
+          created_at: string
+          is_system: boolean
+          key: string
+          label: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          is_system?: boolean
+          key: string
+          label: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          is_system?: boolean
+          key?: string
+          label?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sale_items: {
         Row: {
           created_at: string
@@ -1022,18 +1046,21 @@ export type Database = {
           created_at: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
+          role_key: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           role: Database["public"]["Enums"]["app_role"]
+          role_key?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          role_key?: string | null
           user_id?: string
         }
         Relationships: []
@@ -1079,6 +1106,14 @@ export type Database = {
       generate_invoice_number: { Args: never; Returns: string }
       generate_order_number: { Args: never; Returns: string }
       generate_sale_number: { Args: never; Returns: string }
+      get_user_permissions: {
+        Args: { _user_id: string }
+        Returns: {
+          action: string
+          allowed: boolean
+          module: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

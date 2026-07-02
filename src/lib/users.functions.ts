@@ -7,7 +7,7 @@ type CreateInput = {
   username?: string;
   phone?: string;
   department?: string;
-  role: "admin" | "manager" | "commercial" | "warehouse" | "accountant" | "employee";
+  role: string;
   password: string;
 };
 
@@ -27,11 +27,11 @@ export const listUsers = createServerFn({ method: "GET" })
       .select("id, full_name, username, phone, avatar_url, department, status, last_login_at, created_at");
     if (pErr) throw pErr;
 
-    const { data: roles } = await supabaseAdmin.from("user_roles").select("user_id, role");
+    const { data: roles } = await supabaseAdmin.from("user_roles").select("user_id, role, role_key");
     const { data: usersResp } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
     const authMap = new Map(usersResp.users.map((u) => [u.id, u]));
     const roleMap = new Map<string, string>();
-    (roles ?? []).forEach((r: any) => roleMap.set(r.user_id, r.role));
+    (roles ?? []).forEach((r: any) => roleMap.set(r.user_id, r.role_key ?? r.role));
 
     return (profiles ?? []).map((p: any) => {
       const auth = authMap.get(p.id);
@@ -69,7 +69,8 @@ export const createUser = createServerFn({ method: "POST" })
     }).eq("id", uid);
 
     await supabaseAdmin.from("user_roles").delete().eq("user_id", uid);
-    await supabaseAdmin.from("user_roles").insert({ user_id: uid, role: data.role });
+    const enumRole = ["admin","manager","commercial","warehouse","accountant","employee"].includes(data.role) ? data.role : "employee";
+    await supabaseAdmin.from("user_roles").insert({ user_id: uid, role: enumRole as any, role_key: data.role });
 
     await supabaseAdmin.from("audit_logs").insert({
       user_id: context.userId, action: "create_user", module: "users",
@@ -111,15 +112,18 @@ export const setUserStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const ENUM_ROLES = new Set(["admin", "manager", "commercial", "warehouse", "accountant", "employee"]);
+
 export const setUserRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { user_id: string; role: string }) => d)
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: old } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.user_id).maybeSingle();
+    const { data: old } = await supabaseAdmin.from("user_roles").select("role, role_key").eq("user_id", data.user_id).maybeSingle();
+    const enumRole = ENUM_ROLES.has(data.role) ? data.role : "employee";
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id);
-    await supabaseAdmin.from("user_roles").insert({ user_id: data.user_id, role: data.role as any });
+    await supabaseAdmin.from("user_roles").insert({ user_id: data.user_id, role: enumRole as any, role_key: data.role });
     await supabaseAdmin.from("audit_logs").insert({
       user_id: context.userId, action: "change_role", module: "users",
       entity_id: data.user_id, old_value: old, new_value: { role: data.role },
