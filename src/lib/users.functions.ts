@@ -7,7 +7,7 @@ type CreateInput = {
   username?: string;
   phone?: string;
   department?: string;
-  role: "admin" | "manager" | "commercial" | "warehouse" | "accountant" | "employee";
+  role: string;
   password: string;
 };
 
