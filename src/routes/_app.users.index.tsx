@@ -86,6 +86,16 @@ function UsersPage() {
     queryKey: ["users"], queryFn: () => listFn(), enabled: isAdmin,
   });
 
+  const rolesFn = useServerFn(listRoles);
+  const { data: rolesList = [] } = useQuery({
+    queryKey: ["roles"], queryFn: () => rolesFn(), enabled: isAdmin,
+  });
+  const roleByKey = useMemo(() => {
+    const m = new Map<string, { key: string; label: string; is_system: boolean }>();
+    (rolesList as any[]).forEach((r) => m.set(r.key, r));
+    return m;
+  }, [rolesList]);
+
   // permissions catalog for summary
   const { data: catalog = [] } = useQuery({
     queryKey: ["perm_catalog"],
