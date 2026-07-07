@@ -188,6 +188,15 @@ function WarehousesPage() {
                     <Input value={form.manager} onChange={(e) => setForm({ ...form, manager: e.target.value })} />
                   </Field>
                   <div className="sm:col-span-2">
+                    <Field label="Marchandises">
+                      <Input
+                        value={form.merchandise}
+                        onChange={(e) => setForm({ ...form, merchandise: e.target.value })}
+                        placeholder="Ex : Électroménager Bosch, Caissons, Machines Teka, Panneaux, Accessoires"
+                      />
+                    </Field>
+                  </div>
+                  <div className="sm:col-span-2">
                     <Field label="Adresse">
                       <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
                     </Field>
