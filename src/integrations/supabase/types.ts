@@ -1497,6 +1497,7 @@ export type Database = {
           id: string
           is_active: boolean
           manager: string | null
+          merchandise: string | null
           name: string
           updated_at: string
         }
@@ -1507,6 +1508,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           manager?: string | null
+          merchandise?: string | null
           name: string
           updated_at?: string
         }
@@ -1517,6 +1519,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           manager?: string | null
+          merchandise?: string | null
           name?: string
           updated_at?: string
         }

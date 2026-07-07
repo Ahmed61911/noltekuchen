@@ -1,0 +1,1 @@
+ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS merchandise text;
