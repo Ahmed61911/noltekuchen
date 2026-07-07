@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_app/warehouses")({
 type Warehouse = {
   id: string;
   name: string;
+  merchandise: string | null;
   description: string | null;
   address: string | null;
   manager: string | null;
@@ -36,13 +37,14 @@ type Warehouse = {
 
 type FormState = {
   name: string;
+  merchandise: string;
   description: string;
   address: string;
   manager: string;
   is_active: boolean;
 };
 
-const empty: FormState = { name: "", description: "", address: "", manager: "", is_active: true };
+const empty: FormState = { name: "", merchandise: "", description: "", address: "", manager: "", is_active: true };
 
 function WarehousesPage() {
   const { isAdmin } = useAuth();
@@ -68,12 +70,14 @@ function WarehousesPage() {
     mutationFn: async (p: FormState & { id?: string }) => {
       const payload = {
         name: p.name.trim(),
+        merchandise: p.merchandise.trim() || null,
         description: p.description.trim() || null,
         address: p.address.trim() || null,
         manager: p.manager.trim() || null,
         is_active: p.is_active,
       };
       if (!payload.name) throw new Error("Le nom du dépôt est requis");
+      if (!payload.merchandise) throw new Error("Les marchandises sont requises");
       if (p.id) {
         const { error } = await supabase.from("warehouses").update(payload).eq("id", p.id);
         if (error) throw error;
@@ -136,7 +140,7 @@ function WarehousesPage() {
   const filtered = warehouses.filter((w) => {
     if (!q) return true;
     const s = q.toLowerCase();
-    return [w.name, w.description, w.address, w.manager]
+    return [w.name, w.merchandise, w.description, w.address, w.manager]
       .some((v) => (v ?? "").toLowerCase().includes(s));
   });
 
@@ -144,6 +148,7 @@ function WarehousesPage() {
     setEditing(w);
     setForm({
       name: w.name,
+      merchandise: w.merchandise ?? "",
       description: w.description ?? "",
       address: w.address ?? "",
       manager: w.manager ?? "",
@@ -183,6 +188,15 @@ function WarehousesPage() {
                     <Input value={form.manager} onChange={(e) => setForm({ ...form, manager: e.target.value })} />
                   </Field>
                   <div className="sm:col-span-2">
+                    <Field label="Marchandises">
+                      <Input
+                        value={form.merchandise}
+                        onChange={(e) => setForm({ ...form, merchandise: e.target.value })}
+                        placeholder="Ex : Électroménager Bosch, Caissons, Machines Teka, Panneaux, Accessoires"
+                      />
+                    </Field>
+                  </div>
+                  <div className="sm:col-span-2">
                     <Field label="Adresse">
                       <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
                     </Field>
@@ -218,6 +232,7 @@ function WarehousesPage() {
             <TableRow>
               <TableHead className="w-12"></TableHead>
               <TableHead>Nom</TableHead>
+              <TableHead>Marchandises</TableHead>
               <TableHead>Responsable</TableHead>
               <TableHead>Adresse</TableHead>
               <TableHead>Statut</TableHead>
@@ -226,9 +241,9 @@ function WarehousesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">Chargement…</TableCell></TableRow>}
+            {isLoading && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">Chargement…</TableCell></TableRow>}
             {!isLoading && filtered.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">Aucun dépôt</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">Aucun dépôt</TableCell></TableRow>
             )}
             {filtered.map((w) => (
               <TableRow key={w.id}>
@@ -237,6 +252,7 @@ function WarehousesPage() {
                   <div className="font-medium">{w.name}</div>
                   {w.description && <div className="text-xs text-muted-foreground line-clamp-1">{w.description}</div>}
                 </TableCell>
+                <TableCell className="text-sm">{w.merchandise ?? "—"}</TableCell>
                 <TableCell>{w.manager ?? "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{w.address ?? "—"}</TableCell>
                 <TableCell>
