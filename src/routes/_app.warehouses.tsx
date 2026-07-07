@@ -140,7 +140,7 @@ function WarehousesPage() {
   const filtered = warehouses.filter((w) => {
     if (!q) return true;
     const s = q.toLowerCase();
-    return [w.name, w.description, w.address, w.manager]
+    return [w.name, w.merchandise, w.description, w.address, w.manager]
       .some((v) => (v ?? "").toLowerCase().includes(s));
   });
 
@@ -148,6 +148,7 @@ function WarehousesPage() {
     setEditing(w);
     setForm({
       name: w.name,
+      merchandise: w.merchandise ?? "",
       description: w.description ?? "",
       address: w.address ?? "",
       manager: w.manager ?? "",
