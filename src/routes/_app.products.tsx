@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { logAction } from "@/lib/audit-log";
+import { StockHistoryButton } from "@/components/stock-history-dialog";
 
 export const Route = createFileRoute("/_app/products")({
   component: ProductsPage,
@@ -347,6 +348,7 @@ function ProductsPage() {
                   </TableCell>
                   {isAdmin && (
                     <TableCell className="text-right">
+                      <StockHistoryButton productId={p.id} productName={p.name} />
                       <Button variant="ghost" size="icon" onClick={() => startEdit(p)}><Pencil className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" onClick={() => { if (confirm(t("confirm_delete"))) remove.mutate(p.id); }}>
                         <Trash2 className="h-4 w-4 text-destructive" />
