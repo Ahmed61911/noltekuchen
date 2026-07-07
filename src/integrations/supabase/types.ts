@@ -696,6 +696,411 @@ export type Database = {
         }
         Relationships: []
       }
+      project_activity: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          project_id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          project_id: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          project_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_activity_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_attachments: {
+        Row: {
+          created_at: string
+          file_name: string | null
+          file_url: string
+          id: string
+          kind: string
+          project_id: string
+          stage_key: Database["public"]["Enums"]["project_stage_key"] | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name?: string | null
+          file_url: string
+          id?: string
+          kind?: string
+          project_id: string
+          stage_key?: Database["public"]["Enums"]["project_stage_key"] | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string | null
+          file_url?: string
+          id?: string
+          kind?: string
+          project_id?: string
+          stage_key?: Database["public"]["Enums"]["project_stage_key"] | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_attachments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_stages: {
+        Row: {
+          actual_date: string | null
+          comment: string | null
+          completed: boolean
+          created_at: string
+          id: string
+          order_index: number
+          planned_date: string | null
+          project_id: string
+          responsible_id: string | null
+          stage_key: Database["public"]["Enums"]["project_stage_key"]
+          updated_at: string
+        }
+        Insert: {
+          actual_date?: string | null
+          comment?: string | null
+          completed?: boolean
+          created_at?: string
+          id?: string
+          order_index?: number
+          planned_date?: string | null
+          project_id: string
+          responsible_id?: string | null
+          stage_key: Database["public"]["Enums"]["project_stage_key"]
+          updated_at?: string
+        }
+        Update: {
+          actual_date?: string | null
+          comment?: string | null
+          completed?: boolean
+          created_at?: string
+          id?: string
+          order_index?: number
+          planned_date?: string | null
+          project_id?: string
+          responsible_id?: string | null
+          stage_key?: Database["public"]["Enums"]["project_stage_key"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_stages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          budget: number | null
+          commercial_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          expected_end_date: string | null
+          id: string
+          install_address: string | null
+          name: string
+          notes: string | null
+          progress: number
+          start_date: string | null
+          status: Database["public"]["Enums"]["project_status"]
+          updated_at: string
+        }
+        Insert: {
+          budget?: number | null
+          commercial_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          expected_end_date?: string | null
+          id?: string
+          install_address?: string | null
+          name: string
+          notes?: string | null
+          progress?: number
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          updated_at?: string
+        }
+        Update: {
+          budget?: number | null
+          commercial_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          expected_end_date?: string | null
+          id?: string
+          install_address?: string | null
+          name?: string
+          notes?: string | null
+          progress?: number
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_order_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          product_id: string | null
+          purchase_order_id: string
+          quantity: number
+          total: number
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          product_id?: string | null
+          purchase_order_id: string
+          quantity?: number
+          total?: number
+          unit_cost?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          product_id?: string | null
+          purchase_order_id?: string
+          quantity?: number
+          total?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expected_date: string | null
+          id: string
+          notes: string | null
+          order_date: string
+          po_number: string
+          received_date: string | null
+          status: Database["public"]["Enums"]["purchase_order_status"]
+          stock_applied: boolean
+          supplier_id: string | null
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expected_date?: string | null
+          id?: string
+          notes?: string | null
+          order_date?: string
+          po_number?: string
+          received_date?: string | null
+          status?: Database["public"]["Enums"]["purchase_order_status"]
+          stock_applied?: boolean
+          supplier_id?: string | null
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expected_date?: string | null
+          id?: string
+          notes?: string | null
+          order_date?: string
+          po_number?: string
+          received_date?: string | null
+          status?: Database["public"]["Enums"]["purchase_order_status"]
+          stock_applied?: boolean
+          supplier_id?: string | null
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          discount: number
+          id: string
+          product_id: string | null
+          quantity: number
+          quote_id: string
+          tax_rate: number
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          discount?: number
+          id?: string
+          product_id?: string | null
+          quantity?: number
+          quote_id: string
+          tax_rate?: number
+          total?: number
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          discount?: number
+          id?: string
+          product_id?: string | null
+          quantity?: number
+          quote_id?: string
+          tax_rate?: number
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotes: {
+        Row: {
+          commercial_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          discount: number
+          expiry_date: string | null
+          id: string
+          notes: string | null
+          quote_date: string
+          quote_number: string
+          status: Database["public"]["Enums"]["quote_status"]
+          subtotal_ht: number
+          tax: number
+          total_ttc: number
+          updated_at: string
+        }
+        Insert: {
+          commercial_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          discount?: number
+          expiry_date?: string | null
+          id?: string
+          notes?: string | null
+          quote_date?: string
+          quote_number?: string
+          status?: Database["public"]["Enums"]["quote_status"]
+          subtotal_ht?: number
+          tax?: number
+          total_ttc?: number
+          updated_at?: string
+        }
+        Update: {
+          commercial_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          discount?: number
+          expiry_date?: string | null
+          id?: string
+          notes?: string | null
+          quote_date?: string
+          quote_number?: string
+          status?: Database["public"]["Enums"]["quote_status"]
+          subtotal_ht?: number
+          tax?: number
+          total_ttc?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           created_at: string
@@ -938,30 +1343,42 @@ export type Database = {
       stock_movements: {
         Row: {
           created_at: string
+          document_ref: string | null
           id: string
           product_id: string
           quantity: number
           reason: string | null
+          stock_after: number | null
+          stock_before: number | null
           type: Database["public"]["Enums"]["movement_type"]
           user_id: string | null
+          warehouse_id: string | null
         }
         Insert: {
           created_at?: string
+          document_ref?: string | null
           id?: string
           product_id: string
           quantity: number
           reason?: string | null
+          stock_after?: number | null
+          stock_before?: number | null
           type: Database["public"]["Enums"]["movement_type"]
           user_id?: string | null
+          warehouse_id?: string | null
         }
         Update: {
           created_at?: string
+          document_ref?: string | null
           id?: string
           product_id?: string
           quantity?: number
           reason?: string | null
+          stock_after?: number | null
+          stock_before?: number | null
           type?: Database["public"]["Enums"]["movement_type"]
           user_id?: string | null
+          warehouse_id?: string | null
         }
         Relationships: [
           {
@@ -969,6 +1386,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]
@@ -1105,6 +1529,8 @@ export type Database = {
     Functions: {
       generate_invoice_number: { Args: never; Returns: string }
       generate_order_number: { Args: never; Returns: string }
+      generate_purchase_order_number: { Args: never; Returns: string }
+      generate_quote_number: { Args: never; Returns: string }
       generate_sale_number: { Args: never; Returns: string }
       get_user_permissions: {
         Args: { _user_id: string }
@@ -1149,10 +1575,38 @@ export type Database = {
         | "photos"
         | "autres"
       invoice_status: "draft" | "pending" | "paid" | "cancelled"
-      movement_type: "in" | "out"
+      movement_type:
+        | "in"
+        | "out"
+        | "sale"
+        | "purchase"
+        | "customer_return"
+        | "supplier_return"
+        | "inventory"
+        | "transfer"
       order_status: "pending" | "validated" | "delivered" | "cancelled"
       payment_method: "cash" | "card" | "transfer" | "check" | "credit"
       payment_status: "unpaid" | "partial" | "paid"
+      project_stage_key:
+        | "design"
+        | "client_validation"
+        | "supplier_order"
+        | "goods_reception"
+        | "preparation"
+        | "delivery"
+        | "installation"
+        | "quality_check"
+        | "completed"
+      project_status: "active" | "on_hold" | "completed" | "cancelled"
+      purchase_order_status:
+        | "draft"
+        | "sent"
+        | "confirmed"
+        | "preparing"
+        | "shipped"
+        | "received"
+        | "cancelled"
+      quote_status: "draft" | "sent" | "accepted" | "refused" | "expired"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1305,10 +1759,41 @@ export const Constants = {
         "autres",
       ],
       invoice_status: ["draft", "pending", "paid", "cancelled"],
-      movement_type: ["in", "out"],
+      movement_type: [
+        "in",
+        "out",
+        "sale",
+        "purchase",
+        "customer_return",
+        "supplier_return",
+        "inventory",
+        "transfer",
+      ],
       order_status: ["pending", "validated", "delivered", "cancelled"],
       payment_method: ["cash", "card", "transfer", "check", "credit"],
       payment_status: ["unpaid", "partial", "paid"],
+      project_stage_key: [
+        "design",
+        "client_validation",
+        "supplier_order",
+        "goods_reception",
+        "preparation",
+        "delivery",
+        "installation",
+        "quality_check",
+        "completed",
+      ],
+      project_status: ["active", "on_hold", "completed", "cancelled"],
+      purchase_order_status: [
+        "draft",
+        "sent",
+        "confirmed",
+        "preparing",
+        "shipped",
+        "received",
+        "cancelled",
+      ],
+      quote_status: ["draft", "sent", "accepted", "refused", "expired"],
     },
   },
 } as const
