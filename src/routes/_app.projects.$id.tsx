@@ -60,13 +60,14 @@ function ProjectDetail() {
   });
 
   const updateStage = useMutation({
-    mutationFn: async (s: Partial<Stage> & { id: string }) => {
-      const { error } = await supabase.from("project_stages").update(s).eq("id", s.id);
+    mutationFn: async (s: { id: string; completed?: boolean; comment?: string | null; planned_date?: string | null; actual_date?: string | null }) => {
+      const { id: sid, ...patch } = s;
+      const { error } = await supabase.from("project_stages").update(patch).eq("id", sid);
       if (error) throw error;
       await supabase.from("project_activity").insert({
         project_id: id, user_id: user?.id ?? null,
         action: "stage_update",
-        details: { stage: s.id, patch: s },
+        details: { stage: sid, patch } as unknown as never,
       });
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["project", id] }); },

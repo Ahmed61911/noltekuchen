@@ -243,27 +243,33 @@ function QuotesPage() {
       if (e2) throw e2;
       const { data: order, error: e3 } = await supabase.from("orders").insert({
         customer_id: src.customer_id,
-        total_ht: src.subtotal_ht,
-        tax_amount: src.tax,
-        total_ttc: src.total_ttc,
+        due_date: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+        subtotal_ht: Number(src.subtotal_ht),
+        tax_amount: Number(src.tax),
+        total_ttc: Number(src.total_ttc),
         status: "pending",
         notes: `Issu du devis ${src.quote_number}`,
         created_by: user?.id ?? null,
       }).select("id, order_number").single();
       if (e3) throw e3;
       if (items?.length) {
-        const rows = items.map(l => ({
-          order_id: order.id,
-          product_id: l.product_id,
-          description: l.description,
-          quantity: l.quantity,
-          unit_price: l.unit_price,
-          tax_rate: l.tax_rate,
-          discount_rate: 0,
-          line_total_ht: Number(l.total) / (1 + Number(l.tax_rate) / 100),
-          line_tax: Number(l.total) - Number(l.total) / (1 + Number(l.tax_rate) / 100),
-          line_total_ttc: l.total,
-        }));
+        const rows = items.map(l => {
+          const totalTtc = Number(l.total);
+          const rate = Number(l.tax_rate);
+          const ht = totalTtc / (1 + rate / 100);
+          return {
+            order_id: order.id,
+            product_id: l.product_id,
+            description: l.description ?? "",
+            quantity: Number(l.quantity),
+            unit_price: Number(l.unit_price),
+            tax_rate: rate,
+            discount_rate: 0,
+            line_total_ht: ht,
+            line_tax: totalTtc - ht,
+            line_total_ttc: totalTtc,
+          };
+        });
         const { error: e4 } = await supabase.from("order_items").insert(rows);
         if (e4) throw e4;
       }
