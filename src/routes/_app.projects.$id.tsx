@@ -80,7 +80,7 @@ function ProjectDetail() {
     if (upErr) { toast.error(upErr.message); return; }
     const { data: signed } = await supabase.storage.from("documents").createSignedUrl(path, 60 * 60 * 24 * 365);
     const { error } = await supabase.from("project_attachments").insert({
-      project_id: id, stage_key, kind,
+      project_id: id, stage_key: stage_key as never, kind,
       file_url: signed?.signedUrl ?? path, file_name: file.name, uploaded_by: user?.id ?? null,
     });
     if (error) { toast.error(error.message); return; }
