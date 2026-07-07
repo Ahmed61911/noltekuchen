@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_app/warehouses")({
 type Warehouse = {
   id: string;
   name: string;
+  merchandise: string | null;
   description: string | null;
   address: string | null;
   manager: string | null;
@@ -36,13 +37,14 @@ type Warehouse = {
 
 type FormState = {
   name: string;
+  merchandise: string;
   description: string;
   address: string;
   manager: string;
   is_active: boolean;
 };
 
-const empty: FormState = { name: "", description: "", address: "", manager: "", is_active: true };
+const empty: FormState = { name: "", merchandise: "", description: "", address: "", manager: "", is_active: true };
 
 function WarehousesPage() {
   const { isAdmin } = useAuth();
