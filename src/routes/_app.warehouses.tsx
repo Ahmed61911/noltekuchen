@@ -70,12 +70,14 @@ function WarehousesPage() {
     mutationFn: async (p: FormState & { id?: string }) => {
       const payload = {
         name: p.name.trim(),
+        merchandise: p.merchandise.trim() || null,
         description: p.description.trim() || null,
         address: p.address.trim() || null,
         manager: p.manager.trim() || null,
         is_active: p.is_active,
       };
       if (!payload.name) throw new Error("Le nom du dépôt est requis");
+      if (!payload.merchandise) throw new Error("Les marchandises sont requises");
       if (p.id) {
         const { error } = await supabase.from("warehouses").update(payload).eq("id", p.id);
         if (error) throw error;
