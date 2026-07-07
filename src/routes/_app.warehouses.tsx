@@ -232,6 +232,7 @@ function WarehousesPage() {
             <TableRow>
               <TableHead className="w-12"></TableHead>
               <TableHead>Nom</TableHead>
+              <TableHead>Marchandises</TableHead>
               <TableHead>Responsable</TableHead>
               <TableHead>Adresse</TableHead>
               <TableHead>Statut</TableHead>
@@ -240,9 +241,9 @@ function WarehousesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">Chargement…</TableCell></TableRow>}
+            {isLoading && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">Chargement…</TableCell></TableRow>}
             {!isLoading && filtered.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">Aucun dépôt</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">Aucun dépôt</TableCell></TableRow>
             )}
             {filtered.map((w) => (
               <TableRow key={w.id}>
@@ -251,6 +252,7 @@ function WarehousesPage() {
                   <div className="font-medium">{w.name}</div>
                   {w.description && <div className="text-xs text-muted-foreground line-clamp-1">{w.description}</div>}
                 </TableCell>
+                <TableCell className="text-sm">{w.merchandise ?? "—"}</TableCell>
                 <TableCell>{w.manager ?? "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{w.address ?? "—"}</TableCell>
                 <TableCell>
