@@ -34,7 +34,7 @@ export function AppSidebar() {
   ].filter((it) => !it.module || can(it.module, "view"));
   const ops = [
     { to: "/projects", icon: Kanban, label: "Projets", module: "projects" },
-    { to: "/purchase-orders", icon: PackageCheck, label: "Commandes fournisseurs", module: "purchase_orders" },
+    
     { to: "/suppliers", icon: Truck, label: t("suppliers"), module: "suppliers" },
     { to: "/customers", icon: UserSquare, label: "Clients", module: "customers" },
     { to: "/warehouses", icon: Warehouse, label: "Dépôts", module: "stock" },

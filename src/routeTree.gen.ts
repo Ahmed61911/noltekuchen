@@ -28,14 +28,12 @@ import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
 import { Route as AppUsersIndexRouteImport } from './routes/_app.users.index'
 import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
 import { Route as AppQuotesIndexRouteImport } from './routes/_app.quotes.index'
-import { Route as AppPurchaseOrdersIndexRouteImport } from './routes/_app.purchase-orders.index'
 import { Route as AppProjectsIndexRouteImport } from './routes/_app.projects.index'
 import { Route as AppOrdersIndexRouteImport } from './routes/_app.orders.index'
 import { Route as AppInvoicesIndexRouteImport } from './routes/_app.invoices.index'
 import { Route as AppUsersIdRouteImport } from './routes/_app.users.$id'
 import { Route as AppSalesIdRouteImport } from './routes/_app.sales.$id'
 import { Route as AppQuotesIdRouteImport } from './routes/_app.quotes.$id'
-import { Route as AppPurchaseOrdersIdRouteImport } from './routes/_app.purchase-orders.$id'
 import { Route as AppProjectsIdRouteImport } from './routes/_app.projects.$id'
 import { Route as AppOrdersIdRouteImport } from './routes/_app.orders.$id'
 import { Route as AppInvoicesIdRouteImport } from './routes/_app.invoices.$id'
@@ -134,11 +132,6 @@ const AppQuotesIndexRoute = AppQuotesIndexRouteImport.update({
   path: '/quotes/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppPurchaseOrdersIndexRoute = AppPurchaseOrdersIndexRouteImport.update({
-  id: '/purchase-orders/',
-  path: '/purchase-orders/',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppProjectsIndexRoute = AppProjectsIndexRouteImport.update({
   id: '/projects/',
   path: '/projects/',
@@ -167,11 +160,6 @@ const AppSalesIdRoute = AppSalesIdRouteImport.update({
 const AppQuotesIdRoute = AppQuotesIdRouteImport.update({
   id: '/quotes/$id',
   path: '/quotes/$id',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPurchaseOrdersIdRoute = AppPurchaseOrdersIdRouteImport.update({
-  id: '/purchase-orders/$id',
-  path: '/purchase-orders/$id',
   getParentRoute: () => AppRoute,
 } as any)
 const AppProjectsIdRoute = AppProjectsIdRouteImport.update({
@@ -209,14 +197,12 @@ export interface FileRoutesByFullPath {
   '/invoices/$id': typeof AppInvoicesIdRoute
   '/orders/$id': typeof AppOrdersIdRoute
   '/projects/$id': typeof AppProjectsIdRoute
-  '/purchase-orders/$id': typeof AppPurchaseOrdersIdRoute
   '/quotes/$id': typeof AppQuotesIdRoute
   '/sales/$id': typeof AppSalesIdRoute
   '/users/$id': typeof AppUsersIdRoute
   '/invoices/': typeof AppInvoicesIndexRoute
   '/orders/': typeof AppOrdersIndexRoute
   '/projects/': typeof AppProjectsIndexRoute
-  '/purchase-orders/': typeof AppPurchaseOrdersIndexRoute
   '/quotes/': typeof AppQuotesIndexRoute
   '/sales/': typeof AppSalesIndexRoute
   '/users/': typeof AppUsersIndexRoute
@@ -240,14 +226,12 @@ export interface FileRoutesByTo {
   '/invoices/$id': typeof AppInvoicesIdRoute
   '/orders/$id': typeof AppOrdersIdRoute
   '/projects/$id': typeof AppProjectsIdRoute
-  '/purchase-orders/$id': typeof AppPurchaseOrdersIdRoute
   '/quotes/$id': typeof AppQuotesIdRoute
   '/sales/$id': typeof AppSalesIdRoute
   '/users/$id': typeof AppUsersIdRoute
   '/invoices': typeof AppInvoicesIndexRoute
   '/orders': typeof AppOrdersIndexRoute
   '/projects': typeof AppProjectsIndexRoute
-  '/purchase-orders': typeof AppPurchaseOrdersIndexRoute
   '/quotes': typeof AppQuotesIndexRoute
   '/sales': typeof AppSalesIndexRoute
   '/users': typeof AppUsersIndexRoute
@@ -273,14 +257,12 @@ export interface FileRoutesById {
   '/_app/invoices/$id': typeof AppInvoicesIdRoute
   '/_app/orders/$id': typeof AppOrdersIdRoute
   '/_app/projects/$id': typeof AppProjectsIdRoute
-  '/_app/purchase-orders/$id': typeof AppPurchaseOrdersIdRoute
   '/_app/quotes/$id': typeof AppQuotesIdRoute
   '/_app/sales/$id': typeof AppSalesIdRoute
   '/_app/users/$id': typeof AppUsersIdRoute
   '/_app/invoices/': typeof AppInvoicesIndexRoute
   '/_app/orders/': typeof AppOrdersIndexRoute
   '/_app/projects/': typeof AppProjectsIndexRoute
-  '/_app/purchase-orders/': typeof AppPurchaseOrdersIndexRoute
   '/_app/quotes/': typeof AppQuotesIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
   '/_app/users/': typeof AppUsersIndexRoute
@@ -306,14 +288,12 @@ export interface FileRouteTypes {
     | '/invoices/$id'
     | '/orders/$id'
     | '/projects/$id'
-    | '/purchase-orders/$id'
     | '/quotes/$id'
     | '/sales/$id'
     | '/users/$id'
     | '/invoices/'
     | '/orders/'
     | '/projects/'
-    | '/purchase-orders/'
     | '/quotes/'
     | '/sales/'
     | '/users/'
@@ -337,14 +317,12 @@ export interface FileRouteTypes {
     | '/invoices/$id'
     | '/orders/$id'
     | '/projects/$id'
-    | '/purchase-orders/$id'
     | '/quotes/$id'
     | '/sales/$id'
     | '/users/$id'
     | '/invoices'
     | '/orders'
     | '/projects'
-    | '/purchase-orders'
     | '/quotes'
     | '/sales'
     | '/users'
@@ -369,14 +347,12 @@ export interface FileRouteTypes {
     | '/_app/invoices/$id'
     | '/_app/orders/$id'
     | '/_app/projects/$id'
-    | '/_app/purchase-orders/$id'
     | '/_app/quotes/$id'
     | '/_app/sales/$id'
     | '/_app/users/$id'
     | '/_app/invoices/'
     | '/_app/orders/'
     | '/_app/projects/'
-    | '/_app/purchase-orders/'
     | '/_app/quotes/'
     | '/_app/sales/'
     | '/_app/users/'
@@ -524,13 +500,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppQuotesIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/purchase-orders/': {
-      id: '/_app/purchase-orders/'
-      path: '/purchase-orders'
-      fullPath: '/purchase-orders/'
-      preLoaderRoute: typeof AppPurchaseOrdersIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/projects/': {
       id: '/_app/projects/'
       path: '/projects'
@@ -573,13 +542,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppQuotesIdRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/purchase-orders/$id': {
-      id: '/_app/purchase-orders/$id'
-      path: '/purchase-orders/$id'
-      fullPath: '/purchase-orders/$id'
-      preLoaderRoute: typeof AppPurchaseOrdersIdRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/projects/$id': {
       id: '/_app/projects/$id'
       path: '/projects/$id'
@@ -620,14 +582,12 @@ interface AppRouteChildren {
   AppInvoicesIdRoute: typeof AppInvoicesIdRoute
   AppOrdersIdRoute: typeof AppOrdersIdRoute
   AppProjectsIdRoute: typeof AppProjectsIdRoute
-  AppPurchaseOrdersIdRoute: typeof AppPurchaseOrdersIdRoute
   AppQuotesIdRoute: typeof AppQuotesIdRoute
   AppSalesIdRoute: typeof AppSalesIdRoute
   AppUsersIdRoute: typeof AppUsersIdRoute
   AppInvoicesIndexRoute: typeof AppInvoicesIndexRoute
   AppOrdersIndexRoute: typeof AppOrdersIndexRoute
   AppProjectsIndexRoute: typeof AppProjectsIndexRoute
-  AppPurchaseOrdersIndexRoute: typeof AppPurchaseOrdersIndexRoute
   AppQuotesIndexRoute: typeof AppQuotesIndexRoute
   AppSalesIndexRoute: typeof AppSalesIndexRoute
   AppUsersIndexRoute: typeof AppUsersIndexRoute
@@ -649,14 +609,12 @@ const AppRouteChildren: AppRouteChildren = {
   AppInvoicesIdRoute: AppInvoicesIdRoute,
   AppOrdersIdRoute: AppOrdersIdRoute,
   AppProjectsIdRoute: AppProjectsIdRoute,
-  AppPurchaseOrdersIdRoute: AppPurchaseOrdersIdRoute,
   AppQuotesIdRoute: AppQuotesIdRoute,
   AppSalesIdRoute: AppSalesIdRoute,
   AppUsersIdRoute: AppUsersIdRoute,
   AppInvoicesIndexRoute: AppInvoicesIndexRoute,
   AppOrdersIndexRoute: AppOrdersIndexRoute,
   AppProjectsIndexRoute: AppProjectsIndexRoute,
-  AppPurchaseOrdersIndexRoute: AppPurchaseOrdersIndexRoute,
   AppQuotesIndexRoute: AppQuotesIndexRoute,
   AppSalesIndexRoute: AppSalesIndexRoute,
   AppUsersIndexRoute: AppUsersIndexRoute,
