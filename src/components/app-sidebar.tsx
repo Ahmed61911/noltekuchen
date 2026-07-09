@@ -26,7 +26,7 @@ export function AppSidebar() {
     { to: "/", icon: LayoutDashboard, label: t("dashboard"), module: null },
     { to: "/products", icon: Package, label: t("products"), module: "products" },
     { to: "/stock", icon: Boxes, label: t("stock"), module: "stock" },
-    { to: "/quotes", icon: FileSignature, label: "Devis", module: "quotes" },
+    
     { to: "/orders", icon: ClipboardList, label: "Commandes", module: "orders" },
     { to: "/sales", icon: ShoppingCart, label: t("sales"), module: "sales" },
     { to: "/invoices", icon: Receipt, label: "Facturation", module: "sales" },

@@ -27,13 +27,11 @@ import { Route as AppAuditRouteImport } from './routes/_app.audit'
 import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
 import { Route as AppUsersIndexRouteImport } from './routes/_app.users.index'
 import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
-import { Route as AppQuotesIndexRouteImport } from './routes/_app.quotes.index'
 import { Route as AppProjectsIndexRouteImport } from './routes/_app.projects.index'
 import { Route as AppOrdersIndexRouteImport } from './routes/_app.orders.index'
 import { Route as AppInvoicesIndexRouteImport } from './routes/_app.invoices.index'
 import { Route as AppUsersIdRouteImport } from './routes/_app.users.$id'
 import { Route as AppSalesIdRouteImport } from './routes/_app.sales.$id'
-import { Route as AppQuotesIdRouteImport } from './routes/_app.quotes.$id'
 import { Route as AppProjectsIdRouteImport } from './routes/_app.projects.$id'
 import { Route as AppOrdersIdRouteImport } from './routes/_app.orders.$id'
 import { Route as AppInvoicesIdRouteImport } from './routes/_app.invoices.$id'
@@ -127,11 +125,6 @@ const AppSalesIndexRoute = AppSalesIndexRouteImport.update({
   path: '/sales/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppQuotesIndexRoute = AppQuotesIndexRouteImport.update({
-  id: '/quotes/',
-  path: '/quotes/',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppProjectsIndexRoute = AppProjectsIndexRouteImport.update({
   id: '/projects/',
   path: '/projects/',
@@ -155,11 +148,6 @@ const AppUsersIdRoute = AppUsersIdRouteImport.update({
 const AppSalesIdRoute = AppSalesIdRouteImport.update({
   id: '/sales/$id',
   path: '/sales/$id',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppQuotesIdRoute = AppQuotesIdRouteImport.update({
-  id: '/quotes/$id',
-  path: '/quotes/$id',
   getParentRoute: () => AppRoute,
 } as any)
 const AppProjectsIdRoute = AppProjectsIdRouteImport.update({
@@ -197,13 +185,11 @@ export interface FileRoutesByFullPath {
   '/invoices/$id': typeof AppInvoicesIdRoute
   '/orders/$id': typeof AppOrdersIdRoute
   '/projects/$id': typeof AppProjectsIdRoute
-  '/quotes/$id': typeof AppQuotesIdRoute
   '/sales/$id': typeof AppSalesIdRoute
   '/users/$id': typeof AppUsersIdRoute
   '/invoices/': typeof AppInvoicesIndexRoute
   '/orders/': typeof AppOrdersIndexRoute
   '/projects/': typeof AppProjectsIndexRoute
-  '/quotes/': typeof AppQuotesIndexRoute
   '/sales/': typeof AppSalesIndexRoute
   '/users/': typeof AppUsersIndexRoute
 }
@@ -226,13 +212,11 @@ export interface FileRoutesByTo {
   '/invoices/$id': typeof AppInvoicesIdRoute
   '/orders/$id': typeof AppOrdersIdRoute
   '/projects/$id': typeof AppProjectsIdRoute
-  '/quotes/$id': typeof AppQuotesIdRoute
   '/sales/$id': typeof AppSalesIdRoute
   '/users/$id': typeof AppUsersIdRoute
   '/invoices': typeof AppInvoicesIndexRoute
   '/orders': typeof AppOrdersIndexRoute
   '/projects': typeof AppProjectsIndexRoute
-  '/quotes': typeof AppQuotesIndexRoute
   '/sales': typeof AppSalesIndexRoute
   '/users': typeof AppUsersIndexRoute
 }
@@ -257,13 +241,11 @@ export interface FileRoutesById {
   '/_app/invoices/$id': typeof AppInvoicesIdRoute
   '/_app/orders/$id': typeof AppOrdersIdRoute
   '/_app/projects/$id': typeof AppProjectsIdRoute
-  '/_app/quotes/$id': typeof AppQuotesIdRoute
   '/_app/sales/$id': typeof AppSalesIdRoute
   '/_app/users/$id': typeof AppUsersIdRoute
   '/_app/invoices/': typeof AppInvoicesIndexRoute
   '/_app/orders/': typeof AppOrdersIndexRoute
   '/_app/projects/': typeof AppProjectsIndexRoute
-  '/_app/quotes/': typeof AppQuotesIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
   '/_app/users/': typeof AppUsersIndexRoute
 }
@@ -288,13 +270,11 @@ export interface FileRouteTypes {
     | '/invoices/$id'
     | '/orders/$id'
     | '/projects/$id'
-    | '/quotes/$id'
     | '/sales/$id'
     | '/users/$id'
     | '/invoices/'
     | '/orders/'
     | '/projects/'
-    | '/quotes/'
     | '/sales/'
     | '/users/'
   fileRoutesByTo: FileRoutesByTo
@@ -317,13 +297,11 @@ export interface FileRouteTypes {
     | '/invoices/$id'
     | '/orders/$id'
     | '/projects/$id'
-    | '/quotes/$id'
     | '/sales/$id'
     | '/users/$id'
     | '/invoices'
     | '/orders'
     | '/projects'
-    | '/quotes'
     | '/sales'
     | '/users'
   id:
@@ -347,13 +325,11 @@ export interface FileRouteTypes {
     | '/_app/invoices/$id'
     | '/_app/orders/$id'
     | '/_app/projects/$id'
-    | '/_app/quotes/$id'
     | '/_app/sales/$id'
     | '/_app/users/$id'
     | '/_app/invoices/'
     | '/_app/orders/'
     | '/_app/projects/'
-    | '/_app/quotes/'
     | '/_app/sales/'
     | '/_app/users/'
   fileRoutesById: FileRoutesById
@@ -493,13 +469,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/quotes/': {
-      id: '/_app/quotes/'
-      path: '/quotes'
-      fullPath: '/quotes/'
-      preLoaderRoute: typeof AppQuotesIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/projects/': {
       id: '/_app/projects/'
       path: '/projects'
@@ -533,13 +502,6 @@ declare module '@tanstack/react-router' {
       path: '/sales/$id'
       fullPath: '/sales/$id'
       preLoaderRoute: typeof AppSalesIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/quotes/$id': {
-      id: '/_app/quotes/$id'
-      path: '/quotes/$id'
-      fullPath: '/quotes/$id'
-      preLoaderRoute: typeof AppQuotesIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/projects/$id': {
@@ -582,13 +544,11 @@ interface AppRouteChildren {
   AppInvoicesIdRoute: typeof AppInvoicesIdRoute
   AppOrdersIdRoute: typeof AppOrdersIdRoute
   AppProjectsIdRoute: typeof AppProjectsIdRoute
-  AppQuotesIdRoute: typeof AppQuotesIdRoute
   AppSalesIdRoute: typeof AppSalesIdRoute
   AppUsersIdRoute: typeof AppUsersIdRoute
   AppInvoicesIndexRoute: typeof AppInvoicesIndexRoute
   AppOrdersIndexRoute: typeof AppOrdersIndexRoute
   AppProjectsIndexRoute: typeof AppProjectsIndexRoute
-  AppQuotesIndexRoute: typeof AppQuotesIndexRoute
   AppSalesIndexRoute: typeof AppSalesIndexRoute
   AppUsersIndexRoute: typeof AppUsersIndexRoute
 }
@@ -609,13 +569,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppInvoicesIdRoute: AppInvoicesIdRoute,
   AppOrdersIdRoute: AppOrdersIdRoute,
   AppProjectsIdRoute: AppProjectsIdRoute,
-  AppQuotesIdRoute: AppQuotesIdRoute,
   AppSalesIdRoute: AppSalesIdRoute,
   AppUsersIdRoute: AppUsersIdRoute,
   AppInvoicesIndexRoute: AppInvoicesIndexRoute,
   AppOrdersIndexRoute: AppOrdersIndexRoute,
   AppProjectsIndexRoute: AppProjectsIndexRoute,
-  AppQuotesIndexRoute: AppQuotesIndexRoute,
   AppSalesIndexRoute: AppSalesIndexRoute,
   AppUsersIndexRoute: AppUsersIndexRoute,
 }
@@ -631,13 +589,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
