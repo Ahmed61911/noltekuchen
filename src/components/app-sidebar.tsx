@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Package, Boxes, ShoppingCart, Calendar,
   Truck, FileText, BarChart3, History, Users, Settings, Receipt, UserSquare, ClipboardList, ShieldCheck, Warehouse, Shield,
-  FileSignature, Kanban, PackageCheck,
+  Kanban, PackageCheck,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -26,7 +26,7 @@ export function AppSidebar() {
     { to: "/", icon: LayoutDashboard, label: t("dashboard"), module: null },
     { to: "/products", icon: Package, label: t("products"), module: "products" },
     { to: "/stock", icon: Boxes, label: t("stock"), module: "stock" },
-    { to: "/quotes", icon: FileSignature, label: "Devis", module: "quotes" },
+    
     { to: "/orders", icon: ClipboardList, label: "Commandes", module: "orders" },
     { to: "/sales", icon: ShoppingCart, label: t("sales"), module: "sales" },
     { to: "/invoices", icon: Receipt, label: "Facturation", module: "sales" },
