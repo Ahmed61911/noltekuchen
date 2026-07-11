@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
@@ -73,8 +73,8 @@ function LoginPage() {
               </Button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-muted-foreground">
-              {t("no_account")} <Link to="/signup" className="font-medium text-primary hover:underline">{t("sign_up")}</Link>
+            <p className="mt-6 text-center text-xs text-muted-foreground">
+              Les comptes sont créés par un administrateur.
             </p>
           </CardContent>
         </Card>
