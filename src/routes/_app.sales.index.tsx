@@ -118,6 +118,13 @@ function SalesPage() {
       return data as Product[];
     },
   });
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("warehouses").select("id,name").eq("is_active", true).order("name");
+      return (data ?? []) as Warehouse[];
+    },
+  });
 
   const totals = useMemo(() => {
     let ht = 0, tva = 0, ttc = 0;
@@ -126,7 +133,7 @@ function SalesPage() {
   }, [lines]);
 
   const resetForm = () => {
-    setCustomerId(""); setSaleDate(new Date().toISOString().slice(0, 10));
+    setCustomerId(""); setWarehouseId(""); setSaleDate(new Date().toISOString().slice(0, 10));
     setDueDate(""); setMethod("cash"); setPaidAmount(0); setNotes("");
     setLines([emptyLine()]);
   };
@@ -151,8 +158,10 @@ function SalesPage() {
         paid_amount: paid,
         notes: notes || null,
         created_by: user?.id ?? null,
+        warehouse_id: warehouseId || null,
       }).select("id").single();
       if (e1) throw e1;
+
 
       const itemsPayload = validLines.map(l => {
         const c = computeLine(l);
