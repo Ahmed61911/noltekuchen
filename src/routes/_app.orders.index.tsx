@@ -470,11 +470,19 @@ function OrdersPage() {
               {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous dépôts</SelectItem>
+              {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Du" />
           <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Au" />
-          {(q || statusFilter !== "all" || payFilter !== "all" || customerFilter !== "all" || dateFrom || dateTo) && (
-            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStatusFilter("all"); setPayFilter("all"); setCustomerFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
+          {(q || statusFilter !== "all" || payFilter !== "all" || customerFilter !== "all" || warehouseFilter !== "all" || dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStatusFilter("all"); setPayFilter("all"); setCustomerFilter("all"); setWarehouseFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
           )}
+
         </div>
 
         <div className="rounded-md border">
