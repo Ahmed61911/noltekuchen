@@ -84,17 +84,20 @@ function InvoicesPage() {
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [customerFilter, setCustomerFilter] = useState("all");
+  const [warehouseFilter, setWarehouseFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [open, setOpen] = useState(false);
 
   // Form state
   const [customerId, setCustomerId] = useState<string>("");
+  const [warehouseId, setWarehouseId] = useState<string>("");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));
   const [status, setStatus] = useState<Status>("draft");
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<LineForm[]>([emptyLine()]);
+
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["invoices"],
