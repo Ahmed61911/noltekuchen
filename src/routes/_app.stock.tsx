@@ -211,18 +211,20 @@ function StockPage() {
             <TableRow>
               <TableHead>{t("date")}</TableHead>
               <TableHead>{t("product")}</TableHead>
+              <TableHead>Dépôt</TableHead>
               <TableHead>{t("type")}</TableHead>
               <TableHead className="text-right">{t("quantity")}</TableHead>
               <TableHead>{t("reason")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">{t("loading")}</TableCell></TableRow>}
+            {isLoading && <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("loading")}</TableCell></TableRow>}
             {!isLoading && filteredMovements.length === 0 && (
-              <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">{t("no_data")}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("no_data")}</TableCell></TableRow>
             )}
             {filteredMovements.map((m) => {
               const prod = m.products as { name?: string; reference?: string } | null;
+              const wh = m.warehouses as { name?: string } | null;
               return (
                 <TableRow key={m.id}>
                   <TableCell className="text-xs text-muted-foreground">{new Date(m.created_at).toLocaleString("fr-FR")}</TableCell>
@@ -230,6 +232,7 @@ function StockPage() {
                     <div className="font-medium">{prod?.name}</div>
                     <div className="font-mono text-xs text-muted-foreground">{prod?.reference}</div>
                   </TableCell>
+                  <TableCell className="text-sm">{wh?.name ?? "—"}</TableCell>
                   <TableCell>
                     {m.type === "in" ? (
                       <Badge className="bg-success/15 text-success hover:bg-success/15"><ArrowDown className="me-1 h-3 w-3" />{t("movement_in")}</Badge>
@@ -246,5 +249,6 @@ function StockPage() {
         </Table>
       </Card>
     </div>
+
   );
 }
