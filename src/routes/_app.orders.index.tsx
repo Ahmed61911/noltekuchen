@@ -126,6 +126,14 @@ function OrdersPage() {
       return data as Product[];
     },
   });
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("warehouses").select("id,name").eq("is_active", true).order("name");
+      return (data ?? []) as Warehouse[];
+    },
+  });
+
 
   const totals = useMemo(() => {
     let ht = 0, tva = 0, ttc = 0;
