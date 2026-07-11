@@ -181,6 +181,13 @@ function StockPage() {
               {products.map(p => <SelectItem key={p.id} value={p.id}>{p.reference} — {p.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous dépôts</SelectItem>
+              {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -191,9 +198,10 @@ function StockPage() {
           </Select>
           <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
           <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} />
-          {(q || productFilter !== "all" || typeFilter !== "all" || dateFrom || dateTo) && (
-            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setProductFilter("all"); setTypeFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
+          {(q || productFilter !== "all" || warehouseFilter !== "all" || typeFilter !== "all" || dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setProductFilter("all"); setWarehouseFilter("all"); setTypeFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
           )}
+
         </div>
       </Card>
 
