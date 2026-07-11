@@ -489,6 +489,7 @@ function OrdersPage() {
           <Table>
             <TableHeader><TableRow>
               <TableHead>N°</TableHead><TableHead>Client</TableHead>
+              <TableHead>Dépôt</TableHead>
               <TableHead>Date</TableHead><TableHead>Dernier jour</TableHead>
               <TableHead>Délai</TableHead>
               <TableHead className="text-right">Total</TableHead>
@@ -499,7 +500,7 @@ function OrdersPage() {
             </TableRow></TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={11} className="h-24 text-center text-muted-foreground">Aucune commande</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="h-24 text-center text-muted-foreground">Aucune commande</TableCell></TableRow>
               ) : filtered.map(o => {
                 const ttc = Number(o.total_ttc), paid = Number(o.paid_amount);
                 const d = daysLeft(o.due_date, o.status);
@@ -510,8 +511,10 @@ function OrdersPage() {
                   <TableRow key={o.id}>
                     <TableCell className="font-mono text-sm">{o.order_number}</TableCell>
                     <TableCell>{o.customers?.name ?? "—"}</TableCell>
+                    <TableCell className="text-sm">{o.warehouses?.name ?? "—"}</TableCell>
                     <TableCell>{new Date(o.order_date).toLocaleDateString("fr-FR")}</TableCell>
                     <TableCell>{new Date(o.due_date).toLocaleDateString("fr-FR")}</TableCell>
+
                     <TableCell><Badge variant={dColor as any}>{dLabel}</Badge></TableCell>
                     <TableCell className="text-right tabular-nums">{fmt(ttc)}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmt(paid)}</TableCell>
