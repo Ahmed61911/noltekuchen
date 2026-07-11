@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as FontsPreviewRouteImport } from './routes/fonts-preview'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppWarehousesRouteImport } from './routes/_app.warehouses'
@@ -40,6 +41,11 @@ import { Route as AppInvoicesIdRouteImport } from './routes/_app.invoices.$id'
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FontsPreviewRoute = FontsPreviewRouteImport.update({
+  id: '/fonts-preview',
+  path: '/fonts-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -174,6 +180,7 @@ const AppInvoicesIdRoute = AppInvoicesIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/fonts-preview': typeof FontsPreviewRoute
   '/login': typeof LoginRoute
   '/appointments': typeof AppAppointmentsRoute
   '/audit': typeof AppAuditRoute
@@ -202,6 +209,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/fonts-preview': typeof FontsPreviewRoute
   '/login': typeof LoginRoute
   '/appointments': typeof AppAppointmentsRoute
   '/audit': typeof AppAuditRoute
@@ -231,6 +239,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/fonts-preview': typeof FontsPreviewRoute
   '/login': typeof LoginRoute
   '/_app/appointments': typeof AppAppointmentsRoute
   '/_app/audit': typeof AppAuditRoute
@@ -261,6 +270,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/fonts-preview'
     | '/login'
     | '/appointments'
     | '/audit'
@@ -289,6 +299,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/fonts-preview'
     | '/login'
     | '/appointments'
     | '/audit'
@@ -317,6 +328,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/fonts-preview'
     | '/login'
     | '/_app/appointments'
     | '/_app/audit'
@@ -347,6 +359,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  FontsPreviewRoute: typeof FontsPreviewRoute
   LoginRoute: typeof LoginRoute
 }
 
@@ -357,6 +370,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fonts-preview': {
+      id: '/fonts-preview'
+      path: '/fonts-preview'
+      fullPath: '/fonts-preview'
+      preLoaderRoute: typeof FontsPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -613,18 +633,9 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  FontsPreviewRoute: FontsPreviewRoute,
   LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
