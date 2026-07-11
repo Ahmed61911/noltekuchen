@@ -58,9 +58,9 @@ function StockPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stock_movements")
-        .select("id,type,quantity,reason,created_at,product_id,products(name,reference)")
+        .select("id,type,quantity,reason,created_at,product_id,warehouse_id,products(name,reference),warehouses(name)")
         .order("created_at", { ascending: false })
-        .limit(100);
+        .limit(200);
       if (error) throw error;
       return data;
     },
@@ -72,6 +72,7 @@ function StockPage() {
       if (!productId) throw new Error("Sélectionnez un produit");
       const { error } = await supabase.from("stock_movements").insert({
         product_id: productId, type, quantity, reason, user_id: user.id,
+        warehouse_id: warehouseId || null,
       });
       if (error) throw error;
     },
@@ -81,7 +82,7 @@ function StockPage() {
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       setOpen(false);
-      setProductId(""); setType("in"); setQuantity(1); setReason("");
+      setProductId(""); setWarehouseId(""); setType("in"); setQuantity(1); setReason("");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -89,6 +90,7 @@ function StockPage() {
   const filteredMovements = (movements as any[]).filter((m) => {
     if (typeFilter !== "all" && m.type !== typeFilter) return false;
     if (productFilter !== "all" && m.product_id !== productFilter) return false;
+    if (warehouseFilter !== "all" && m.warehouse_id !== warehouseFilter) return false;
     if (dateFrom && new Date(m.created_at) < new Date(dateFrom)) return false;
     if (dateTo && new Date(m.created_at) > new Date(dateTo + "T23:59:59")) return false;
     if (q) {
@@ -100,6 +102,7 @@ function StockPage() {
     }
     return true;
   });
+
 
   return (
     <div className="space-y-6">
