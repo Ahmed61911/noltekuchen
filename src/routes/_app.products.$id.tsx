@@ -284,9 +284,9 @@ function ProductDetailPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 items-start">
           {/* Image gallery — spans 5 cols on large screens */}
-          <Card className="lg:col-span-5 shadow-card overflow-hidden">
+          <Card className="lg:col-span-5 shadow-card overflow-hidden self-start">
             <CardContent className="p-0">
               {gallery.length > 0 ? (
                 <div className="relative aspect-[4/3] bg-muted">
