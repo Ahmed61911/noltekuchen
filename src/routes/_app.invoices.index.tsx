@@ -47,11 +47,15 @@ type Invoice = {
   discount_amount: number;
   total_ttc: number;
   notes: string | null;
+  warehouse_id: string | null;
   customers: { name: string } | null;
+  warehouses: { name: string } | null;
 };
 
 type Customer = { id: string; name: string };
 type Product = { id: string; name: string; reference: string; selling_price: number };
+type Warehouse = { id: string; name: string };
+
 
 type LineForm = {
   product_id: string | null;
