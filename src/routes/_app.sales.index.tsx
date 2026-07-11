@@ -249,6 +249,7 @@ function SalesPage() {
     if (statusFilter !== "all" && s.payment_status !== statusFilter) return false;
     if (methodFilter !== "all" && s.payment_method !== methodFilter) return false;
     if (customerFilter !== "all" && s.customer_id !== customerFilter) return false;
+    if (warehouseFilter !== "all" && s.warehouse_id !== warehouseFilter) return false;
     if (dateFrom && s.sale_date < dateFrom) return false;
     if (dateTo && s.sale_date > dateTo) return false;
     if (!q) return true;
