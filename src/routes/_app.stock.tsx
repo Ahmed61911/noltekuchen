@@ -31,10 +31,12 @@ function StockPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [productId, setProductId] = useState("");
+  const [warehouseId, setWarehouseId] = useState<string>("");
   const [type, setType] = useState<"in" | "out">("in");
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState("");
   const [productFilter, setProductFilter] = useState("all");
+  const [warehouseFilter, setWarehouseFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState<"all" | "in" | "out">("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -45,14 +47,20 @@ function StockPage() {
     queryFn: async () => (await supabase.from("products").select("id,name,reference")).data ?? [],
   });
 
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses-list"],
+    queryFn: async () => (await supabase.from("warehouses").select("id,name").eq("is_active", true).order("name")).data ?? [],
+  });
+
+
   const { data: movements = [], isLoading } = useQuery({
     queryKey: ["movements"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stock_movements")
-        .select("id,type,quantity,reason,created_at,product_id,products(name,reference)")
+        .select("id,type,quantity,reason,created_at,product_id,warehouse_id,products(name,reference),warehouses(name)")
         .order("created_at", { ascending: false })
-        .limit(100);
+        .limit(200);
       if (error) throw error;
       return data;
     },
@@ -64,6 +72,7 @@ function StockPage() {
       if (!productId) throw new Error("Sélectionnez un produit");
       const { error } = await supabase.from("stock_movements").insert({
         product_id: productId, type, quantity, reason, user_id: user.id,
+        warehouse_id: warehouseId || null,
       });
       if (error) throw error;
     },
@@ -73,7 +82,7 @@ function StockPage() {
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       setOpen(false);
-      setProductId(""); setType("in"); setQuantity(1); setReason("");
+      setProductId(""); setWarehouseId(""); setType("in"); setQuantity(1); setReason("");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -81,6 +90,7 @@ function StockPage() {
   const filteredMovements = (movements as any[]).filter((m) => {
     if (typeFilter !== "all" && m.type !== typeFilter) return false;
     if (productFilter !== "all" && m.product_id !== productFilter) return false;
+    if (warehouseFilter !== "all" && m.warehouse_id !== warehouseFilter) return false;
     if (dateFrom && new Date(m.created_at) < new Date(dateFrom)) return false;
     if (dateTo && new Date(m.created_at) > new Date(dateTo + "T23:59:59")) return false;
     if (q) {
@@ -92,6 +102,7 @@ function StockPage() {
     }
     return true;
   });
+
 
   return (
     <div className="space-y-6">
@@ -137,10 +148,21 @@ function StockPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
+                <Label className="text-xs">Dépôt</Label>
+                <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">— Aucun —</SelectItem>
+                    {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
                 <Label className="text-xs">{t("reason")}</Label>
                 <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Vente, livraison, retour…" />
               </div>
             </div>
+
             <DialogFooter>
               <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
               <Button onClick={() => create.mutate()} disabled={create.isPending}>{t("save")}</Button>
@@ -159,6 +181,13 @@ function StockPage() {
               {products.map(p => <SelectItem key={p.id} value={p.id}>{p.reference} — {p.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous dépôts</SelectItem>
+              {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -169,9 +198,10 @@ function StockPage() {
           </Select>
           <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
           <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} />
-          {(q || productFilter !== "all" || typeFilter !== "all" || dateFrom || dateTo) && (
-            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setProductFilter("all"); setTypeFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
+          {(q || productFilter !== "all" || warehouseFilter !== "all" || typeFilter !== "all" || dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setProductFilter("all"); setWarehouseFilter("all"); setTypeFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
           )}
+
         </div>
       </Card>
 
@@ -181,18 +211,20 @@ function StockPage() {
             <TableRow>
               <TableHead>{t("date")}</TableHead>
               <TableHead>{t("product")}</TableHead>
+              <TableHead>Dépôt</TableHead>
               <TableHead>{t("type")}</TableHead>
               <TableHead className="text-right">{t("quantity")}</TableHead>
               <TableHead>{t("reason")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">{t("loading")}</TableCell></TableRow>}
+            {isLoading && <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("loading")}</TableCell></TableRow>}
             {!isLoading && filteredMovements.length === 0 && (
-              <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">{t("no_data")}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("no_data")}</TableCell></TableRow>
             )}
             {filteredMovements.map((m) => {
               const prod = m.products as { name?: string; reference?: string } | null;
+              const wh = m.warehouses as { name?: string } | null;
               return (
                 <TableRow key={m.id}>
                   <TableCell className="text-xs text-muted-foreground">{new Date(m.created_at).toLocaleString("fr-FR")}</TableCell>
@@ -200,6 +232,7 @@ function StockPage() {
                     <div className="font-medium">{prod?.name}</div>
                     <div className="font-mono text-xs text-muted-foreground">{prod?.reference}</div>
                   </TableCell>
+                  <TableCell className="text-sm">{wh?.name ?? "—"}</TableCell>
                   <TableCell>
                     {m.type === "in" ? (
                       <Badge className="bg-success/15 text-success hover:bg-success/15"><ArrowDown className="me-1 h-3 w-3" />{t("movement_in")}</Badge>
@@ -216,5 +249,6 @@ function StockPage() {
         </Table>
       </Card>
     </div>
+
   );
 }

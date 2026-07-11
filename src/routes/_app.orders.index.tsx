@@ -48,8 +48,12 @@ type Order = {
   order_date: string; due_date: string;
   status: OrderStatus; payment_status: PayStatus;
   subtotal_ht: number; tax_amount: number; total_ttc: number; paid_amount: number;
-  notes: string | null; customers: { name: string } | null;
+  notes: string | null; warehouse_id: string | null;
+  customers: { name: string } | null;
+  warehouses: { name: string } | null;
 };
+type Warehouse = { id: string; name: string };
+
 type Customer = { id: string; name: string };
 type Product = { id: string; name: string; selling_price: number };
 type LineForm = {
@@ -81,6 +85,7 @@ function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [payFilter, setPayFilter] = useState("all");
   const [customerFilter, setCustomerFilter] = useState("all");
+  const [warehouseFilter, setWarehouseFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [open, setOpen] = useState(false);
@@ -89,6 +94,7 @@ function OrdersPage() {
   const [pickerSel, setPickerSel] = useState<Record<string, number>>({});
 
   const [customerId, setCustomerId] = useState<string>("");
+  const [warehouseId, setWarehouseId] = useState<string>("");
   const [orderDate, setOrderDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
@@ -98,11 +104,12 @@ function OrdersPage() {
     queryKey: ["orders"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("orders").select("*, customers(name)").order("created_at", { ascending: false });
+        .from("orders").select("*, customers(name), warehouses(name)").order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Order[];
     },
   });
+
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-list"],
     queryFn: async () => {
@@ -119,6 +126,14 @@ function OrdersPage() {
       return data as Product[];
     },
   });
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("warehouses").select("id,name").eq("is_active", true).order("name");
+      return (data ?? []) as Warehouse[];
+    },
+  });
+
 
   const totals = useMemo(() => {
     let ht = 0, tva = 0, ttc = 0;
@@ -127,7 +142,7 @@ function OrdersPage() {
   }, [lines]);
 
   const reset = () => {
-    setCustomerId(""); setOrderDate(new Date().toISOString().slice(0, 10));
+    setCustomerId(""); setWarehouseId(""); setOrderDate(new Date().toISOString().slice(0, 10));
     setDueDate(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
     setNotes(""); setLines([emptyLine()]);
   };
@@ -142,8 +157,10 @@ function OrdersPage() {
         customer_id: customerId, order_date: orderDate, due_date: dueDate,
         status: "pending", subtotal_ht: totals.ht, tax_amount: totals.tva, total_ttc: totals.ttc,
         notes: notes || null, created_by: user?.id ?? null,
+        warehouse_id: warehouseId || null,
       }).select("id").single();
       if (e1) throw e1;
+
 
       const payload = validLines.map(l => {
         const c = computeLine(l);
@@ -195,6 +212,7 @@ function OrdersPage() {
       } else if (o.status !== statusFilter) return false;
     }
     if (payFilter !== "all" && o.payment_status !== payFilter) return false;
+    if (warehouseFilter !== "all" && o.warehouse_id !== warehouseFilter) return false;
     if (customerFilter !== "all" && o.customer_id !== customerFilter) return false;
     if (dateFrom && o.order_date < dateFrom) return false;
     if (dateTo && o.order_date > dateTo) return false;
@@ -241,7 +259,18 @@ function OrdersPage() {
               </div>
               <div><Label>Date commande</Label><Input type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)} /></div>
               <div><Label>Dernier jour</Label><Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
+              <div className="col-span-2">
+                <Label>Dépôt</Label>
+                <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">— Aucun —</SelectItem>
+                    {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -441,17 +470,26 @@ function OrdersPage() {
               {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous dépôts</SelectItem>
+              {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Du" />
           <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Au" />
-          {(q || statusFilter !== "all" || payFilter !== "all" || customerFilter !== "all" || dateFrom || dateTo) && (
-            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStatusFilter("all"); setPayFilter("all"); setCustomerFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
+          {(q || statusFilter !== "all" || payFilter !== "all" || customerFilter !== "all" || warehouseFilter !== "all" || dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStatusFilter("all"); setPayFilter("all"); setCustomerFilter("all"); setWarehouseFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
           )}
+
         </div>
 
         <div className="rounded-md border">
           <Table>
             <TableHeader><TableRow>
               <TableHead>N°</TableHead><TableHead>Client</TableHead>
+              <TableHead>Dépôt</TableHead>
               <TableHead>Date</TableHead><TableHead>Dernier jour</TableHead>
               <TableHead>Délai</TableHead>
               <TableHead className="text-right">Total</TableHead>
@@ -462,7 +500,7 @@ function OrdersPage() {
             </TableRow></TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={11} className="h-24 text-center text-muted-foreground">Aucune commande</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="h-24 text-center text-muted-foreground">Aucune commande</TableCell></TableRow>
               ) : filtered.map(o => {
                 const ttc = Number(o.total_ttc), paid = Number(o.paid_amount);
                 const d = daysLeft(o.due_date, o.status);
@@ -473,8 +511,10 @@ function OrdersPage() {
                   <TableRow key={o.id}>
                     <TableCell className="font-mono text-sm">{o.order_number}</TableCell>
                     <TableCell>{o.customers?.name ?? "—"}</TableCell>
+                    <TableCell className="text-sm">{o.warehouses?.name ?? "—"}</TableCell>
                     <TableCell>{new Date(o.order_date).toLocaleDateString("fr-FR")}</TableCell>
                     <TableCell>{new Date(o.due_date).toLocaleDateString("fr-FR")}</TableCell>
+
                     <TableCell><Badge variant={dColor as any}>{dLabel}</Badge></TableCell>
                     <TableCell className="text-right tabular-nums">{fmt(ttc)}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmt(paid)}</TableCell>

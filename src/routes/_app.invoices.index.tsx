@@ -47,11 +47,15 @@ type Invoice = {
   discount_amount: number;
   total_ttc: number;
   notes: string | null;
+  warehouse_id: string | null;
   customers: { name: string } | null;
+  warehouses: { name: string } | null;
 };
 
 type Customer = { id: string; name: string };
 type Product = { id: string; name: string; reference: string; selling_price: number };
+type Warehouse = { id: string; name: string };
+
 
 type LineForm = {
   product_id: string | null;
@@ -80,27 +84,31 @@ function InvoicesPage() {
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [customerFilter, setCustomerFilter] = useState("all");
+  const [warehouseFilter, setWarehouseFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [open, setOpen] = useState(false);
 
   // Form state
   const [customerId, setCustomerId] = useState<string>("");
+  const [warehouseId, setWarehouseId] = useState<string>("");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));
   const [status, setStatus] = useState<Status>("draft");
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<LineForm[]>([emptyLine()]);
 
+
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["invoices"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoices")
-        .select("*, customers(name)")
+        .select("*, customers(name), warehouses(name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Invoice[];
+
     },
   });
 
@@ -122,6 +130,15 @@ function InvoicesPage() {
     },
   });
 
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("warehouses").select("id,name").eq("is_active", true).order("name");
+      return (data ?? []) as Warehouse[];
+    },
+  });
+
+
   const totals = useMemo(() => {
     let ht = 0, tva = 0, ttc = 0;
     for (const l of lines) { const c = computeLine(l); ht += c.ht; tva += c.tva; ttc += c.ttc; }
@@ -129,7 +146,7 @@ function InvoicesPage() {
   }, [lines]);
 
   const resetForm = () => {
-    setCustomerId(""); setInvoiceDate(new Date().toISOString().slice(0, 10));
+    setCustomerId(""); setWarehouseId(""); setInvoiceDate(new Date().toISOString().slice(0, 10));
     setDueDate(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));
     setStatus("draft"); setNotes(""); setLines([emptyLine()]);
   };
@@ -151,8 +168,10 @@ function InvoicesPage() {
         total_ttc: totals.ttc,
         notes: notes || null,
         created_by: user?.id ?? null,
+        warehouse_id: warehouseId || null,
       }).select("id").single();
       if (e1) throw e1;
+
 
       // 2) Insert items
       const itemsPayload = validLines.map(l => {
@@ -233,6 +252,7 @@ function InvoicesPage() {
   const filtered = invoices.filter(i => {
     if (statusFilter !== "all" && i.status !== statusFilter) return false;
     if (customerFilter !== "all" && i.customer_id !== customerFilter) return false;
+    if (warehouseFilter !== "all" && i.warehouse_id !== warehouseFilter) return false;
     if (dateFrom && i.invoice_date < dateFrom) return false;
     if (dateTo && i.invoice_date > dateTo) return false;
     if (!q) return true;
@@ -282,7 +302,19 @@ function InvoicesPage() {
               </div>
               <div><Label>Date facture</Label><Input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} /></div>
               <div><Label>Échéance</Label><Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
+              <div className="col-span-2">
+                <Label>Dépôt</Label>
+                <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">— Aucun —</SelectItem>
+                    {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
+
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -410,16 +442,25 @@ function InvoicesPage() {
               {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous dépôts</SelectItem>
+              {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Du" />
           <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Au" />
-          {(q || statusFilter !== "all" || customerFilter !== "all" || dateFrom || dateTo) && (
-            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStatusFilter("all"); setCustomerFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
+          {(q || statusFilter !== "all" || customerFilter !== "all" || warehouseFilter !== "all" || dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStatusFilter("all"); setCustomerFilter("all"); setWarehouseFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
           )}
+
         </div>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>N°</TableHead><TableHead>Client</TableHead>
+              <TableHead>Dépôt</TableHead>
               <TableHead>Date</TableHead><TableHead>Échéance</TableHead>
               <TableHead className="text-right">Total TTC</TableHead>
               <TableHead>Statut</TableHead>
@@ -428,14 +469,16 @@ function InvoicesPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Chargement…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Chargement…</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Aucune facture</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Aucune facture</TableCell></TableRow>
             ) : filtered.map(i => (
               <TableRow key={i.id}>
                 <TableCell className="font-medium">{i.invoice_number}</TableCell>
                 <TableCell>{i.customers?.name ?? "—"}</TableCell>
+                <TableCell className="text-sm">{i.warehouses?.name ?? "—"}</TableCell>
                 <TableCell>{i.invoice_date}</TableCell>
+
                 <TableCell>{i.due_date}</TableCell>
                 <TableCell className="text-right tabular-nums">{fmt(Number(i.total_ttc))}</TableCell>
                 <TableCell>

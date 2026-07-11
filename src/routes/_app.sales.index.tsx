@@ -47,10 +47,14 @@ type Sale = {
   payment_method: Method; payment_status: PayStatus;
   subtotal_ht: number; tax_amount: number; total_ttc: number; paid_amount: number;
   invoice_id: string | null; notes: string | null;
+  warehouse_id: string | null;
   customers: { name: string } | null;
+  warehouses: { name: string } | null;
 };
 type Customer = { id: string; name: string };
 type Product = { id: string; name: string; selling_price: number };
+type Warehouse = { id: string; name: string };
+
 
 type LineForm = {
   product_id: string | null; description: string; quantity: number;
@@ -74,11 +78,13 @@ function SalesPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
   const [customerFilter, setCustomerFilter] = useState("all");
+  const [warehouseFilter, setWarehouseFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [open, setOpen] = useState(false);
 
   const [customerId, setCustomerId] = useState<string>("");
+  const [warehouseId, setWarehouseId] = useState<string>("");
   const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState("");
   const [method, setMethod] = useState<Method>("cash");
@@ -90,11 +96,12 @@ function SalesPage() {
     queryKey: ["sales"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sales").select("*, customers(name)").order("created_at", { ascending: false });
+        .from("sales").select("*, customers(name), warehouses(name)").order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Sale[];
     },
   });
+
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-list"],
     queryFn: async () => {
@@ -111,6 +118,13 @@ function SalesPage() {
       return data as Product[];
     },
   });
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("warehouses").select("id,name").eq("is_active", true).order("name");
+      return (data ?? []) as Warehouse[];
+    },
+  });
 
   const totals = useMemo(() => {
     let ht = 0, tva = 0, ttc = 0;
@@ -119,7 +133,7 @@ function SalesPage() {
   }, [lines]);
 
   const resetForm = () => {
-    setCustomerId(""); setSaleDate(new Date().toISOString().slice(0, 10));
+    setCustomerId(""); setWarehouseId(""); setSaleDate(new Date().toISOString().slice(0, 10));
     setDueDate(""); setMethod("cash"); setPaidAmount(0); setNotes("");
     setLines([emptyLine()]);
   };
@@ -144,8 +158,10 @@ function SalesPage() {
         paid_amount: paid,
         notes: notes || null,
         created_by: user?.id ?? null,
+        warehouse_id: warehouseId || null,
       }).select("id").single();
       if (e1) throw e1;
+
 
       const itemsPayload = validLines.map(l => {
         const c = computeLine(l);
@@ -196,6 +212,7 @@ function SalesPage() {
         subtotal_ht: sale.subtotal_ht, tax_amount: sale.tax_amount, total_ttc: sale.total_ttc,
         notes: `Issue de la vente ${sale.sale_number}`,
         created_by: user?.id ?? null,
+        warehouse_id: sale.warehouse_id,
       }).select("id").single();
       if (error) throw error;
       if (items?.length) {
@@ -232,6 +249,7 @@ function SalesPage() {
     if (statusFilter !== "all" && s.payment_status !== statusFilter) return false;
     if (methodFilter !== "all" && s.payment_method !== methodFilter) return false;
     if (customerFilter !== "all" && s.customer_id !== customerFilter) return false;
+    if (warehouseFilter !== "all" && s.warehouse_id !== warehouseFilter) return false;
     if (dateFrom && s.sale_date < dateFrom) return false;
     if (dateTo && s.sale_date > dateTo) return false;
     if (!q) return true;
@@ -285,6 +303,16 @@ function SalesPage() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(METHODS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2">
+                <Label>Dépôt</Label>
+                <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">— Aucun —</SelectItem>
+                    {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -416,17 +444,26 @@ function SalesPage() {
               {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous dépôts</SelectItem>
+              {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Du" />
           <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Au" />
-          {(q || statusFilter !== "all" || methodFilter !== "all" || customerFilter !== "all" || dateFrom || dateTo) && (
-            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStatusFilter("all"); setMethodFilter("all"); setCustomerFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
+          {(q || statusFilter !== "all" || methodFilter !== "all" || customerFilter !== "all" || warehouseFilter !== "all" || dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStatusFilter("all"); setMethodFilter("all"); setCustomerFilter("all"); setWarehouseFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
           )}
+
         </div>
 
         <div className="rounded-md border">
           <Table>
             <TableHeader><TableRow>
               <TableHead>N°</TableHead><TableHead>Client</TableHead>
+              <TableHead>Dépôt</TableHead>
               <TableHead>Date</TableHead><TableHead className="text-right">Total</TableHead>
               <TableHead className="text-right">Payé</TableHead><TableHead className="text-right">Reste</TableHead>
               <TableHead>Mode</TableHead><TableHead>Échéance</TableHead>
@@ -434,7 +471,7 @@ function SalesPage() {
             </TableRow></TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={10} className="h-24 text-center text-muted-foreground">Aucune vente</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="h-24 text-center text-muted-foreground">Aucune vente</TableCell></TableRow>
               ) : filtered.map(s => {
                 const ttc = Number(s.total_ttc), paid = Number(s.paid_amount);
                 const st = PAY_STATUS[s.payment_status];
@@ -442,7 +479,9 @@ function SalesPage() {
                   <TableRow key={s.id}>
                     <TableCell className="font-mono text-sm">{s.sale_number}</TableCell>
                     <TableCell>{s.customers?.name ?? <span className="text-muted-foreground">Comptoir</span>}</TableCell>
+                    <TableCell className="text-sm">{s.warehouses?.name ?? "—"}</TableCell>
                     <TableCell>{new Date(s.sale_date).toLocaleDateString("fr-FR")}</TableCell>
+
                     <TableCell className="text-right tabular-nums">{fmt(ttc)}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmt(paid)}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmt(Math.max(0, ttc - paid))}</TableCell>
