@@ -463,6 +463,7 @@ function SalesPage() {
           <Table>
             <TableHeader><TableRow>
               <TableHead>N°</TableHead><TableHead>Client</TableHead>
+              <TableHead>Dépôt</TableHead>
               <TableHead>Date</TableHead><TableHead className="text-right">Total</TableHead>
               <TableHead className="text-right">Payé</TableHead><TableHead className="text-right">Reste</TableHead>
               <TableHead>Mode</TableHead><TableHead>Échéance</TableHead>
@@ -470,7 +471,7 @@ function SalesPage() {
             </TableRow></TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={10} className="h-24 text-center text-muted-foreground">Aucune vente</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="h-24 text-center text-muted-foreground">Aucune vente</TableCell></TableRow>
               ) : filtered.map(s => {
                 const ttc = Number(s.total_ttc), paid = Number(s.paid_amount);
                 const st = PAY_STATUS[s.payment_status];
@@ -478,7 +479,9 @@ function SalesPage() {
                   <TableRow key={s.id}>
                     <TableCell className="font-mono text-sm">{s.sale_number}</TableCell>
                     <TableCell>{s.customers?.name ?? <span className="text-muted-foreground">Comptoir</span>}</TableCell>
+                    <TableCell className="text-sm">{s.warehouses?.name ?? "—"}</TableCell>
                     <TableCell>{new Date(s.sale_date).toLocaleDateString("fr-FR")}</TableCell>
+
                     <TableCell className="text-right tabular-nums">{fmt(ttc)}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmt(paid)}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmt(Math.max(0, ttc - paid))}</TableCell>
