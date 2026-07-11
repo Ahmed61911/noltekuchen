@@ -142,7 +142,7 @@ function OrdersPage() {
   }, [lines]);
 
   const reset = () => {
-    setCustomerId(""); setOrderDate(new Date().toISOString().slice(0, 10));
+    setCustomerId(""); setWarehouseId(""); setOrderDate(new Date().toISOString().slice(0, 10));
     setDueDate(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
     setNotes(""); setLines([emptyLine()]);
   };
@@ -157,8 +157,10 @@ function OrdersPage() {
         customer_id: customerId, order_date: orderDate, due_date: dueDate,
         status: "pending", subtotal_ht: totals.ht, tax_amount: totals.tva, total_ttc: totals.ttc,
         notes: notes || null, created_by: user?.id ?? null,
+        warehouse_id: warehouseId || null,
       }).select("id").single();
       if (e1) throw e1;
+
 
       const payload = validLines.map(l => {
         const c = computeLine(l);
