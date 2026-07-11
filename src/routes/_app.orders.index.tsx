@@ -205,7 +205,7 @@ function OrdersPage() {
 
   const kpis = useMemo(() => {
     let pending = 0, validated = 0, delivered = 0, cancelled = 0, late = 0;
-    for (const o of orders) {
+    for (const o of filtered) {
       if (o.status === "pending") pending++;
       else if (o.status === "validated") validated++;
       else if (o.status === "delivered") delivered++;
@@ -214,7 +214,7 @@ function OrdersPage() {
       if (d !== null && d < 0) late++;
     }
     return { pending, validated, delivered, cancelled, late };
-  }, [orders]);
+  }, [filtered]);
 
   return (
     <div className="space-y-6">
