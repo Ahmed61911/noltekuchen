@@ -460,6 +460,7 @@ function InvoicesPage() {
           <TableHeader>
             <TableRow>
               <TableHead>N°</TableHead><TableHead>Client</TableHead>
+              <TableHead>Dépôt</TableHead>
               <TableHead>Date</TableHead><TableHead>Échéance</TableHead>
               <TableHead className="text-right">Total TTC</TableHead>
               <TableHead>Statut</TableHead>
@@ -468,14 +469,16 @@ function InvoicesPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Chargement…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Chargement…</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Aucune facture</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Aucune facture</TableCell></TableRow>
             ) : filtered.map(i => (
               <TableRow key={i.id}>
                 <TableCell className="font-medium">{i.invoice_number}</TableCell>
                 <TableCell>{i.customers?.name ?? "—"}</TableCell>
+                <TableCell className="text-sm">{i.warehouses?.name ?? "—"}</TableCell>
                 <TableCell>{i.invoice_date}</TableCell>
+
                 <TableCell>{i.due_date}</TableCell>
                 <TableCell className="text-right tabular-nums">{fmt(Number(i.total_ttc))}</TableCell>
                 <TableCell>
