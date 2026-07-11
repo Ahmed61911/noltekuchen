@@ -9,7 +9,7 @@ const fr: Dict = {
   // nav
   dashboard: "Tableau de bord",
   products: "Produits",
-  stock: "Stock",
+  stock: "Mouvements de stocks",
   sales: "Ventes",
   appointments: "Rendez-vous",
   suppliers: "Fournisseurs",
