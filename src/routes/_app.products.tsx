@@ -274,14 +274,14 @@ function ProductsPage() {
         <StatCard
           icon={Package}
           label="Total produits"
-          value={products.length}
+          value={baseFiltered.length}
           active={stockFilter === "all"}
           onClick={() => setStockFilter("all")}
         />
         <StatCard
           icon={AlertTriangle}
           label="Stock faible"
-          value={products.filter((p) => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock).length}
+          value={baseFiltered.filter((p) => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock).length}
           active={stockFilter === "low"}
           onClick={() => setStockFilter("low")}
           tone="warning"
@@ -289,7 +289,7 @@ function ProductsPage() {
         <StatCard
           icon={PackageX}
           label="Rupture de stock"
-          value={products.filter((p) => p.stock_quantity === 0).length}
+          value={baseFiltered.filter((p) => p.stock_quantity === 0).length}
           active={stockFilter === "out"}
           onClick={() => setStockFilter("out")}
           tone="danger"
