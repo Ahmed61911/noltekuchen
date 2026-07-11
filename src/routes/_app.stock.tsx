@@ -148,10 +148,21 @@ function StockPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
+                <Label className="text-xs">Dépôt</Label>
+                <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">— Aucun —</SelectItem>
+                    {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
                 <Label className="text-xs">{t("reason")}</Label>
                 <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Vente, livraison, retour…" />
               </div>
             </div>
+
             <DialogFooter>
               <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
               <Button onClick={() => create.mutate()} disabled={create.isPending}>{t("save")}</Button>
