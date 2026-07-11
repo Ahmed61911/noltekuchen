@@ -212,6 +212,7 @@ function OrdersPage() {
       } else if (o.status !== statusFilter) return false;
     }
     if (payFilter !== "all" && o.payment_status !== payFilter) return false;
+    if (warehouseFilter !== "all" && o.warehouse_id !== warehouseFilter) return false;
     if (customerFilter !== "all" && o.customer_id !== customerFilter) return false;
     if (dateFrom && o.order_date < dateFrom) return false;
     if (dateTo && o.order_date > dateTo) return false;
