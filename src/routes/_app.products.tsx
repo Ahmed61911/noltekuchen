@@ -266,6 +266,32 @@ function ProductsPage() {
         </div>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard
+          icon={Package}
+          label="Total produits"
+          value={products.length}
+          active={stockFilter === "all"}
+          onClick={() => setStockFilter("all")}
+        />
+        <StatCard
+          icon={AlertTriangle}
+          label="Stock faible"
+          value={products.filter((p) => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock).length}
+          active={stockFilter === "low"}
+          onClick={() => setStockFilter("low")}
+          tone="warning"
+        />
+        <StatCard
+          icon={PackageX}
+          label="Rupture de stock"
+          value={products.filter((p) => p.stock_quantity === 0).length}
+          active={stockFilter === "out"}
+          onClick={() => setStockFilter("out")}
+          tone="danger"
+        />
+      </div>
+
       <Card className="p-3 shadow-card">
         <div className="flex flex-wrap items-center gap-2">
           <Select value={stockFilter} onValueChange={(v) => setStockFilter(v as typeof stockFilter)}>
