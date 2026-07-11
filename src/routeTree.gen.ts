@@ -28,11 +28,13 @@ import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
 import { Route as AppUsersIndexRouteImport } from './routes/_app.users.index'
 import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
 import { Route as AppProjectsIndexRouteImport } from './routes/_app.projects.index'
+import { Route as AppProductsIndexRouteImport } from './routes/_app.products.index'
 import { Route as AppOrdersIndexRouteImport } from './routes/_app.orders.index'
 import { Route as AppInvoicesIndexRouteImport } from './routes/_app.invoices.index'
 import { Route as AppUsersIdRouteImport } from './routes/_app.users.$id'
 import { Route as AppSalesIdRouteImport } from './routes/_app.sales.$id'
 import { Route as AppProjectsIdRouteImport } from './routes/_app.projects.$id'
+import { Route as AppProductsIdRouteImport } from './routes/_app.products.$id'
 import { Route as AppOrdersIdRouteImport } from './routes/_app.orders.$id'
 import { Route as AppInvoicesIdRouteImport } from './routes/_app.invoices.$id'
 
@@ -130,6 +132,11 @@ const AppProjectsIndexRoute = AppProjectsIndexRouteImport.update({
   path: '/projects/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProductsIndexRoute = AppProductsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppProductsRoute,
+} as any)
 const AppOrdersIndexRoute = AppOrdersIndexRouteImport.update({
   id: '/orders/',
   path: '/orders/',
@@ -155,6 +162,11 @@ const AppProjectsIdRoute = AppProjectsIdRouteImport.update({
   path: '/projects/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProductsIdRoute = AppProductsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppProductsRoute,
+} as any)
 const AppOrdersIdRoute = AppOrdersIdRouteImport.update({
   id: '/orders/$id',
   path: '/orders/$id',
@@ -176,7 +188,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AppDashboardRoute
   '/documents': typeof AppDocumentsRoute
   '/logs': typeof AppLogsRoute
-  '/products': typeof AppProductsRoute
+  '/products': typeof AppProductsRouteWithChildren
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
   '/stock': typeof AppStockRoute
@@ -184,11 +196,13 @@ export interface FileRoutesByFullPath {
   '/warehouses': typeof AppWarehousesRoute
   '/invoices/$id': typeof AppInvoicesIdRoute
   '/orders/$id': typeof AppOrdersIdRoute
+  '/products/$id': typeof AppProductsIdRoute
   '/projects/$id': typeof AppProjectsIdRoute
   '/sales/$id': typeof AppSalesIdRoute
   '/users/$id': typeof AppUsersIdRoute
   '/invoices/': typeof AppInvoicesIndexRoute
   '/orders/': typeof AppOrdersIndexRoute
+  '/products/': typeof AppProductsIndexRoute
   '/projects/': typeof AppProjectsIndexRoute
   '/sales/': typeof AppSalesIndexRoute
   '/users/': typeof AppUsersIndexRoute
@@ -203,7 +217,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AppDashboardRoute
   '/documents': typeof AppDocumentsRoute
   '/logs': typeof AppLogsRoute
-  '/products': typeof AppProductsRoute
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
   '/stock': typeof AppStockRoute
@@ -211,11 +224,13 @@ export interface FileRoutesByTo {
   '/warehouses': typeof AppWarehousesRoute
   '/invoices/$id': typeof AppInvoicesIdRoute
   '/orders/$id': typeof AppOrdersIdRoute
+  '/products/$id': typeof AppProductsIdRoute
   '/projects/$id': typeof AppProjectsIdRoute
   '/sales/$id': typeof AppSalesIdRoute
   '/users/$id': typeof AppUsersIdRoute
   '/invoices': typeof AppInvoicesIndexRoute
   '/orders': typeof AppOrdersIndexRoute
+  '/products': typeof AppProductsIndexRoute
   '/projects': typeof AppProjectsIndexRoute
   '/sales': typeof AppSalesIndexRoute
   '/users': typeof AppUsersIndexRoute
@@ -232,7 +247,7 @@ export interface FileRoutesById {
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/documents': typeof AppDocumentsRoute
   '/_app/logs': typeof AppLogsRoute
-  '/_app/products': typeof AppProductsRoute
+  '/_app/products': typeof AppProductsRouteWithChildren
   '/_app/reports': typeof AppReportsRoute
   '/_app/roles': typeof AppRolesRoute
   '/_app/stock': typeof AppStockRoute
@@ -240,11 +255,13 @@ export interface FileRoutesById {
   '/_app/warehouses': typeof AppWarehousesRoute
   '/_app/invoices/$id': typeof AppInvoicesIdRoute
   '/_app/orders/$id': typeof AppOrdersIdRoute
+  '/_app/products/$id': typeof AppProductsIdRoute
   '/_app/projects/$id': typeof AppProjectsIdRoute
   '/_app/sales/$id': typeof AppSalesIdRoute
   '/_app/users/$id': typeof AppUsersIdRoute
   '/_app/invoices/': typeof AppInvoicesIndexRoute
   '/_app/orders/': typeof AppOrdersIndexRoute
+  '/_app/products/': typeof AppProductsIndexRoute
   '/_app/projects/': typeof AppProjectsIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
   '/_app/users/': typeof AppUsersIndexRoute
@@ -269,11 +286,13 @@ export interface FileRouteTypes {
     | '/warehouses'
     | '/invoices/$id'
     | '/orders/$id'
+    | '/products/$id'
     | '/projects/$id'
     | '/sales/$id'
     | '/users/$id'
     | '/invoices/'
     | '/orders/'
+    | '/products/'
     | '/projects/'
     | '/sales/'
     | '/users/'
@@ -288,7 +307,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/documents'
     | '/logs'
-    | '/products'
     | '/reports'
     | '/roles'
     | '/stock'
@@ -296,11 +314,13 @@ export interface FileRouteTypes {
     | '/warehouses'
     | '/invoices/$id'
     | '/orders/$id'
+    | '/products/$id'
     | '/projects/$id'
     | '/sales/$id'
     | '/users/$id'
     | '/invoices'
     | '/orders'
+    | '/products'
     | '/projects'
     | '/sales'
     | '/users'
@@ -324,11 +344,13 @@ export interface FileRouteTypes {
     | '/_app/warehouses'
     | '/_app/invoices/$id'
     | '/_app/orders/$id'
+    | '/_app/products/$id'
     | '/_app/projects/$id'
     | '/_app/sales/$id'
     | '/_app/users/$id'
     | '/_app/invoices/'
     | '/_app/orders/'
+    | '/_app/products/'
     | '/_app/projects/'
     | '/_app/sales/'
     | '/_app/users/'
@@ -476,6 +498,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/products/': {
+      id: '/_app/products/'
+      path: '/'
+      fullPath: '/products/'
+      preLoaderRoute: typeof AppProductsIndexRouteImport
+      parentRoute: typeof AppProductsRoute
+    }
     '/_app/orders/': {
       id: '/_app/orders/'
       path: '/orders'
@@ -511,6 +540,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectsIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/products/$id': {
+      id: '/_app/products/$id'
+      path: '/$id'
+      fullPath: '/products/$id'
+      preLoaderRoute: typeof AppProductsIdRouteImport
+      parentRoute: typeof AppProductsRoute
+    }
     '/_app/orders/$id': {
       id: '/_app/orders/$id'
       path: '/orders/$id'
@@ -528,6 +564,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppProductsRouteChildren {
+  AppProductsIdRoute: typeof AppProductsIdRoute
+  AppProductsIndexRoute: typeof AppProductsIndexRoute
+}
+
+const AppProductsRouteChildren: AppProductsRouteChildren = {
+  AppProductsIdRoute: AppProductsIdRoute,
+  AppProductsIndexRoute: AppProductsIndexRoute,
+}
+
+const AppProductsRouteWithChildren = AppProductsRoute._addFileChildren(
+  AppProductsRouteChildren,
+)
+
 interface AppRouteChildren {
   AppAppointmentsRoute: typeof AppAppointmentsRoute
   AppAuditRoute: typeof AppAuditRoute
@@ -535,7 +585,7 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppDocumentsRoute: typeof AppDocumentsRoute
   AppLogsRoute: typeof AppLogsRoute
-  AppProductsRoute: typeof AppProductsRoute
+  AppProductsRoute: typeof AppProductsRouteWithChildren
   AppReportsRoute: typeof AppReportsRoute
   AppRolesRoute: typeof AppRolesRoute
   AppStockRoute: typeof AppStockRoute
@@ -560,7 +610,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppDocumentsRoute: AppDocumentsRoute,
   AppLogsRoute: AppLogsRoute,
-  AppProductsRoute: AppProductsRoute,
+  AppProductsRoute: AppProductsRouteWithChildren,
   AppReportsRoute: AppReportsRoute,
   AppRolesRoute: AppRolesRoute,
   AppStockRoute: AppStockRoute,

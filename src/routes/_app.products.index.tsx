@@ -24,8 +24,8 @@ import { useAuth } from "@/lib/auth";
 import { logAction } from "@/lib/audit-log";
 import { StockHistoryButton } from "@/components/stock-history-dialog";
 
-export const Route = createFileRoute("/_app/products")({
-  component: ProductsPage,
+export const Route = createFileRoute("/_app/products/")({
+  component: ProductsIndexPage,
 });
 
 const MAX_IMAGES = 4;
@@ -58,7 +58,7 @@ const empty: FormState = {
   dimensions: "", gallery: [], warehouse_id: null,
 };
 
-function ProductsPage() {
+function ProductsIndexPage() {
   const { t } = useI18n();
   const { isAdmin } = useAuth();
   const navigate = useNavigate({ from: "/products" });
@@ -659,4 +659,3 @@ function GalleryUploadField({ value, onChange }: { value: string[]; onChange: (v
     </div>
   );
 }
-
