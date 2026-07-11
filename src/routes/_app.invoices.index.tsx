@@ -104,10 +104,11 @@ function InvoicesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoices")
-        .select("*, customers(name)")
+        .select("*, customers(name), warehouses(name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Invoice[];
+
     },
   });
 
