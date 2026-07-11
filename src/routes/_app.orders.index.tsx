@@ -85,6 +85,7 @@ function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [payFilter, setPayFilter] = useState("all");
   const [customerFilter, setCustomerFilter] = useState("all");
+  const [warehouseFilter, setWarehouseFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [open, setOpen] = useState(false);
@@ -93,6 +94,7 @@ function OrdersPage() {
   const [pickerSel, setPickerSel] = useState<Record<string, number>>({});
 
   const [customerId, setCustomerId] = useState<string>("");
+  const [warehouseId, setWarehouseId] = useState<string>("");
   const [orderDate, setOrderDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
@@ -102,11 +104,12 @@ function OrdersPage() {
     queryKey: ["orders"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("orders").select("*, customers(name)").order("created_at", { ascending: false });
+        .from("orders").select("*, customers(name), warehouses(name)").order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Order[];
     },
   });
+
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-list"],
     queryFn: async () => {
