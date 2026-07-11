@@ -146,7 +146,7 @@ function InvoicesPage() {
   }, [lines]);
 
   const resetForm = () => {
-    setCustomerId(""); setInvoiceDate(new Date().toISOString().slice(0, 10));
+    setCustomerId(""); setWarehouseId(""); setInvoiceDate(new Date().toISOString().slice(0, 10));
     setDueDate(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));
     setStatus("draft"); setNotes(""); setLines([emptyLine()]);
   };
@@ -168,8 +168,10 @@ function InvoicesPage() {
         total_ttc: totals.ttc,
         notes: notes || null,
         created_by: user?.id ?? null,
+        warehouse_id: warehouseId || null,
       }).select("id").single();
       if (e1) throw e1;
+
 
       // 2) Insert items
       const itemsPayload = validLines.map(l => {
