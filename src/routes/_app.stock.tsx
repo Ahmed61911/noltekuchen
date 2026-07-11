@@ -31,10 +31,12 @@ function StockPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [productId, setProductId] = useState("");
+  const [warehouseId, setWarehouseId] = useState<string>("");
   const [type, setType] = useState<"in" | "out">("in");
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState("");
   const [productFilter, setProductFilter] = useState("all");
+  const [warehouseFilter, setWarehouseFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState<"all" | "in" | "out">("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -44,6 +46,12 @@ function StockPage() {
     queryKey: ["products-min"],
     queryFn: async () => (await supabase.from("products").select("id,name,reference")).data ?? [],
   });
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses-list"],
+    queryFn: async () => (await supabase.from("warehouses").select("id,name").eq("is_active", true).order("name")).data ?? [],
+  });
+
 
   const { data: movements = [], isLoading } = useQuery({
     queryKey: ["movements"],
