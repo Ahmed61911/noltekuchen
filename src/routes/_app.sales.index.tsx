@@ -78,11 +78,13 @@ function SalesPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
   const [customerFilter, setCustomerFilter] = useState("all");
+  const [warehouseFilter, setWarehouseFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [open, setOpen] = useState(false);
 
   const [customerId, setCustomerId] = useState<string>("");
+  const [warehouseId, setWarehouseId] = useState<string>("");
   const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState("");
   const [method, setMethod] = useState<Method>("cash");
@@ -94,11 +96,12 @@ function SalesPage() {
     queryKey: ["sales"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sales").select("*, customers(name)").order("created_at", { ascending: false });
+        .from("sales").select("*, customers(name), warehouses(name)").order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Sale[];
     },
   });
+
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-list"],
     queryFn: async () => {
