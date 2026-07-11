@@ -133,16 +133,20 @@ function ProductsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const filtered = products.filter((p) => {
+  const baseFiltered = products.filter((p) => {
     if (q && ![p.name, p.reference].some((s) => s.toLowerCase().includes(q.toLowerCase()))) return false;
-    if (stockFilter === "out" && p.stock_quantity > 0) return false;
-    if (stockFilter === "low" && !(p.stock_quantity > 0 && p.stock_quantity <= p.min_stock)) return false;
-    if (stockFilter === "in" && p.stock_quantity <= p.min_stock) return false;
     if (priceMin && p.selling_price < Number(priceMin)) return false;
     if (priceMax && p.selling_price > Number(priceMax)) return false;
     if (warehouseFilter !== "all") {
       if (warehouseFilter === "none" ? p.warehouse_id !== null : p.warehouse_id !== warehouseFilter) return false;
     }
+    return true;
+  });
+
+  const filtered = baseFiltered.filter((p) => {
+    if (stockFilter === "out" && p.stock_quantity > 0) return false;
+    if (stockFilter === "low" && !(p.stock_quantity > 0 && p.stock_quantity <= p.min_stock)) return false;
+    if (stockFilter === "in" && p.stock_quantity <= p.min_stock) return false;
     return true;
   });
 
@@ -270,14 +274,14 @@ function ProductsPage() {
         <StatCard
           icon={Package}
           label="Total produits"
-          value={products.length}
+          value={baseFiltered.length}
           active={stockFilter === "all"}
           onClick={() => setStockFilter("all")}
         />
         <StatCard
           icon={AlertTriangle}
           label="Stock faible"
-          value={products.filter((p) => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock).length}
+          value={baseFiltered.filter((p) => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock).length}
           active={stockFilter === "low"}
           onClick={() => setStockFilter("low")}
           tone="warning"
@@ -285,7 +289,7 @@ function ProductsPage() {
         <StatCard
           icon={PackageX}
           label="Rupture de stock"
-          value={products.filter((p) => p.stock_quantity === 0).length}
+          value={baseFiltered.filter((p) => p.stock_quantity === 0).length}
           active={stockFilter === "out"}
           onClick={() => setStockFilter("out")}
           tone="danger"
