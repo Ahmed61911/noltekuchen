@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Upload, ImageIcon, Loader2, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Upload, ImageIcon, Loader2, X, ChevronLeft, ChevronRight, Package, AlertTriangle, PackageX } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -266,6 +266,32 @@ function ProductsPage() {
         </div>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard
+          icon={Package}
+          label="Total produits"
+          value={products.length}
+          active={stockFilter === "all"}
+          onClick={() => setStockFilter("all")}
+        />
+        <StatCard
+          icon={AlertTriangle}
+          label="Stock faible"
+          value={products.filter((p) => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock).length}
+          active={stockFilter === "low"}
+          onClick={() => setStockFilter("low")}
+          tone="warning"
+        />
+        <StatCard
+          icon={PackageX}
+          label="Rupture de stock"
+          value={products.filter((p) => p.stock_quantity === 0).length}
+          active={stockFilter === "out"}
+          onClick={() => setStockFilter("out")}
+          tone="danger"
+        />
+      </div>
+
       <Card className="p-3 shadow-card">
         <div className="flex flex-wrap items-center gap-2">
           <Select value={stockFilter} onValueChange={(v) => setStockFilter(v as typeof stockFilter)}>
@@ -370,6 +396,35 @@ function ProductsPage() {
         />
       )}
     </div>
+  );
+}
+
+function StatCard({ icon: Icon, label, value, active, onClick, tone = "default" }: { icon: typeof Package; label: string; value: number; active?: boolean; onClick?: () => void; tone?: "default" | "warning" | "danger"; }) {
+  const toneClasses = {
+    default: "hover:border-primary/60 hover:bg-primary/5",
+    warning: "hover:border-warning/60 hover:bg-warning/5",
+    danger: "hover:border-destructive/60 hover:bg-destructive/5",
+  }[tone];
+  const iconBg = {
+    default: "bg-primary/10 text-primary",
+    warning: "bg-warning/10 text-warning",
+    danger: "bg-destructive/10 text-destructive",
+  }[tone];
+  return (
+    <Card
+      className={`cursor-pointer border shadow-card transition-colors ${active ? "ring-1 ring-primary border-primary/70 bg-primary/5" : "border-border/60 bg-card"} ${toneClasses}`}
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-4 p-4">
+        <div className={`grid h-11 w-11 place-items-center rounded-xl ${iconBg}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+          <p className="font-display text-2xl font-semibold leading-tight">{value}</p>
+        </div>
+      </div>
+    </Card>
   );
 }
 
