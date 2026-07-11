@@ -200,20 +200,27 @@ function ProductDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild><Link to="/products"><ArrowLeft className="h-4 w-4" /></Link></Button>
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <Button variant="ghost" size="icon" asChild className="mt-1 shrink-0"><Link to="/products"><ArrowLeft className="h-4 w-4" /></Link></Button>
           <div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight">{product.name}</h1>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Barcode className="h-3.5 w-3.5" />
-              {product.reference}
-              {product.sku && <Badge variant="outline" className="text-[10px]">SKU: {product.sku}</Badge>}
-            </p>
+            <h1 className="font-display text-3xl font-semibold tracking-tight">{product.name}</h1>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Barcode className="h-3.5 w-3.5" />
+                {product.reference}
+              </span>
+              {product.sku && (
+                <Badge variant="secondary" className="text-[10px] font-medium">
+                  SKU: {product.sku}
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
         {isAdmin && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <StockHistoryButton productId={product.id} productName={product.name} />
             <Button variant="outline" onClick={startEdit}><Pencil className="h-4 w-4 me-1" /> Modifier</Button>
             <Button
@@ -277,11 +284,12 @@ function ProductDetailPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="lg:col-span-1 shadow-card overflow-hidden">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+          {/* Image gallery — spans 5 cols on large screens */}
+          <Card className="lg:col-span-5 shadow-card overflow-hidden">
             <CardContent className="p-0">
               {gallery.length > 0 ? (
-                <div className="relative aspect-square bg-muted">
+                <div className="relative aspect-[4/3] bg-muted">
                   <button
                     type="button"
                     onClick={() => setViewer({ paths: gallery, index: 0 })}
@@ -303,13 +311,13 @@ function ProductDetailPage() {
                   )}
                 </div>
               ) : (
-                <div className="aspect-square flex flex-col items-center justify-center bg-muted text-muted-foreground gap-2">
-                  <ImageIcon className="h-12 w-12" />
+                <div className="aspect-[4/3] flex flex-col items-center justify-center bg-muted text-muted-foreground gap-2">
+                  <ImageIcon className="h-14 w-14" />
                   <span className="text-sm">Aucune image</span>
                 </div>
               )}
               {gallery.length > 1 && (
-                <div className="grid grid-cols-4 gap-2 p-3">
+                <div className="grid grid-cols-5 gap-2 p-3">
                   {gallery.map((p, i) => (
                     <button
                       key={i}
@@ -325,44 +333,83 @@ function ProductDetailPage() {
             </CardContent>
           </Card>
 
-          <div className="lg:col-span-2 space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <InfoCard icon={Tag} label="Marque" value={product.brand || "—"} />
-              <InfoCard icon={Barcode} label="Référence" value={product.reference} />
-              <InfoCard icon={Package} label="SKU" value={product.sku || "—"} />
-              <InfoCard icon={DollarSign} label="Prix d'achat" value={`${product.purchase_price.toFixed(2)} ${CURRENCY}`} />
-              <InfoCard icon={DollarSign} label="Prix de vente" value={`${product.selling_price.toFixed(2)} ${CURRENCY}`} />
-              <InfoCard
-                icon={DollarSign}
-                label="Marge"
-                value={
-                  <span className={margin >= 0 ? "text-success" : "text-destructive"}>
-                    {margin.toFixed(2)} {CURRENCY} ({marginPct.toFixed(0)}%)
-                  </span>
-                }
-              />
-              <InfoCard
-                icon={Boxes}
-                label="Quantité"
-                value={
-                  <Badge variant={out ? "destructive" : "default"} className={low && !out ? "bg-amber-500/15 text-amber-700 hover:bg-amber-500/25" : undefined}>
-                    {product.stock_quantity} / {product.min_stock} min
-                  </Badge>
-                }
-              />
-              <InfoCard icon={Ruler} label="Dimensions" value={product.dimensions || "—"} />
-              <InfoCard
-                icon={Warehouse}
-                label="Dépôt"
-                value={warehouse ? (
-                  <div className="flex flex-col">
-                    <span>{warehouse.name}</span>
-                    {warehouse.description && <span className="text-xs text-muted-foreground">{warehouse.description}</span>}
+          {/* Key info cards — spans 7 cols */}
+          <div className="lg:col-span-7 grid grid-cols-1 gap-5">
+            {/* Financial summary */}
+            <Card className="shadow-card bg-gradient-subtle">
+              <CardContent className="p-5">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+                  <PriceBlock label="Prix d'achat" value={product.purchase_price} />
+                  <PriceBlock label="Prix de vente" value={product.selling_price} />
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Marge</p>
+                    <p className={`text-2xl font-display font-semibold tracking-tight ${margin >= 0 ? "text-success" : "text-destructive"}`}>
+                      {margin.toFixed(2)} {CURRENCY}
+                    </p>
+                    <Badge variant="outline" className={margin >= 0 ? "text-success border-success/30" : "text-destructive border-destructive/30"}>
+                      {marginPct.toFixed(0)} %
+                    </Badge>
                   </div>
-                ) : "—"}
-              />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Stock & warehouse */}
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Card className="shadow-card">
+                <CardContent className="p-5 flex items-start gap-4">
+                  <div className={`grid h-11 w-11 place-items-center rounded-xl shrink-0 ${out ? "bg-destructive/10 text-destructive" : low ? "bg-warning/10 text-warning" : "bg-success/10 text-success"}`}>
+                    <Boxes className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Stock</p>
+                    <p className="text-2xl font-display font-semibold tracking-tight mt-0.5">
+                      {product.stock_quantity}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      Seuil min. {product.min_stock}
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className={`mt-2 ${out
+                        ? "bg-destructive/10 text-destructive border-destructive/20"
+                        : low
+                          ? "bg-warning/10 text-warning border-warning/20"
+                          : "bg-success/10 text-success border-success/20"}`}
+                    >
+                      {out ? "Rupture de stock" : low ? "Stock faible" : "En stock"}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-card">
+                <CardContent className="p-5 flex items-start gap-4">
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary shrink-0">
+                    <Warehouse className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dépôt</p>
+                    <p className="text-lg font-display font-semibold tracking-tight mt-0.5 truncate">
+                      {warehouse?.name || "—"}
+                    </p>
+                    {warehouse?.description && (
+                      <p className="text-sm text-muted-foreground mt-0.5 truncate">{warehouse.description}</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
+            {/* Specs bento */}
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <SpecTile icon={Tag} label="Marque" value={product.brand || "—"} />
+              <SpecTile icon={Barcode} label="Référence" value={product.reference} />
+              <SpecTile icon={Package} label="SKU" value={product.sku || "—"} />
+              <SpecTile icon={Ruler} label="Dimensions" value={product.dimensions || "—"} />
+            </div>
+
+            {/* Description */}
             <Card className="shadow-card">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base font-medium">
@@ -371,7 +418,7 @@ function ProductDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                   {product.description || "Aucune description."}
                 </p>
               </CardContent>
@@ -388,6 +435,33 @@ function ProductDetailPage() {
         />
       )}
     </div>
+  );
+}
+
+function PriceBlock({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+      <p className="text-2xl font-display font-semibold tracking-tight">
+        {value.toFixed(2)} {CURRENCY}
+      </p>
+    </div>
+  );
+}
+
+function SpecTile({ icon: Icon, label, value }: { icon: typeof Package; label: string; value: React.ReactNode }) {
+  return (
+    <Card className="shadow-card">
+      <CardContent className="p-4 flex flex-col items-start gap-2">
+        <div className="grid h-8 w-8 place-items-center rounded-lg bg-muted text-muted-foreground">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+          <p className="text-sm font-medium truncate">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
