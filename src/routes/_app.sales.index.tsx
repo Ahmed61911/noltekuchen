@@ -212,6 +212,7 @@ function SalesPage() {
         subtotal_ht: sale.subtotal_ht, tax_amount: sale.tax_amount, total_ttc: sale.total_ttc,
         notes: `Issue de la vente ${sale.sale_number}`,
         created_by: user?.id ?? null,
+        warehouse_id: sale.warehouse_id,
       }).select("id").single();
       if (error) throw error;
       if (items?.length) {
