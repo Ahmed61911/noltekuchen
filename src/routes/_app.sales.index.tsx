@@ -47,10 +47,14 @@ type Sale = {
   payment_method: Method; payment_status: PayStatus;
   subtotal_ht: number; tax_amount: number; total_ttc: number; paid_amount: number;
   invoice_id: string | null; notes: string | null;
+  warehouse_id: string | null;
   customers: { name: string } | null;
+  warehouses: { name: string } | null;
 };
 type Customer = { id: string; name: string };
 type Product = { id: string; name: string; selling_price: number };
+type Warehouse = { id: string; name: string };
+
 
 type LineForm = {
   product_id: string | null; description: string; quantity: number;
