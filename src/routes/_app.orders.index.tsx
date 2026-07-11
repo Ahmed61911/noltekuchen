@@ -48,8 +48,12 @@ type Order = {
   order_date: string; due_date: string;
   status: OrderStatus; payment_status: PayStatus;
   subtotal_ht: number; tax_amount: number; total_ttc: number; paid_amount: number;
-  notes: string | null; customers: { name: string } | null;
+  notes: string | null; warehouse_id: string | null;
+  customers: { name: string } | null;
+  warehouses: { name: string } | null;
 };
+type Warehouse = { id: string; name: string };
+
 type Customer = { id: string; name: string };
 type Product = { id: string; name: string; selling_price: number };
 type LineForm = {
