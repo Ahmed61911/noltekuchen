@@ -399,6 +399,35 @@ function ProductsPage() {
   );
 }
 
+function StatCard({ icon: Icon, label, value, active, onClick, tone = "default" }: { icon: typeof Package; label: string; value: number; active?: boolean; onClick?: () => void; tone?: "default" | "warning" | "danger"; }) {
+  const toneClasses = {
+    default: "hover:border-primary/60 hover:bg-primary/5",
+    warning: "hover:border-warning/60 hover:bg-warning/5",
+    danger: "hover:border-destructive/60 hover:bg-destructive/5",
+  }[tone];
+  const iconBg = {
+    default: "bg-primary/10 text-primary",
+    warning: "bg-warning/10 text-warning",
+    danger: "bg-destructive/10 text-destructive",
+  }[tone];
+  return (
+    <Card
+      className={`cursor-pointer border shadow-card transition-colors ${active ? "ring-1 ring-primary border-primary/70 bg-primary/5" : "border-border/60 bg-card"} ${toneClasses}`}
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-4 p-4">
+        <div className={`grid h-11 w-11 place-items-center rounded-xl ${iconBg}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+          <p className="font-display text-2xl font-semibold leading-tight">{value}</p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
