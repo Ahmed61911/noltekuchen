@@ -67,59 +67,6 @@ function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Building2 className="h-4 w-4" /> Entreprise</CardTitle>
-          <CardDescription>
-            {isAdmin ? "Informations utilisées dans les documents (factures, devis...)" : "Seul un administrateur peut modifier ces informations"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-          ) : (
-            <>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="company_name">Nom</Label>
-                  <Input id="company_name" value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} disabled={!isAdmin} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="logo_url">Logo (URL)</Label>
-                  <Input id="logo_url" value={form.logo_url} onChange={(e) => setForm({ ...form, logo_url: e.target.value })} disabled={!isAdmin} placeholder="https://..." />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Téléphone</Label>
-                  <Input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} disabled={!isAdmin} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} disabled={!isAdmin} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Adresse</Label>
-                <Textarea id="address" rows={2} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} disabled={!isAdmin} />
-              </div>
-              {form.logo_url && (
-                <div className="rounded-md border p-3">
-                  <div className="mb-2 text-xs text-muted-foreground">Aperçu du logo</div>
-                  <img src={form.logo_url} alt="Logo" className="h-16 object-contain" />
-                </div>
-              )}
-              {isAdmin && (
-                <div className="flex justify-end">
-                  <Button onClick={() => saveCompany.mutate()} disabled={saveCompany.isPending}>
-                    {saveCompany.isPending ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Save className="me-2 h-4 w-4" />}
-                    {t("save")}
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle className="flex items-center gap-2"><Bell className="h-4 w-4" /> Notifications</CardTitle>
           <CardDescription>Choisir les types d'alertes à recevoir</CardDescription>
         </CardHeader>
