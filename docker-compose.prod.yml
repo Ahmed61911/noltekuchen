@@ -1,0 +1,88 @@
+# Production overrides. Applied on top of docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Differences vs dev:
+#  - restart: always on every service
+#  - No bind-mount of source, no exposed DB/MinIO ports to the host
+#  - Nginx reverse-proxy + certbot for TLS
+#  - MailHog replaced by real SMTP (env-driven)
+#  - Resource limits + logging caps
+
+x-restart: &prod-restart
+  restart: always
+
+x-logging: &prod-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+services:
+  db:
+    <<: [*prod-restart, *prod-logging]
+    ports: []
+
+  auth:
+    <<: [*prod-restart, *prod-logging]
+
+  rest:
+    <<: [*prod-restart, *prod-logging]
+
+  storage:
+    <<: [*prod-restart, *prod-logging]
+
+  kong:
+    <<: [*prod-restart, *prod-logging]
+    ports: []
+
+  minio:
+    <<: [*prod-restart, *prod-logging]
+    ports: []
+
+  # No dev SMTP in prod
+  smtp:
+    profiles: ["never"]
+
+  app:
+    <<: [*prod-restart, *prod-logging]
+    ports: []
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  nginx:
+    image: nginx:1.27-alpine
+    <<: [*prod-restart, *prod-logging]
+    depends_on: [app, kong]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - letsencrypt:/etc/letsencrypt
+      - letsencrypt_www:/var/www/certbot
+    environment:
+      DOMAIN_APP: ${DOMAIN_APP}
+      DOMAIN_SUPABASE: ${DOMAIN_SUPABASE}
+
+  certbot:
+    image: certbot/certbot:v2.11.0
+    <<: *prod-logging
+    depends_on: [nginx]
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - letsencrypt_www:/var/www/certbot
+    entrypoint: >
+      /bin/sh -c "
+      trap exit TERM;
+      while :; do
+        certbot renew --webroot -w /var/www/certbot --quiet;
+        sleep 12h & wait $${!};
+      done"
+
+volumes:
+  letsencrypt:
+  letsencrypt_www:
