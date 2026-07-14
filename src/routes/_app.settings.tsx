@@ -19,47 +19,6 @@ const defaultNotif: NotifPrefs = { stock: true, projects: true, appointments: tr
 function SettingsPage() {
   const { lang, setLang, t } = useI18n();
   const { theme, toggle } = useTheme();
-  const { isAdmin } = useAuth();
-  const qc = useQueryClient();
-
-  const { data: company, isLoading } = useQuery({
-    queryKey: ["company_settings"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("company_settings").select("*").maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const [form, setForm] = useState({ company_name: "", logo_url: "", address: "", phone: "", email: "" });
-  useEffect(() => {
-    if (company) {
-      setForm({
-        company_name: company.company_name ?? "",
-        logo_url: company.logo_url ?? "",
-        address: company.address ?? "",
-        phone: company.phone ?? "",
-        email: company.email ?? "",
-      });
-    }
-  }, [company]);
-
-  const saveCompany = useMutation({
-    mutationFn: async () => {
-      if (!company) {
-        const { error } = await supabase.from("company_settings").insert({ singleton: true, ...form });
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("company_settings").update(form).eq("id", company.id);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      toast.success(t("saved"));
-      qc.invalidateQueries({ queryKey: ["company_settings"] });
-    },
-    onError: (e: any) => toast.error(e.message ?? t("error")),
-  });
 
   const [notif, setNotif] = useState<NotifPrefs>(() => {
     if (typeof window === "undefined") return defaultNotif;
