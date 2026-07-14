@@ -1,0 +1,177 @@
+# Development stack.
+# Usage: docker compose up
+# Prod:  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+services:
+  # ---------- Postgres ----------------------------------------------------
+  db:
+    image: supabase/postgres:15.6.1.146
+    <<: *default-restart
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      JWT_EXP: ${GOTRUE_JWT_EXP}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      # Migrations replay on first boot (empty volume only).
+      - ./database/migrations:/docker-entrypoint-initdb.d/migrations:ro
+      - ./backend/volumes/db/init:/docker-entrypoint-initdb.d/init:ro
+
+  # ---------- Auth (GoTrue) ----------------------------------------------
+  auth:
+    image: supabase/gotrue:v2.158.1
+    <<: *default-restart
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      GOTRUE_SITE_URL: ${GOTRUE_SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${GOTRUE_URI_ALLOW_LIST}
+      GOTRUE_DISABLE_SIGNUP: ${GOTRUE_DISABLE_SIGNUP}
+      GOTRUE_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      GOTRUE_JWT_EXP: ${GOTRUE_JWT_EXP}
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_MAILER_AUTOCONFIRM: ${GOTRUE_MAILER_AUTOCONFIRM}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST:-smtp}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT:-1025}
+      GOTRUE_SMTP_USER: ${SMTP_USER}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
+
+  # ---------- PostgREST (Data API) ---------------------------------------
+  rest:
+    image: postgrest/postgrest:v12.2.3
+    <<: *default-restart
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      PGRST_DB_SCHEMAS: public,storage
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+
+  # ---------- Storage API (uses MinIO as backend) ------------------------
+  storage:
+    image: supabase/storage-api:v1.11.13
+    <<: *default-restart
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      ANON_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+      SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      PGRST_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      FILE_SIZE_LIMIT: "52428800"
+      STORAGE_BACKEND: s3
+      GLOBAL_S3_BUCKET: ${STORAGE_S3_BUCKET}
+      GLOBAL_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT}
+      REGION: ${STORAGE_S3_REGION}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      TENANT_ID: self-hosted
+      GLOBAL_S3_FORCE_PATH_STYLE: "true"
+      GLOBAL_S3_PROTOCOL: http
+    volumes:
+      - storage_data:/var/lib/storage
+
+  # ---------- Kong (API gateway that fronts the whole Supabase surface) --
+  kong:
+    image: kong:2.8
+    <<: *default-restart
+    depends_on: [auth, rest, storage]
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/volumes/api/kong.yml:/var/lib/kong/kong.yml:ro
+
+  # ---------- MinIO (S3-compatible object store) -------------------------
+  minio:
+    image: minio/minio:RELEASE.2024-08-17T01-24-54Z
+    <<: *default-restart
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  # ---------- MinIO bucket bootstrap (one-shot) --------------------------
+  minio-init:
+    image: minio/mc:RELEASE.2024-08-17T11-33-50Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
+      mc mb -p local/${STORAGE_S3_BUCKET} || true;
+      mc mb -p local/product-images || true;
+      mc mb -p local/documents || true;
+      echo 'MinIO buckets ready';
+      "
+
+  # ---------- MailHog (dev SMTP catcher) ---------------------------------
+  smtp:
+    image: mailhog/mailhog:v1.0.1
+    <<: *default-restart
+    ports:
+      - "8025:8025" # web UI
+      - "1025:1025"
+
+  # ---------- App (TanStack Start SSR) -----------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    <<: *default-restart
+    depends_on: [kong]
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: "3000"
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+      VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
+    ports:
+      - "${APP_PORT}:3000"
+
+volumes:
+  pg_data:
+  storage_data:
+  minio_data:
