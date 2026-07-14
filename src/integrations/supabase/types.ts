@@ -115,30 +115,6 @@ export type Database = {
         }
         Relationships: []
       }
-      brands: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          name?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       categories: {
         Row: {
           created_at: string
@@ -157,78 +133,6 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
-        }
-        Relationships: []
-      }
-      company_settings: {
-        Row: {
-          address: string | null
-          company_name: string
-          created_at: string
-          currency: string
-          date_format: string
-          default_language: string
-          default_vat: number
-          email: string | null
-          ice: string | null
-          id: string
-          if_number: string | null
-          logo_url: string | null
-          patente: string | null
-          phone: string | null
-          primary_color: string
-          rc: string | null
-          singleton: boolean
-          theme: string
-          time_format: string
-          updated_at: string
-          website: string | null
-        }
-        Insert: {
-          address?: string | null
-          company_name?: string
-          created_at?: string
-          currency?: string
-          date_format?: string
-          default_language?: string
-          default_vat?: number
-          email?: string | null
-          ice?: string | null
-          id?: string
-          if_number?: string | null
-          logo_url?: string | null
-          patente?: string | null
-          phone?: string | null
-          primary_color?: string
-          rc?: string | null
-          singleton?: boolean
-          theme?: string
-          time_format?: string
-          updated_at?: string
-          website?: string | null
-        }
-        Update: {
-          address?: string | null
-          company_name?: string
-          created_at?: string
-          currency?: string
-          date_format?: string
-          default_language?: string
-          default_vat?: number
-          email?: string | null
-          ice?: string | null
-          id?: string
-          if_number?: string | null
-          logo_url?: string | null
-          patente?: string | null
-          phone?: string | null
-          primary_color?: string
-          rc?: string | null
-          singleton?: boolean
-          theme?: string
-          time_format?: string
-          updated_at?: string
-          website?: string | null
         }
         Relationships: []
       }
@@ -691,7 +595,6 @@ export type Database = {
       products: {
         Row: {
           brand: string | null
-          brand_id: string | null
           category_id: string | null
           created_at: string
           description: string | null
@@ -712,7 +615,6 @@ export type Database = {
         }
         Insert: {
           brand?: string | null
-          brand_id?: string | null
           category_id?: string | null
           created_at?: string
           description?: string | null
@@ -733,7 +635,6 @@ export type Database = {
         }
         Update: {
           brand?: string | null
-          brand_id?: string | null
           category_id?: string | null
           created_at?: string
           description?: string | null
@@ -753,13 +654,6 @@ export type Database = {
           warehouse_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "products_brand_id_fkey"
-            columns: ["brand_id"]
-            isOneToOne: false
-            referencedRelation: "brands"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "products_category_id_fkey"
             columns: ["category_id"]
@@ -1565,30 +1459,6 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      units: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          symbol: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          symbol?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          symbol?: string | null
           updated_at?: string
         }
         Relationships: []

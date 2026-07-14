@@ -135,8 +135,8 @@ export function AppSidebar() {
       <SidebarFooter className="border-t">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive("/settings")}>
-              <Link to="/settings" className="flex items-center gap-3">
+            <SidebarMenuButton asChild>
+              <Link to="/" className="flex items-center gap-3 text-muted-foreground">
                 <Settings className="h-4 w-4" />
                 {!collapsed && <span>{t("settings")}</span>}
               </Link>
