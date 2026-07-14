@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppWarehousesRouteImport } from './routes/_app.warehouses'
 import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
 import { Route as AppStockRouteImport } from './routes/_app.stock'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppRolesRouteImport } from './routes/_app.roles'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppProductsRouteImport } from './routes/_app.products'
@@ -70,6 +71,11 @@ const AppSuppliersRoute = AppSuppliersRouteImport.update({
 const AppStockRoute = AppStockRouteImport.update({
   id: '/stock',
   path: '/stock',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRolesRoute = AppRolesRouteImport.update({
@@ -191,6 +197,7 @@ export interface FileRoutesByFullPath {
   '/products': typeof AppProductsRouteWithChildren
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
+  '/settings': typeof AppSettingsRoute
   '/stock': typeof AppStockRoute
   '/suppliers': typeof AppSuppliersRoute
   '/warehouses': typeof AppWarehousesRoute
@@ -219,6 +226,7 @@ export interface FileRoutesByTo {
   '/logs': typeof AppLogsRoute
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
+  '/settings': typeof AppSettingsRoute
   '/stock': typeof AppStockRoute
   '/suppliers': typeof AppSuppliersRoute
   '/warehouses': typeof AppWarehousesRoute
@@ -250,6 +258,7 @@ export interface FileRoutesById {
   '/_app/products': typeof AppProductsRouteWithChildren
   '/_app/reports': typeof AppReportsRoute
   '/_app/roles': typeof AppRolesRoute
+  '/_app/settings': typeof AppSettingsRoute
   '/_app/stock': typeof AppStockRoute
   '/_app/suppliers': typeof AppSuppliersRoute
   '/_app/warehouses': typeof AppWarehousesRoute
@@ -281,6 +290,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/reports'
     | '/roles'
+    | '/settings'
     | '/stock'
     | '/suppliers'
     | '/warehouses'
@@ -309,6 +319,7 @@ export interface FileRouteTypes {
     | '/logs'
     | '/reports'
     | '/roles'
+    | '/settings'
     | '/stock'
     | '/suppliers'
     | '/warehouses'
@@ -339,6 +350,7 @@ export interface FileRouteTypes {
     | '/_app/products'
     | '/_app/reports'
     | '/_app/roles'
+    | '/_app/settings'
     | '/_app/stock'
     | '/_app/suppliers'
     | '/_app/warehouses'
@@ -412,6 +424,13 @@ declare module '@tanstack/react-router' {
       path: '/stock'
       fullPath: '/stock'
       preLoaderRoute: typeof AppStockRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/roles': {
@@ -588,6 +607,7 @@ interface AppRouteChildren {
   AppProductsRoute: typeof AppProductsRouteWithChildren
   AppReportsRoute: typeof AppReportsRoute
   AppRolesRoute: typeof AppRolesRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppStockRoute: typeof AppStockRoute
   AppSuppliersRoute: typeof AppSuppliersRoute
   AppWarehousesRoute: typeof AppWarehousesRoute
@@ -613,6 +633,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProductsRoute: AppProductsRouteWithChildren,
   AppReportsRoute: AppReportsRoute,
   AppRolesRoute: AppRolesRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppStockRoute: AppStockRoute,
   AppSuppliersRoute: AppSuppliersRoute,
   AppWarehousesRoute: AppWarehousesRoute,
@@ -639,13 +660,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
