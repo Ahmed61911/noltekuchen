@@ -209,7 +209,7 @@ export function generateInvoicePdf(inv: PdfInvoice) {
     doc.setFontSize(11);
     doc.setTextColor(...ACCENT_RED);
     doc.text(`PRIX DE ${inv.customer.name.toUpperCase()}`, M, ty);
-    doc.text(fmt(inv.total_ttc), pageW - M, ty, { align: "right" });
+    doc.text(fmt(finalTotal), pageW - M, ty, { align: "right" });
     doc.setDrawColor(...ACCENT_RED);
     doc.setLineWidth(0.5);
     doc.line(pageW - M - 45, ty + 1.5, pageW - M, ty + 1.5);
