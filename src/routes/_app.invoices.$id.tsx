@@ -51,6 +51,17 @@ function InvoiceDetail() {
   const { inv, items } = data;
   const customer = (inv as { customers?: PdfInvoice["customer"] }).customers ?? null;
 
+  const [cpEnabled, setCpEnabled] = useState(false);
+  const [cpLabel, setCpLabel] = useState("");
+  const [cpAmount, setCpAmount] = useState<string>("");
+  const [cpAdd, setCpAdd] = useState(true);
+
+  const cpAmountNum = Number(cpAmount) || 0;
+  const cpValid = cpEnabled && cpLabel.trim() !== "" && cpAmountNum !== 0;
+  const finalTotal = Number(inv.total_ttc) + (cpValid && cpAdd ? cpAmountNum : 0);
+
+  const custom_price = cpValid ? { label: cpLabel.trim(), amount: cpAmountNum, addToTotal: cpAdd } : null;
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
