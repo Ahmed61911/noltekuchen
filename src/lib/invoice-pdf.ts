@@ -12,6 +12,7 @@ export type PdfInvoice = {
   total_ttc: number;
   notes: string | null;
   custom_price?: { label: string; amount: number; addToTotal: boolean } | null;
+  bouhlalla_price?: number | null;
   customer: {
     name: string;
     email: string | null;
@@ -202,14 +203,15 @@ export function generateInvoicePdf(inv: PdfInvoice) {
   doc.setFontSize(12);
   doc.text(fmt(finalTotal), valueX, ty + 7.4, { align: "right" });
 
-  // "PRIX DE Mr ..." line — red accent like reference
-  if (inv.customer?.name) {
+  // "Prix de Mr Bouhlalla" — optional commercial line, red accent
+  const bp = inv.bouhlalla_price;
+  if (bp != null && Number.isFinite(bp)) {
     ty += barH + 10;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(...ACCENT_RED);
-    doc.text(`PRIX DE ${inv.customer.name.toUpperCase()}`, M, ty);
-    doc.text(fmt(finalTotal), pageW - M, ty, { align: "right" });
+    doc.text("Prix de Mr Bouhlalla", M, ty);
+    doc.text(fmt(bp), pageW - M, ty, { align: "right" });
     doc.setDrawColor(...ACCENT_RED);
     doc.setLineWidth(0.5);
     doc.line(pageW - M - 45, ty + 1.5, pageW - M, ty + 1.5);

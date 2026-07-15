@@ -55,10 +55,14 @@ function InvoiceDetail() {
   const [cpLabel, setCpLabel] = useState("");
   const [cpAmount, setCpAmount] = useState<string>("");
   const [cpAdd, setCpAdd] = useState(true);
+  const [bouhlallaPrice, setBouhlallaPrice] = useState<string>("");
 
   const cpAmountNum = Number(cpAmount) || 0;
   const cpValid = cpEnabled && cpLabel.trim() !== "" && cpAmountNum !== 0;
   const finalTotal = Number(inv.total_ttc) + (cpValid && cpAdd ? cpAmountNum : 0);
+  const bouhlallaTrimmed = bouhlallaPrice.trim();
+  const bouhlallaNum = bouhlallaTrimmed === "" ? null : Number(bouhlallaTrimmed);
+  const bouhlallaValid = bouhlallaNum != null && Number.isFinite(bouhlallaNum);
 
   const custom_price = cpValid ? { label: cpLabel.trim(), amount: cpAmountNum, addToTotal: cpAdd } : null;
 
@@ -74,7 +78,7 @@ function InvoiceDetail() {
             <Badge className={STATUS_COLOR[inv.status]}>{STATUS_LABEL[inv.status]}</Badge>
           </div>
         </div>
-        <Button onClick={() => generateInvoicePdf({ ...(inv as unknown as PdfInvoice), customer, items: items as PdfInvoice["items"], custom_price })}>
+        <Button onClick={() => generateInvoicePdf({ ...(inv as unknown as PdfInvoice), customer, items: items as PdfInvoice["items"], custom_price, bouhlalla_price: bouhlallaValid ? bouhlallaNum : null })}>
           <FileDown className="mr-2 h-4 w-4" /> Télécharger PDF
         </Button>
       </div>
@@ -139,6 +143,29 @@ function InvoiceDetail() {
               </div>
             )}
             <div className="flex justify-between border-t pt-2 font-semibold text-lg"><span>Total TTC</span><span className="tabular-nums">{fmt(finalTotal)}</span></div>
+            {bouhlallaValid && (
+              <div className="flex justify-between font-semibold text-[hsl(0_70%_45%)]">
+                <span>Prix de Mr Bouhlalla</span>
+                <span className="tabular-nums">{fmt(bouhlallaNum!)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="px-6 pb-6">
+          <div className="rounded-md border p-4 space-y-2">
+            <Label htmlFor="bouhlalla" className="font-medium">Prix de Mr Bouhlalla (optionnel)</Label>
+            <Input
+              id="bouhlalla"
+              type="number"
+              step="0.01"
+              value={bouhlallaPrice}
+              onChange={(e) => setBouhlallaPrice(e.target.value)}
+              placeholder="Montant en DH — n'affecte pas le total"
+            />
+            <p className="text-xs text-muted-foreground">
+              Affiché sur la facture uniquement si renseigné. Ne modifie pas le sous-total HT, la TVA ni le TOTAL TTC.
+            </p>
           </div>
         </div>
 
