@@ -132,7 +132,40 @@ function InvoiceDetail() {
             {Number(inv.discount_amount) > 0 && (
               <div className="flex justify-between"><span>Remise</span><span className="tabular-nums">-{fmt(Number(inv.discount_amount))}</span></div>
             )}
-            <div className="flex justify-between border-t pt-2 font-semibold text-lg"><span>Total TTC</span><span className="tabular-nums">{fmt(Number(inv.total_ttc))}</span></div>
+            {cpValid && (
+              <div className="flex justify-between text-muted-foreground">
+                <span>{cpLabel}{!cpAdd && " (info)"}</span>
+                <span className="tabular-nums">{fmt(cpAmountNum)}</span>
+              </div>
+            )}
+            <div className="flex justify-between border-t pt-2 font-semibold text-lg"><span>Total TTC</span><span className="tabular-nums">{fmt(finalTotal)}</span></div>
+          </div>
+        </div>
+
+        <div className="px-6 pb-6">
+          <div className="rounded-md border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="cp-enabled" className="font-medium">Ajouter un prix personnalisé</Label>
+              <Switch id="cp-enabled" checked={cpEnabled} onCheckedChange={setCpEnabled} />
+            </div>
+            {cpEnabled && (
+              <div className="grid md:grid-cols-2 gap-3 pt-2">
+                <div className="space-y-1">
+                  <Label htmlFor="cp-label" className="text-xs">Libellé</Label>
+                  <Input id="cp-label" value={cpLabel} onChange={(e) => setCpLabel(e.target.value)} placeholder="Ex : Montage, Transport, Prix de Mr…" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="cp-amount" className="text-xs">Montant (DH)</Label>
+                  <Input id="cp-amount" type="number" step="0.01" value={cpAmount} onChange={(e) => setCpAmount(e.target.value)} placeholder="0.00" />
+                </div>
+                <div className="md:col-span-2 flex items-center justify-between">
+                  <Label htmlFor="cp-add" className="text-sm text-muted-foreground">
+                    {cpAdd ? "Ajouté au total" : "Affiché comme information (n'affecte pas le total)"}
+                  </Label>
+                  <Switch id="cp-add" checked={cpAdd} onCheckedChange={setCpAdd} />
+                </div>
+              </div>
+            )}
           </div>
         </div>
         {inv.notes && (
