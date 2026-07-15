@@ -1,9 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { ArrowLeft, FileDown, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { generateInvoicePdf, type PdfInvoice } from "@/lib/invoice-pdf";
@@ -47,6 +51,17 @@ function InvoiceDetail() {
   const { inv, items } = data;
   const customer = (inv as { customers?: PdfInvoice["customer"] }).customers ?? null;
 
+  const [cpEnabled, setCpEnabled] = useState(false);
+  const [cpLabel, setCpLabel] = useState("");
+  const [cpAmount, setCpAmount] = useState<string>("");
+  const [cpAdd, setCpAdd] = useState(true);
+
+  const cpAmountNum = Number(cpAmount) || 0;
+  const cpValid = cpEnabled && cpLabel.trim() !== "" && cpAmountNum !== 0;
+  const finalTotal = Number(inv.total_ttc) + (cpValid && cpAdd ? cpAmountNum : 0);
+
+  const custom_price = cpValid ? { label: cpLabel.trim(), amount: cpAmountNum, addToTotal: cpAdd } : null;
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
@@ -59,7 +74,7 @@ function InvoiceDetail() {
             <Badge className={STATUS_COLOR[inv.status]}>{STATUS_LABEL[inv.status]}</Badge>
           </div>
         </div>
-        <Button onClick={() => generateInvoicePdf({ ...(inv as unknown as PdfInvoice), customer, items: items as PdfInvoice["items"] })}>
+        <Button onClick={() => generateInvoicePdf({ ...(inv as unknown as PdfInvoice), customer, items: items as PdfInvoice["items"], custom_price })}>
           <FileDown className="mr-2 h-4 w-4" /> Télécharger PDF
         </Button>
       </div>
@@ -117,7 +132,40 @@ function InvoiceDetail() {
             {Number(inv.discount_amount) > 0 && (
               <div className="flex justify-between"><span>Remise</span><span className="tabular-nums">-{fmt(Number(inv.discount_amount))}</span></div>
             )}
-            <div className="flex justify-between border-t pt-2 font-semibold text-lg"><span>Total TTC</span><span className="tabular-nums">{fmt(Number(inv.total_ttc))}</span></div>
+            {cpValid && (
+              <div className="flex justify-between text-muted-foreground">
+                <span>{cpLabel}{!cpAdd && " (info)"}</span>
+                <span className="tabular-nums">{fmt(cpAmountNum)}</span>
+              </div>
+            )}
+            <div className="flex justify-between border-t pt-2 font-semibold text-lg"><span>Total TTC</span><span className="tabular-nums">{fmt(finalTotal)}</span></div>
+          </div>
+        </div>
+
+        <div className="px-6 pb-6">
+          <div className="rounded-md border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="cp-enabled" className="font-medium">Ajouter un prix personnalisé</Label>
+              <Switch id="cp-enabled" checked={cpEnabled} onCheckedChange={setCpEnabled} />
+            </div>
+            {cpEnabled && (
+              <div className="grid md:grid-cols-2 gap-3 pt-2">
+                <div className="space-y-1">
+                  <Label htmlFor="cp-label" className="text-xs">Libellé</Label>
+                  <Input id="cp-label" value={cpLabel} onChange={(e) => setCpLabel(e.target.value)} placeholder="Ex : Montage, Transport, Prix de Mr…" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="cp-amount" className="text-xs">Montant (DH)</Label>
+                  <Input id="cp-amount" type="number" step="0.01" value={cpAmount} onChange={(e) => setCpAmount(e.target.value)} placeholder="0.00" />
+                </div>
+                <div className="md:col-span-2 flex items-center justify-between">
+                  <Label htmlFor="cp-add" className="text-sm text-muted-foreground">
+                    {cpAdd ? "Ajouté au total" : "Affiché comme information (n'affecte pas le total)"}
+                  </Label>
+                  <Switch id="cp-add" checked={cpAdd} onCheckedChange={setCpAdd} />
+                </div>
+              </div>
+            )}
           </div>
         </div>
         {inv.notes && (
