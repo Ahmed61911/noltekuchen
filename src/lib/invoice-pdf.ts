@@ -1,6 +1,5 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import logoAsset from "@/assets/nolte-logo.png.asset.json";
 
 export type PdfInvoice = {
   invoice_number: string;
