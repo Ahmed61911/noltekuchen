@@ -11,6 +11,7 @@ export type PdfInvoice = {
   discount_amount: number;
   total_ttc: number;
   notes: string | null;
+  custom_price?: { label: string; amount: number; addToTotal: boolean } | null;
   customer: {
     name: string;
     email: string | null;
