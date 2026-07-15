@@ -245,7 +245,8 @@ function InvoicesPage() {
     const { data: items, error: e2 } = await supabase
       .from("invoice_items").select("*").eq("invoice_id", id).order("created_at");
     if (e2) { toast.error(e2.message); return; }
-    generateInvoicePdf({ ...(inv as unknown as PdfInvoice), items: items as PdfInvoice["items"] });
+    const customer = (inv as { customers?: PdfInvoice["customer"] }).customers ?? null;
+    generateInvoicePdf({ ...(inv as unknown as PdfInvoice), customer, items: items as PdfInvoice["items"] });
   };
 
   // Filter
