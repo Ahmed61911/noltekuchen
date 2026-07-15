@@ -182,6 +182,14 @@ export function generateInvoicePdf(inv: PdfInvoice) {
     doc.text("-" + fmt(inv.discount_amount), valueX, ty, { align: "right" });
   }
 
+  const cp = inv.custom_price;
+  if (cp && cp.label.trim() && Number.isFinite(cp.amount)) {
+    ty += 6;
+    doc.text(cp.label + (cp.addToTotal ? "" : " (info)"), labelX, ty);
+    doc.text(fmt(cp.amount), valueX, ty, { align: "right" });
+  }
+  const finalTotal = inv.total_ttc + (cp && cp.addToTotal ? cp.amount : 0);
+
   // TOTAL band — full width, blue header style like reference
   ty += 8;
   const barH = 11;
@@ -192,7 +200,7 @@ export function generateInvoicePdf(inv: PdfInvoice) {
   doc.setTextColor(255, 255, 255);
   doc.text("TOTAL TTC", labelX, ty + 7.2);
   doc.setFontSize(12);
-  doc.text(fmt(inv.total_ttc), valueX, ty + 7.4, { align: "right" });
+  doc.text(fmt(finalTotal), valueX, ty + 7.4, { align: "right" });
 
   // "PRIX DE Mr ..." line — red accent like reference
   if (inv.customer?.name) {
