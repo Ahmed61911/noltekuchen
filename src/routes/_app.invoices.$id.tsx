@@ -143,6 +143,29 @@ function InvoiceDetail() {
               </div>
             )}
             <div className="flex justify-between border-t pt-2 font-semibold text-lg"><span>Total TTC</span><span className="tabular-nums">{fmt(finalTotal)}</span></div>
+            {bouhlallaValid && (
+              <div className="flex justify-between font-semibold text-[hsl(0_70%_45%)]">
+                <span>Prix de Mr Bouhlalla</span>
+                <span className="tabular-nums">{fmt(bouhlallaNum!)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="px-6 pb-6">
+          <div className="rounded-md border p-4 space-y-2">
+            <Label htmlFor="bouhlalla" className="font-medium">Prix de Mr Bouhlalla (optionnel)</Label>
+            <Input
+              id="bouhlalla"
+              type="number"
+              step="0.01"
+              value={bouhlallaPrice}
+              onChange={(e) => setBouhlallaPrice(e.target.value)}
+              placeholder="Montant en DH — n'affecte pas le total"
+            />
+            <p className="text-xs text-muted-foreground">
+              Affiché sur la facture uniquement si renseigné. Ne modifie pas le sous-total HT, la TVA ni le TOTAL TTC.
+            </p>
           </div>
         </div>
 
