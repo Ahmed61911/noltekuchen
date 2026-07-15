@@ -40,26 +40,6 @@ const fmt = (n: number) => {
   return `${sign}${withThousands},${decPart} DH`;
 };
 
-let cachedLogo: string | null = null;
-async function loadLogo(): Promise<string | null> {
-  if (cachedLogo) return cachedLogo;
-  try {
-    const res = await fetch(logoAsset.url);
-    const blob = await res.blob();
-    return await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        cachedLogo = reader.result as string;
-        resolve(cachedLogo);
-      };
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
-}
-
 // Palette — Nolte Küchen: sober navy header + red accent for totals
 const HEADER_BLUE: [number, number, number] = [42, 63, 95];
 const ACCENT_RED: [number, number, number] = [200, 30, 30];
@@ -68,22 +48,13 @@ const TEXT_MUTED: [number, number, number] = [110, 120, 130];
 const BORDER: [number, number, number] = [180, 188, 198];
 const BORDER_STRONG: [number, number, number] = [90, 100, 115];
 
-export async function generateInvoicePdf(inv: PdfInvoice) {
+export function generateInvoicePdf(inv: PdfInvoice) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const M = 18;
 
   // ===== HEADER — company identity centered =====
-  const logo = await loadLogo();
-  if (logo) {
-    try {
-      doc.addImage(logo, "PNG", M, 14, 26, 12);
-    } catch {
-      /* ignore */
-    }
-  }
-
   doc.setFont("helvetica", "bold");
   doc.setFontSize(26);
   doc.setTextColor(...TEXT_DARK);
