@@ -12,6 +12,7 @@ export type PdfInvoice = {
   total_ttc: number;
   notes: string | null;
   custom_price?: { label: string; amount: number; addToTotal: boolean } | null;
+  bouhlalla_price?: number | null;
   customer: {
     name: string;
     email: string | null;
