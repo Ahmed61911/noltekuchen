@@ -55,10 +55,14 @@ function InvoiceDetail() {
   const [cpLabel, setCpLabel] = useState("");
   const [cpAmount, setCpAmount] = useState<string>("");
   const [cpAdd, setCpAdd] = useState(true);
+  const [bouhlallaPrice, setBouhlallaPrice] = useState<string>("");
 
   const cpAmountNum = Number(cpAmount) || 0;
   const cpValid = cpEnabled && cpLabel.trim() !== "" && cpAmountNum !== 0;
   const finalTotal = Number(inv.total_ttc) + (cpValid && cpAdd ? cpAmountNum : 0);
+  const bouhlallaTrimmed = bouhlallaPrice.trim();
+  const bouhlallaNum = bouhlallaTrimmed === "" ? null : Number(bouhlallaTrimmed);
+  const bouhlallaValid = bouhlallaNum != null && Number.isFinite(bouhlallaNum);
 
   const custom_price = cpValid ? { label: cpLabel.trim(), amount: cpAmountNum, addToTotal: cpAdd } : null;
 
