@@ -74,7 +74,7 @@ function InvoiceDetail() {
             <Badge className={STATUS_COLOR[inv.status]}>{STATUS_LABEL[inv.status]}</Badge>
           </div>
         </div>
-        <Button onClick={() => generateInvoicePdf({ ...(inv as unknown as PdfInvoice), customer, items: items as PdfInvoice["items"] })}>
+        <Button onClick={() => generateInvoicePdf({ ...(inv as unknown as PdfInvoice), customer, items: items as PdfInvoice["items"], custom_price })}>
           <FileDown className="mr-2 h-4 w-4" /> Télécharger PDF
         </Button>
       </div>
