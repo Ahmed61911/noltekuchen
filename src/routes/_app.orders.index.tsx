@@ -154,11 +154,27 @@ function OrdersPage() {
       if (validLines.length === 0) throw new Error("Ajoutez au moins une ligne");
       if (!customerId) throw new Error("Sélectionnez un client");
 
+      // Validate depot & stock per line
+      for (const [i, l] of validLines.entries()) {
+        if (!l.warehouse_id) throw new Error(`Ligne ${i + 1}: dépôt requis`);
+        if (l.product_id) {
+          const p = products.find(x => x.id === l.product_id);
+          if (!p) throw new Error(`Ligne ${i + 1}: produit introuvable`);
+          if (p.warehouse_id !== l.warehouse_id) {
+            const wname = warehouses.find(w => w.id === l.warehouse_id)?.name ?? "";
+            throw new Error(`Ligne ${i + 1}: "${p.name}" n'existe pas dans le dépôt ${wname}`);
+          }
+          if (Number(p.stock_quantity ?? 0) < l.quantity) {
+            throw new Error(`Ligne ${i + 1}: stock insuffisant pour "${p.name}" (disponible: ${p.stock_quantity ?? 0})`);
+          }
+        }
+      }
+
       const { data: order, error: e1 } = await supabase.from("orders").insert({
         customer_id: customerId, order_date: orderDate, due_date: dueDate,
         status: "pending", subtotal_ht: totals.ht, tax_amount: totals.tva, total_ttc: totals.ttc,
         notes: notes || null, created_by: user?.id ?? null,
-        warehouse_id: warehouseId || null,
+        warehouse_id: null,
       }).select("id").single();
       if (e1) throw e1;
 
@@ -170,6 +186,7 @@ function OrdersPage() {
           quantity: l.quantity, unit_price: l.unit_price, tax_rate: l.tax_rate,
           discount_rate: l.discount_rate,
           line_total_ht: c.ht, line_tax: c.tva, line_total_ttc: c.ttc,
+          warehouse_id: l.warehouse_id,
         };
       });
       const { error: e2 } = await supabase.from("order_items").insert(payload);
