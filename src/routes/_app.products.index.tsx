@@ -53,7 +53,7 @@ type Warehouse = { id: string; name: string; description: string | null; is_acti
 type FormState = Omit<Product, "id" | "image_url" | "images"> & { gallery: string[] };
 
 const empty: FormState = {
-  reference: "", name: "", brand: "", sku: "", description: "",
+  name: "", reference: "", brand: "", sku: "", description: "",
   purchase_price: 0, selling_price: 0, stock_quantity: 0, min_stock: 5,
   dimensions: "", gallery: [], warehouse_id: null,
 };
@@ -155,7 +155,7 @@ function ProductsIndexPage() {
     setEditing(p);
     const gallery = [p.image_url, ...(p.images ?? [])].filter((x): x is string => !!x);
     setForm({
-      reference: p.reference, name: p.name,
+      name: p.name, reference: p.reference,
       brand: p.brand ?? "", sku: p.sku ?? "",
       description: p.description ?? "",
       purchase_price: p.purchase_price, selling_price: p.selling_price,
@@ -188,41 +188,34 @@ function ProductsIndexPage() {
                 <DialogHeader>
                   <DialogTitle>{editing ? t("edit_product") : t("add_product")}</DialogTitle>
                 </DialogHeader>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Marque *">
-                    <Input value={form.brand ?? ""} onChange={(e) => setForm({ ...form, brand: e.target.value })} placeholder="Ex : Bosch" />
+                <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                  {/* Row 1 — Identity */}
+                  <Field label={t("product_name") + " *"}>
+                    <Input
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      placeholder="Ex : Hotte décorative Bosch 90 cm"
+                    />
                   </Field>
-                  <Field label="Référence *">
-                    <Input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
+                  <Field label={t("reference") + " *"}>
+                    <Input
+                      value={form.reference}
+                      onChange={(e) => setForm({ ...form, reference: e.target.value })}
+                      placeholder="Ex : BOS-DWK-90"
+                    />
                   </Field>
-                  <Field label="Code produit / SKU *">
-                    <Input value={form.sku ?? ""} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="SKU unique" />
+
+                  {/* Row 2 — SKU & Warehouse */}
+                  <Field label={t("sku") + " *"}>
+                    <Input
+                      value={form.sku ?? ""}
+                      onChange={(e) => setForm({ ...form, sku: e.target.value })}
+                      placeholder="SKU unique"
+                    />
                   </Field>
-                  <Field label="Prix d'achat (DH) *">
-                    <Input type="number" min="0" step="0.01" value={form.purchase_price}
-                      onChange={(e) => setForm({ ...form, purchase_price: Math.max(0, Number(e.target.value)) })} />
-                  </Field>
-                  <Field label="Prix de vente (DH) *">
-                    <Input type="number" min="0" step="0.01" value={form.selling_price}
-                      onChange={(e) => setForm({ ...form, selling_price: Math.max(0, Number(e.target.value)) })} />
-                  </Field>
-                  <Field label="Quantité *">
-                    <Input type="number" min="0" step="1" value={form.stock_quantity}
-                      onChange={(e) => setForm({ ...form, stock_quantity: Math.max(0, Math.floor(Number(e.target.value))) })} />
-                  </Field>
-                  <Field label="Seuil minimum *">
-                    <Input type="number" min="0" step="1" value={form.min_stock}
-                      onChange={(e) => setForm({ ...form, min_stock: Math.max(0, Math.floor(Number(e.target.value))) })} />
-                  </Field>
-                  <Field label="Dimensions (L × P × H)">
-                    <Input value={form.dimensions ?? ""} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} placeholder="60 × 40 × 200 cm" />
-                  </Field>
-                  <Field label="Dépôt *">
-                    <Select
-                      value={form.warehouse_id ?? ""}
-                      onValueChange={(v) => setForm({ ...form, warehouse_id: v })}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Sélectionner un dépôt" /></SelectTrigger>
+                  <Field label={t("warehouse") + " *"}>
+                    <Select value={form.warehouse_id ?? ""} onValueChange={(v) => setForm({ ...form, warehouse_id: v })}>
+                      <SelectTrigger><SelectValue placeholder={t("select_warehouse")} /></SelectTrigger>
                       <SelectContent>
                         {warehouses.filter((w) => w.is_active || w.id === form.warehouse_id).map((w) => (
                           <SelectItem key={w.id} value={w.id}>
@@ -232,14 +225,66 @@ function ProductsIndexPage() {
                       </SelectContent>
                     </Select>
                   </Field>
+
+                  {/* Row 3 — Pricing */}
+                  <Field label={t("purchase_price") + " (DH) *"}>
+                    <Input
+                      type="number" min="0" step="0.01"
+                      value={form.purchase_price}
+                      onChange={(e) => setForm({ ...form, purchase_price: Math.max(0, Number(e.target.value)) })}
+                    />
+                  </Field>
+                  <Field label={t("selling_price") + " (DH) *"}>
+                    <Input
+                      type="number" min="0" step="0.01"
+                      value={form.selling_price}
+                      onChange={(e) => setForm({ ...form, selling_price: Math.max(0, Number(e.target.value)) })}
+                    />
+                  </Field>
+
+                  {/* Row 4 — Stock */}
+                  <Field label={t("quantity") + " *"}>
+                    <Input
+                      type="number" min="0" step="1"
+                      value={form.stock_quantity}
+                      onChange={(e) => setForm({ ...form, stock_quantity: Math.max(0, Math.floor(Number(e.target.value))) })}
+                    />
+                  </Field>
+                  <Field label={t("min_stock") + " *"}>
+                    <Input
+                      type="number" min="0" step="1"
+                      value={form.min_stock}
+                      onChange={(e) => setForm({ ...form, min_stock: Math.max(0, Math.floor(Number(e.target.value))) })}
+                    />
+                  </Field>
+
+                  {/* Full-width fields */}
                   <div className="sm:col-span-2">
-                    <Field label={`Images (max ${MAX_IMAGES})`}>
-                      <GalleryUploadField value={form.gallery} onChange={(g) => setForm({ ...form, gallery: g })} />
+                    <Field label={t("brand")}>
+                      <Input
+                        value={form.brand ?? ""}
+                        onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                        placeholder="Ex : Bosch"
+                      />
+                    </Field>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Field label={t("dimensions")}>
+                      <Input
+                        value={form.dimensions ?? ""}
+                        onChange={(e) => setForm({ ...form, dimensions: e.target.value })}
+                        placeholder="60 × 40 × 200 cm"
+                      />
                     </Field>
                   </div>
                   <div className="sm:col-span-2">
                     <Field label={t("description")}>
                       <Textarea rows={3} value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                    </Field>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Field label={`${t("images")} (max ${MAX_IMAGES})`}>
+                      <GalleryUploadField value={form.gallery} onChange={(g) => setForm({ ...form, gallery: g })} />
                     </Field>
                   </div>
                 </div>
@@ -248,16 +293,15 @@ function ProductsIndexPage() {
                   <Button
                     onClick={() => {
                       const errs: string[] = [];
-                      if (!form.brand?.trim()) errs.push("Marque");
-                      if (!form.reference.trim()) errs.push("Référence");
-                      if (!form.sku?.trim()) errs.push("Code produit / SKU");
-                      const autoName = `${form.brand?.trim() ?? ""} ${form.reference.trim()}`.trim();
-                      
-                      if (!form.warehouse_id) errs.push("Dépôt");
+                      if (!form.name.trim()) errs.push(t("product_name"));
+                      if (!form.reference.trim()) errs.push(t("reference"));
+                      if (!form.sku?.trim()) errs.push(t("sku"));
+                      if (!form.warehouse_id) errs.push(t("warehouse"));
                       if (form.purchase_price < 0 || form.selling_price < 0) errs.push("Prix négatif interdit");
                       if (form.stock_quantity < 0 || form.min_stock < 0) errs.push("Quantité négative interdite");
                       if (errs.length) { toast.error("Champs requis : " + errs.join(", ")); return; }
-                      const payload = { ...form, name: autoName || form.reference };
+                      const fallbackName = `${form.brand?.trim() ?? ""} ${form.reference.trim()}`.trim();
+                      const payload = { ...form, name: form.name.trim() || fallbackName || form.reference };
                       upsert.mutate(editing ? { ...payload, id: editing.id } : payload);
                     }}
                     disabled={upsert.isPending}
