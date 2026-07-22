@@ -477,7 +477,7 @@ function OrdersPage() {
                   const newLines: LineForm[] = Object.entries(pickerSel).map(([pid, qty]) => {
                     const p = products.find(x => x.id === pid)!;
                     return {
-                      product_id: p.id, description: p.name, quantity: qty,
+                      product_id: p.id, product_key: productKey(p), description: p.name, quantity: qty,
                       unit_price: Number(p.selling_price), tax_rate: 20, discount_rate: 0,
                       warehouse_id: p.warehouse_id,
                     };
