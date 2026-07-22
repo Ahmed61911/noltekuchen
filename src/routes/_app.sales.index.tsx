@@ -172,7 +172,7 @@ function SalesPage() {
       const { data: sale, error: e1 } = await supabase.from("sales").insert({
         customer_id: customerId || null,
         sale_date: saleDate,
-        payment_due_date: method === "credit" ? (dueDate || null) : null,
+        payment_due_date: dueDate || null,
         payment_method: method,
         payment_status: ps,
         subtotal_ht: totals.ht,
@@ -309,7 +309,7 @@ function SalesPage() {
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Nouvelle vente</DialogTitle></DialogHeader>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-5 gap-3">
               <div className="col-span-2">
                 <Label>Client</Label>
                 <Select value={customerId || "_none"} onValueChange={(v) => setCustomerId(v === "_none" ? "" : v)}>
@@ -321,6 +321,10 @@ function SalesPage() {
                 </Select>
               </div>
               <div><Label>Date</Label><Input type="date" value={saleDate} onChange={e => setSaleDate(e.target.value)} /></div>
+              <div>
+                <Label>Échéance</Label>
+                <Input type="date" value={dueDate} min={saleDate || undefined} onChange={e => setDueDate(e.target.value)} />
+              </div>
               <div>
                 <Label>Mode paiement</Label>
                 <Select value={method} onValueChange={(v) => setMethod(v as Method)}>
