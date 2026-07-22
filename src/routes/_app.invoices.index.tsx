@@ -50,6 +50,7 @@ type Invoice = {
   warehouse_id: string | null;
   customers: { name: string } | null;
   warehouses: { name: string } | null;
+  invoice_items: { warehouse_id: string | null; warehouses: { name: string } | null }[];
 };
 
 type Customer = { id: string; name: string };
