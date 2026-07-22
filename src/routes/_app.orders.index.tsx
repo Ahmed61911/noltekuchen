@@ -51,6 +51,7 @@ type Order = {
   notes: string | null; warehouse_id: string | null;
   customers: { name: string } | null;
   warehouses: { name: string } | null;
+  order_items: { warehouse_id: string | null; warehouses: { name: string } | null }[];
 };
 type Warehouse = { id: string; name: string };
 
