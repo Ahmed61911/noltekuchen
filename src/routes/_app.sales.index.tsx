@@ -52,17 +52,19 @@ type Sale = {
   warehouses: { name: string } | null;
 };
 type Customer = { id: string; name: string };
-type Product = { id: string; name: string; selling_price: number };
+type Product = { id: string; name: string; reference: string | null; selling_price: number; warehouse_id: string | null; stock_quantity: number };
 type Warehouse = { id: string; name: string };
 
 
 type LineForm = {
-  product_id: string | null; description: string; quantity: number;
+  product_id: string | null; product_key: string | null; description: string; quantity: number;
   unit_price: number; tax_rate: number; discount_rate: number;
+  warehouse_id: string | null;
 };
 const emptyLine = (): LineForm => ({
-  product_id: null, description: "", quantity: 1, unit_price: 0, tax_rate: 20, discount_rate: 0,
+  product_id: null, product_key: null, description: "", quantity: 1, unit_price: 0, tax_rate: 20, discount_rate: 0, warehouse_id: null,
 });
+const productKey = (p: Product) => (p.reference && p.reference.trim()) ? `ref:${p.reference}` : `name:${p.name}`;
 const fmt = (n: number) =>
   `${new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2 }).format(Number(n) || 0)} ${CURRENCY}`;
 const computeLine = (l: LineForm) => {
