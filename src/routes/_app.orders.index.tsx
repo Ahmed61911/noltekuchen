@@ -107,7 +107,7 @@ function OrdersPage() {
     queryKey: ["orders"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("orders").select("*, customers(name), warehouses(name)").order("created_at", { ascending: false });
+        .from("orders").select("*, customers(name), warehouses(name), order_items(warehouse_id, warehouses(name))").order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Order[];
     },
