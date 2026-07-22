@@ -443,6 +443,7 @@ function OrdersPage() {
                     return {
                       product_id: p.id, description: p.name, quantity: qty,
                       unit_price: Number(p.selling_price), tax_rate: 20, discount_rate: 0,
+                      warehouse_id: p.warehouse_id,
                     };
                   });
                   const base = lines.filter(l => l.description || l.unit_price > 0);
