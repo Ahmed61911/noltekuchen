@@ -52,17 +52,19 @@ type Sale = {
   warehouses: { name: string } | null;
 };
 type Customer = { id: string; name: string };
-type Product = { id: string; name: string; selling_price: number };
+type Product = { id: string; name: string; reference: string | null; selling_price: number; warehouse_id: string | null; stock_quantity: number };
 type Warehouse = { id: string; name: string };
 
 
 type LineForm = {
-  product_id: string | null; description: string; quantity: number;
+  product_id: string | null; product_key: string | null; description: string; quantity: number;
   unit_price: number; tax_rate: number; discount_rate: number;
+  warehouse_id: string | null;
 };
 const emptyLine = (): LineForm => ({
-  product_id: null, description: "", quantity: 1, unit_price: 0, tax_rate: 20, discount_rate: 0,
+  product_id: null, product_key: null, description: "", quantity: 1, unit_price: 0, tax_rate: 20, discount_rate: 0, warehouse_id: null,
 });
+const productKey = (p: Product) => (p.reference && p.reference.trim()) ? `ref:${p.reference}` : `name:${p.name}`;
 const fmt = (n: number) =>
   `${new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2 }).format(Number(n) || 0)} ${CURRENCY}`;
 const computeLine = (l: LineForm) => {
@@ -113,7 +115,7 @@ function SalesPage() {
   const { data: products = [] } = useQuery({
     queryKey: ["products-list"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("products").select("id,name,selling_price").order("name");
+      const { data, error } = await supabase.from("products").select("id,name,reference,selling_price,warehouse_id,stock_quantity").order("name");
       if (error) throw error;
       return data as Product[];
     },
@@ -142,6 +144,26 @@ function SalesPage() {
     mutationFn: async () => {
       const validLines = lines.filter(l => l.description && l.quantity > 0);
       if (validLines.length === 0) throw new Error("Ajoutez au moins une ligne");
+
+      // Validate depot & stock per line
+      for (const [i, l] of validLines.entries()) {
+        if (l.product_key && !l.product_id) {
+          throw new Error(`Ligne ${i + 1}: sélectionnez le dépôt du produit`);
+        }
+        if (l.product_id) {
+          if (!l.warehouse_id) throw new Error(`Ligne ${i + 1}: dépôt requis`);
+          const p = products.find(x => x.id === l.product_id);
+          if (!p) throw new Error(`Ligne ${i + 1}: produit introuvable`);
+          if (p.warehouse_id !== l.warehouse_id) {
+            const wname = warehouses.find(w => w.id === l.warehouse_id)?.name ?? "";
+            throw new Error(`Ligne ${i + 1}: "${p.name}" n'existe pas dans le dépôt ${wname}`);
+          }
+          if (Number(p.stock_quantity ?? 0) < l.quantity) {
+            throw new Error(`Ligne ${i + 1}: stock insuffisant pour "${p.name}" (disponible: ${p.stock_quantity ?? 0})`);
+          }
+        }
+      }
+
       const ttc = totals.ttc;
       const paid = Math.min(paidAmount || 0, ttc);
       const ps: PayStatus = paid <= 0 ? "unpaid" : paid >= ttc ? "paid" : "partial";
@@ -170,6 +192,7 @@ function SalesPage() {
           quantity: l.quantity, unit_price: l.unit_price, tax_rate: l.tax_rate,
           discount_rate: l.discount_rate,
           line_total_ht: c.ht, line_tax: c.tva, line_total_ttc: c.ttc,
+          warehouse_id: l.warehouse_id,
         };
       });
       const { error: e2 } = await supabase.from("sale_items").insert(itemsPayload);
@@ -328,7 +351,8 @@ function SalesPage() {
               <div className="rounded-md border">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead className="w-[32%]">Produit / Description</TableHead>
+                    <TableHead className="w-[28%]">Produit / Description</TableHead>
+                    <TableHead className="w-[15%]">Dépôt</TableHead>
                     <TableHead>Qté</TableHead><TableHead>PU</TableHead>
                     <TableHead>TVA %</TableHead><TableHead>Rem %</TableHead>
                     <TableHead className="text-right">Total HT</TableHead><TableHead></TableHead>
@@ -339,21 +363,71 @@ function SalesPage() {
                       const upd = (p: Partial<LineForm>) => {
                         const nx = [...lines]; nx[idx] = { ...l, ...p }; setLines(nx);
                       };
+                      const depotOptions = l.product_key
+                        ? products.filter(p => productKey(p) === l.product_key && Number(p.stock_quantity ?? 0) > 0)
+                        : [];
+                      const outOfStock = !!l.product_key && depotOptions.length === 0;
                       return (
                         <TableRow key={idx}>
                           <TableCell>
-                            <Select value={l.product_id ?? "_custom"} onValueChange={(v) => {
-                              if (v === "_custom") { upd({ product_id: null }); return; }
-                              const p = products.find(x => x.id === v);
-                              if (p) upd({ product_id: p.id, description: p.name, unit_price: Number(p.selling_price) });
+                            <Select value={l.product_key ?? "_custom"} onValueChange={(v) => {
+                              if (v === "_custom") {
+                                upd({ product_id: null, product_key: null, warehouse_id: null, description: "", unit_price: 0 });
+                                return;
+                              }
+                              const matches = products.filter(p => productKey(p) === v);
+                              const inStock = matches.filter(p => Number(p.stock_quantity ?? 0) > 0);
+                              const first = matches[0];
+                              if (!first) return;
+                              if (inStock.length === 0) {
+                                upd({ product_key: v, product_id: null, warehouse_id: null, description: first.name, unit_price: Number(first.selling_price) });
+                                toast.error("Produit indisponible en stock");
+                                return;
+                              }
+                              if (inStock.length === 1) {
+                                const p = inStock[0];
+                                upd({ product_key: v, product_id: p.id, warehouse_id: p.warehouse_id, description: p.name, unit_price: Number(p.selling_price) });
+                              } else {
+                                upd({ product_key: v, product_id: null, warehouse_id: null, description: first.name, unit_price: Number(first.selling_price) });
+                              }
                             }}>
                               <SelectTrigger className="h-8 mb-1"><SelectValue placeholder="Produit…" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="_custom">— Libre —</SelectItem>
-                                {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                {Array.from(new Map(products.map(p => [productKey(p), p])).values()).map(p => (
+                                  <SelectItem key={productKey(p)} value={productKey(p)}>{p.name}</SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                             <Input className="h-8" placeholder="Description" value={l.description} onChange={e => upd({ description: e.target.value })} />
+                            {outOfStock && (
+                              <p className="mt-1 text-xs text-rose-600">Produit indisponible en stock</p>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {!l.product_key ? (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            ) : outOfStock ? (
+                              <span className="text-xs text-rose-600">Indisponible</span>
+                            ) : depotOptions.length === 1 ? (
+                              <div className="text-xs">
+                                <div className="font-medium">{warehouses.find(w => w.id === depotOptions[0].warehouse_id)?.name ?? "—"}</div>
+                                <div className="text-muted-foreground">Stock : {depotOptions[0].stock_quantity}</div>
+                              </div>
+                            ) : (
+                              <Select value={l.product_id ?? ""} onValueChange={(v) => {
+                                const p = depotOptions.find(x => x.id === v);
+                                if (p) upd({ product_id: p.id, warehouse_id: p.warehouse_id, unit_price: Number(p.selling_price) });
+                              }}>
+                                <SelectTrigger className="h-8"><SelectValue placeholder="Choisir dépôt…" /></SelectTrigger>
+                                <SelectContent>
+                                  {depotOptions.map(p => {
+                                    const wname = warehouses.find(w => w.id === p.warehouse_id)?.name ?? "—";
+                                    return <SelectItem key={p.id} value={p.id}>{wname} – Stock : {p.stock_quantity}</SelectItem>;
+                                  })}
+                                </SelectContent>
+                              </Select>
+                            )}
                           </TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.quantity} onChange={e => upd({ quantity: Number(e.target.value) })} /></TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.unit_price} onChange={e => upd({ unit_price: Number(e.target.value) })} /></TableCell>
