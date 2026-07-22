@@ -86,7 +86,7 @@ function SalesPage() {
   const [open, setOpen] = useState(false);
 
   const [customerId, setCustomerId] = useState<string>("");
-  const [warehouseId, setWarehouseId] = useState<string>("");
+  
   const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState("");
   const [method, setMethod] = useState<Method>("cash");
