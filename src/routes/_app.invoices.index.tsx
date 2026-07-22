@@ -149,7 +149,7 @@ function InvoicesPage() {
   }, [lines]);
 
   const resetForm = () => {
-    setCustomerId(""); setWarehouseId(""); setInvoiceDate(new Date().toISOString().slice(0, 10));
+    setCustomerId(""); setInvoiceDate(new Date().toISOString().slice(0, 10));
     setDueDate(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));
     setStatus("draft"); setNotes(""); setLines([emptyLine()]);
   };
