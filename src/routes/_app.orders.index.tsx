@@ -51,6 +51,7 @@ type Order = {
   notes: string | null; warehouse_id: string | null;
   customers: { name: string } | null;
   warehouses: { name: string } | null;
+  order_items: { warehouse_id: string | null; warehouses: { name: string } | null }[];
 };
 type Warehouse = { id: string; name: string };
 
@@ -106,7 +107,7 @@ function OrdersPage() {
     queryKey: ["orders"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("orders").select("*, customers(name), warehouses(name)").order("created_at", { ascending: false });
+        .from("orders").select("*, customers(name), warehouses(name), order_items(warehouse_id, warehouses(name))").order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Order[];
     },
@@ -234,7 +235,7 @@ function OrdersPage() {
       } else if (o.status !== statusFilter) return false;
     }
     if (payFilter !== "all" && o.payment_status !== payFilter) return false;
-    if (warehouseFilter !== "all" && o.warehouse_id !== warehouseFilter) return false;
+    if (warehouseFilter !== "all" && !(o.order_items ?? []).some(it => it.warehouse_id === warehouseFilter)) return false;
     if (customerFilter !== "all" && o.customer_id !== customerFilter) return false;
     if (dateFrom && o.order_date < dateFrom) return false;
     if (dateTo && o.order_date > dateTo) return false;
@@ -576,7 +577,7 @@ function OrdersPage() {
                   <TableRow key={o.id}>
                     <TableCell className="font-mono text-sm">{o.order_number}</TableCell>
                     <TableCell>{o.customers?.name ?? "—"}</TableCell>
-                    <TableCell className="text-sm">{o.warehouses?.name ?? "—"}</TableCell>
+                    <TableCell className="text-sm">{Array.from(new Set((o.order_items ?? []).map(it => it.warehouses?.name).filter(Boolean))).join(", ") || "—"}</TableCell>
                     <TableCell>{new Date(o.order_date).toLocaleDateString("fr-FR")}</TableCell>
                     <TableCell>{new Date(o.due_date).toLocaleDateString("fr-FR")}</TableCell>
 

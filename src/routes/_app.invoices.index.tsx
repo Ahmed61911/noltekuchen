@@ -50,6 +50,7 @@ type Invoice = {
   warehouse_id: string | null;
   customers: { name: string } | null;
   warehouses: { name: string } | null;
+  invoice_items: { warehouse_id: string | null; warehouses: { name: string } | null }[];
 };
 
 type Customer = { id: string; name: string };
@@ -107,7 +108,7 @@ function InvoicesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoices")
-        .select("*, customers(name), warehouses(name)")
+        .select("*, customers(name), warehouses(name), invoice_items(warehouse_id, warehouses(name))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Invoice[];
@@ -277,7 +278,7 @@ function InvoicesPage() {
   const filtered = invoices.filter(i => {
     if (statusFilter !== "all" && i.status !== statusFilter) return false;
     if (customerFilter !== "all" && i.customer_id !== customerFilter) return false;
-    if (warehouseFilter !== "all" && i.warehouse_id !== warehouseFilter) return false;
+    if (warehouseFilter !== "all" && !(i.invoice_items ?? []).some(it => it.warehouse_id === warehouseFilter)) return false;
     if (dateFrom && i.invoice_date < dateFrom) return false;
     if (dateTo && i.invoice_date > dateTo) return false;
     if (!q) return true;
@@ -543,7 +544,7 @@ function InvoicesPage() {
               <TableRow key={i.id}>
                 <TableCell className="font-medium">{i.invoice_number}</TableCell>
                 <TableCell>{i.customers?.name ?? "—"}</TableCell>
-                <TableCell className="text-sm">{i.warehouses?.name ?? "—"}</TableCell>
+                <TableCell className="text-sm">{Array.from(new Set((i.invoice_items ?? []).map(it => it.warehouses?.name).filter(Boolean))).join(", ") || "—"}</TableCell>
                 <TableCell>{i.invoice_date}</TableCell>
 
                 <TableCell>{i.due_date}</TableCell>

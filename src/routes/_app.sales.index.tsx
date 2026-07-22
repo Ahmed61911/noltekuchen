@@ -50,6 +50,7 @@ type Sale = {
   warehouse_id: string | null;
   customers: { name: string } | null;
   warehouses: { name: string } | null;
+  sale_items: { warehouse_id: string | null; warehouses: { name: string } | null }[];
 };
 type Customer = { id: string; name: string };
 type Product = { id: string; name: string; reference: string | null; selling_price: number; warehouse_id: string | null; stock_quantity: number };
@@ -98,7 +99,7 @@ function SalesPage() {
     queryKey: ["sales"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sales").select("*, customers(name), warehouses(name)").order("created_at", { ascending: false });
+        .from("sales").select("*, customers(name), warehouses(name), sale_items(warehouse_id, warehouses(name))").order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Sale[];
     },
@@ -272,7 +273,7 @@ function SalesPage() {
     if (statusFilter !== "all" && s.payment_status !== statusFilter) return false;
     if (methodFilter !== "all" && s.payment_method !== methodFilter) return false;
     if (customerFilter !== "all" && s.customer_id !== customerFilter) return false;
-    if (warehouseFilter !== "all" && s.warehouse_id !== warehouseFilter) return false;
+    if (warehouseFilter !== "all" && !(s.sale_items ?? []).some(it => it.warehouse_id === warehouseFilter)) return false;
     if (dateFrom && s.sale_date < dateFrom) return false;
     if (dateTo && s.sale_date > dateTo) return false;
     if (!q) return true;
@@ -543,7 +544,7 @@ function SalesPage() {
                   <TableRow key={s.id}>
                     <TableCell className="font-mono text-sm">{s.sale_number}</TableCell>
                     <TableCell>{s.customers?.name ?? <span className="text-muted-foreground">Comptoir</span>}</TableCell>
-                    <TableCell className="text-sm">{s.warehouses?.name ?? "—"}</TableCell>
+                    <TableCell className="text-sm">{Array.from(new Set((s.sale_items ?? []).map(it => it.warehouses?.name).filter(Boolean))).join(", ") || "—"}</TableCell>
                     <TableCell>{new Date(s.sale_date).toLocaleDateString("fr-FR")}</TableCell>
 
                     <TableCell className="text-right tabular-nums">{fmt(ttc)}</TableCell>
