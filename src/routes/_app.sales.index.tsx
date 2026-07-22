@@ -180,7 +180,7 @@ function SalesPage() {
         paid_amount: paid,
         notes: notes || null,
         created_by: user?.id ?? null,
-        warehouse_id: warehouseId || null,
+        warehouse_id: null,
       }).select("id").single();
       if (e1) throw e1;
 
