@@ -86,7 +86,7 @@ function SalesPage() {
   const [open, setOpen] = useState(false);
 
   const [customerId, setCustomerId] = useState<string>("");
-  const [warehouseId, setWarehouseId] = useState<string>("");
+  
   const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState("");
   const [method, setMethod] = useState<Method>("cash");
@@ -135,7 +135,7 @@ function SalesPage() {
   }, [lines]);
 
   const resetForm = () => {
-    setCustomerId(""); setWarehouseId(""); setSaleDate(new Date().toISOString().slice(0, 10));
+    setCustomerId(""); setSaleDate(new Date().toISOString().slice(0, 10));
     setDueDate(""); setMethod("cash"); setPaidAmount(0); setNotes("");
     setLines([emptyLine()]);
   };
@@ -180,7 +180,7 @@ function SalesPage() {
         paid_amount: paid,
         notes: notes || null,
         created_by: user?.id ?? null,
-        warehouse_id: warehouseId || null,
+        warehouse_id: null,
       }).select("id").single();
       if (e1) throw e1;
 
@@ -326,16 +326,6 @@ function SalesPage() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(METHODS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-2">
-                <Label>Dépôt</Label>
-                <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">— Aucun —</SelectItem>
-                    {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
