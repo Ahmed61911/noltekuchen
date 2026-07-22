@@ -544,7 +544,7 @@ function InvoicesPage() {
               <TableRow key={i.id}>
                 <TableCell className="font-medium">{i.invoice_number}</TableCell>
                 <TableCell>{i.customers?.name ?? "—"}</TableCell>
-                <TableCell className="text-sm">{i.warehouses?.name ?? "—"}</TableCell>
+                <TableCell className="text-sm">{Array.from(new Set((i.invoice_items ?? []).map(it => it.warehouses?.name).filter(Boolean))).join(", ") || "—"}</TableCell>
                 <TableCell>{i.invoice_date}</TableCell>
 
                 <TableCell>{i.due_date}</TableCell>
