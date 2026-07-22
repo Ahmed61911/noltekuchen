@@ -172,7 +172,7 @@ function SalesPage() {
       const { data: sale, error: e1 } = await supabase.from("sales").insert({
         customer_id: customerId || null,
         sale_date: saleDate,
-        payment_due_date: method === "credit" ? (dueDate || null) : null,
+        payment_due_date: dueDate || null,
         payment_method: method,
         payment_status: ps,
         subtotal_ht: totals.ht,
