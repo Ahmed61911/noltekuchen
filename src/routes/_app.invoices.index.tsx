@@ -278,7 +278,7 @@ function InvoicesPage() {
   const filtered = invoices.filter(i => {
     if (statusFilter !== "all" && i.status !== statusFilter) return false;
     if (customerFilter !== "all" && i.customer_id !== customerFilter) return false;
-    if (warehouseFilter !== "all" && i.warehouse_id !== warehouseFilter) return false;
+    if (warehouseFilter !== "all" && !(i.invoice_items ?? []).some(it => it.warehouse_id === warehouseFilter)) return false;
     if (dateFrom && i.invoice_date < dateFrom) return false;
     if (dateTo && i.invoice_date > dateTo) return false;
     if (!q) return true;
