@@ -295,7 +295,8 @@ function OrdersPage() {
               <div className="rounded-md border">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead className="w-[32%]">Produit / Description</TableHead>
+                    <TableHead className="w-[28%]">Produit / Description</TableHead>
+                    <TableHead className="w-[15%]">Dépôt</TableHead>
                     <TableHead>Qté</TableHead><TableHead>PU</TableHead>
                     <TableHead>TVA %</TableHead><TableHead>Rem %</TableHead>
                     <TableHead className="text-right">Total HT</TableHead><TableHead></TableHead>
@@ -306,6 +307,9 @@ function OrdersPage() {
                       const upd = (p: Partial<LineForm>) => {
                         const nx = [...lines]; nx[idx] = { ...l, ...p }; setLines(nx);
                       };
+                      const lineProducts = l.warehouse_id
+                        ? products.filter(p => p.warehouse_id === l.warehouse_id)
+                        : products;
                       return (
                         <TableRow key={idx}>
                           <TableCell>
@@ -314,13 +318,26 @@ function OrdersPage() {
                               const p = products.find(x => x.id === v);
                               if (p) upd({ product_id: p.id, description: p.name, unit_price: Number(p.selling_price) });
                             }}>
-                              <SelectTrigger className="h-8 mb-1"><SelectValue placeholder="Produit…" /></SelectTrigger>
+                              <SelectTrigger className="h-8 mb-1"><SelectValue placeholder={l.warehouse_id ? "Produit…" : "Choisir dépôt…"} /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="_custom">— Libre —</SelectItem>
-                                {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                {lineProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                               </SelectContent>
                             </Select>
                             <Input className="h-8" placeholder="Description" value={l.description} onChange={e => upd({ description: e.target.value })} />
+                          </TableCell>
+                          <TableCell>
+                            <Select value={l.warehouse_id ?? ""} onValueChange={(v) => {
+                              // reset product if it doesn't belong to new warehouse
+                              const p = l.product_id ? products.find(x => x.id === l.product_id) : null;
+                              const clearProduct = p && p.warehouse_id !== v;
+                              upd({ warehouse_id: v, ...(clearProduct ? { product_id: null, description: "", unit_price: 0 } : {}) });
+                            }}>
+                              <SelectTrigger className="h-8"><SelectValue placeholder="Dépôt…" /></SelectTrigger>
+                              <SelectContent>
+                                {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
                           </TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.quantity} onChange={e => upd({ quantity: Number(e.target.value) })} /></TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.unit_price} onChange={e => upd({ unit_price: Number(e.target.value) })} /></TableCell>
