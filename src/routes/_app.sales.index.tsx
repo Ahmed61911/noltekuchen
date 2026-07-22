@@ -135,7 +135,7 @@ function SalesPage() {
   }, [lines]);
 
   const resetForm = () => {
-    setCustomerId(""); setWarehouseId(""); setSaleDate(new Date().toISOString().slice(0, 10));
+    setCustomerId(""); setSaleDate(new Date().toISOString().slice(0, 10));
     setDueDate(""); setMethod("cash"); setPaidAmount(0); setNotes("");
     setLines([emptyLine()]);
   };
