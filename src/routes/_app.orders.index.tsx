@@ -277,16 +277,6 @@ function OrdersPage() {
               </div>
               <div><Label>Date commande</Label><Input type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)} /></div>
               <div><Label>Dernier jour</Label><Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
-              <div className="col-span-2">
-                <Label>Dépôt</Label>
-                <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">— Aucun —</SelectItem>
-                    {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
 
