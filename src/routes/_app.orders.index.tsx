@@ -143,7 +143,7 @@ function OrdersPage() {
   }, [lines]);
 
   const reset = () => {
-    setCustomerId(""); setWarehouseId(""); setOrderDate(new Date().toISOString().slice(0, 10));
+    setCustomerId(""); setOrderDate(new Date().toISOString().slice(0, 10));
     setDueDate(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
     setNotes(""); setLines([emptyLine()]);
   };
