@@ -226,3 +226,39 @@ interactively.
   the corresponding `supabase/realtime` / `supabase/edge-runtime` images.
 - **Did not port to a different framework.** TanStack Start runs on Node
   natively; only the Cloudflare-specific wrapper was replaced.
+
+---
+
+## 9. Production hardening (added)
+
+- **Nginx rate limiting** (`nginx/nginx.conf` + `nginx/conf.d/app.conf`):
+  `/auth/v1/{token,signup,recover,otp,verify,magiclink}` limited to 5 r/s
+  (burst 10) per IP; general API to 30 r/s (burst 60). Blocks brute-force
+  without fail2ban.
+- **Off-site backups** (`scripts/backup-offsite.sh`): restic-based encrypted
+  sync to Backblaze B2 / S3 / SFTP. Run daily after `scripts/backup.sh`:
+  ```
+  0 3 * * *  cd /opt/nolte && ./scripts/backup.sh          >> /var/log/nolte-backup.log 2>&1
+  15 3 * * * cd /opt/nolte && ./scripts/backup-offsite.sh  >> /var/log/nolte-offsite.log 2>&1
+  ```
+  Set `RESTIC_REPOSITORY`, `RESTIC_PASSWORD` (and provider creds) in `.env`,
+  then `restic init` once.
+- **CI/CD** (`.github/workflows/deploy.yml`): on push to `main`, SSH into
+  the VPS, `git pull`, rebuild the `app` image, run migrations, restart.
+  Configure repo secrets `SSH_HOST`, `SSH_USER`, `SSH_KEY`, `DEPLOY_PATH`.
+- **SMTP in prod**: MailHog is dev-only. Set `SMTP_HOST/PORT/USER/PASS` in
+  `.env` (Resend / Postmark / SES / Sendgrid) before `up -d`, otherwise
+  password reset & invites silently fail.
+
+## 10. Deployment cost reference
+
+| Option | Stack | ~ Monthly cost |
+|---|---|---|
+| Hetzner CX32 (4 vCPU / 8 GB) — single VPS | app + Supabase + Postgres + MinIO | **~10 €** |
+| Hetzner CPX41 (8 vCPU / 16 GB) | same, more headroom | ~26 € |
+| VPS + managed Postgres (Neon/Supabase Cloud) | app on VPS, PG managed | ~25–40 € |
+| Fly.io / Railway / Render | container platform + managed PG + S3 | ~30–45 $ |
+| Kubernetes managed (GKE/EKS/DOKS) | overkill for this workload | 150–250 $ |
+
+Add ~4 €/mo for off-site backup storage (B2 or Hetzner Storage Box) and
+0–20 $/mo for transactional SMTP (Resend has a 3000-mail free tier).
