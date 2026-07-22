@@ -123,7 +123,7 @@ function OrdersPage() {
   const { data: products = [] } = useQuery({
     queryKey: ["products-list"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("products").select("id,name,selling_price,warehouse_id,stock_quantity").order("name");
+      const { data, error } = await supabase.from("products").select("id,name,reference,selling_price,warehouse_id,stock_quantity").order("name");
       if (error) throw error;
       return data as Product[];
     },
