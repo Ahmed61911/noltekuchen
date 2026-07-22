@@ -577,7 +577,7 @@ function OrdersPage() {
                   <TableRow key={o.id}>
                     <TableCell className="font-mono text-sm">{o.order_number}</TableCell>
                     <TableCell>{o.customers?.name ?? "—"}</TableCell>
-                    <TableCell className="text-sm">{o.warehouses?.name ?? "—"}</TableCell>
+                    <TableCell className="text-sm">{Array.from(new Set((o.order_items ?? []).map(it => it.warehouses?.name).filter(Boolean))).join(", ") || "—"}</TableCell>
                     <TableCell>{new Date(o.order_date).toLocaleDateString("fr-FR")}</TableCell>
                     <TableCell>{new Date(o.due_date).toLocaleDateString("fr-FR")}</TableCell>
 
