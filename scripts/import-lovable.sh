@@ -15,6 +15,21 @@ docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
   "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;"
 docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" < "$OUT/public.sql"
 
+# The Lovable export already contains the full schema at export time, so mark
+# every historical migration as applied to keep scripts/migrate.sh idempotent.
+echo "[import] seed _schema_migrations tracker"
+docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<'SQL'
+CREATE TABLE IF NOT EXISTS public._schema_migrations (
+  filename text PRIMARY KEY,
+  applied_at timestamptz NOT NULL DEFAULT now()
+);
+SQL
+for f in database/migrations/*.sql; do
+  name=$(basename "$f")
+  docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
+    "INSERT INTO public._schema_migrations(filename) VALUES ('$name') ON CONFLICT DO NOTHING;" >/dev/null
+done
+
 echo "[import] storage objects"
 docker compose run --rm -T \
   -v "$PWD/$OUT/storage:/import:ro" \
