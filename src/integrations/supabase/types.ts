@@ -1304,6 +1304,7 @@ export type Database = {
           sale_id: string
           tax_rate: number
           unit_price: number
+          warehouse_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1318,6 +1319,7 @@ export type Database = {
           sale_id: string
           tax_rate?: number
           unit_price?: number
+          warehouse_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1332,6 +1334,7 @@ export type Database = {
           sale_id?: string
           tax_rate?: number
           unit_price?: number
+          warehouse_id?: string | null
         }
         Relationships: [
           {
@@ -1346,6 +1349,13 @@ export type Database = {
             columns: ["sale_id"]
             isOneToOne: false
             referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]
