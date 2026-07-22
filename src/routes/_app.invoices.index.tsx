@@ -94,7 +94,7 @@ function InvoicesPage() {
 
   // Form state
   const [customerId, setCustomerId] = useState<string>("");
-  const [warehouseId, setWarehouseId] = useState<string>("");
+  
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));
   const [status, setStatus] = useState<Status>("draft");
