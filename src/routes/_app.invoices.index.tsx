@@ -342,13 +342,14 @@ function InvoicesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[28%]">Produit / Description</TableHead>
-                      <TableHead className="w-[10%]">Qté</TableHead>
-                      <TableHead className="w-[14%]">PU</TableHead>
-                      <TableHead className="w-[10%]">TVA %</TableHead>
-                      <TableHead className="w-[10%]">Rem %</TableHead>
-                      <TableHead className="w-[18%] text-right">Total HT</TableHead>
-                      <TableHead className="w-[10%]"></TableHead>
+                      <TableHead className="w-[26%]">Produit / Description</TableHead>
+                      <TableHead className="w-[15%]">Dépôt</TableHead>
+                      <TableHead className="w-[8%]">Qté</TableHead>
+                      <TableHead className="w-[12%]">PU</TableHead>
+                      <TableHead className="w-[8%]">TVA %</TableHead>
+                      <TableHead className="w-[8%]">Rem %</TableHead>
+                      <TableHead className="w-[15%] text-right">Total HT</TableHead>
+                      <TableHead className="w-[8%]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -357,21 +358,72 @@ function InvoicesPage() {
                       const update = (patch: Partial<LineForm>) => {
                         const nx = [...lines]; nx[idx] = { ...l, ...patch }; setLines(nx);
                       };
+                      const depotOptions = l.product_key
+                        ? products.filter(p => productKey(p) === l.product_key && Number(p.stock_quantity ?? 0) > 0)
+                        : [];
+                      const outOfStock = !!l.product_key && depotOptions.length === 0;
                       return (
                         <TableRow key={idx}>
                           <TableCell>
-                            <Select value={l.product_id ?? "_custom"} onValueChange={(v) => {
-                              if (v === "_custom") { update({ product_id: null }); return; }
-                              const p = products.find(x => x.id === v);
-                              if (p) update({ product_id: p.id, description: p.name, unit_price: Number(p.selling_price) });
+                            <Select value={l.product_key ?? "_custom"} onValueChange={(v) => {
+                              if (v === "_custom") {
+                                update({ product_id: null, product_key: null, warehouse_id: null, description: "", unit_price: 0 });
+                                return;
+                              }
+                              const matches = products.filter(p => productKey(p) === v);
+                              const inStock = matches.filter(p => Number(p.stock_quantity ?? 0) > 0);
+                              const first = matches[0];
+                              if (!first) return;
+                              if (inStock.length === 0) {
+                                update({ product_key: v, product_id: null, warehouse_id: null, description: first.name, unit_price: Number(first.selling_price) });
+                                toast.error("Produit indisponible en stock");
+                                return;
+                              }
+                              if (inStock.length === 1) {
+                                const p = inStock[0];
+                                update({ product_key: v, product_id: p.id, warehouse_id: p.warehouse_id, description: p.name, unit_price: Number(p.selling_price) });
+                              } else {
+                                update({ product_key: v, product_id: null, warehouse_id: null, description: first.name, unit_price: Number(first.selling_price) });
+                              }
                             }}>
                               <SelectTrigger className="h-8 mb-1"><SelectValue placeholder="Produit…" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="_custom">— Libre —</SelectItem>
-                                {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                {Array.from(new Map(products.map(p => [productKey(p), p])).values()).map(p => (
+                                  <SelectItem key={productKey(p)} value={productKey(p)}>{p.name}</SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                             <Input className="h-8" placeholder="Description" value={l.description} onChange={e => update({ description: e.target.value })} />
+                            {outOfStock && (
+                              <p className="mt-1 text-xs text-rose-600">Produit indisponible en stock</p>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {!l.product_key ? (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            ) : outOfStock ? (
+                              <span className="text-xs text-rose-600">Indisponible</span>
+                            ) : depotOptions.length === 1 ? (
+                              <div className="text-xs">
+                                <div className="font-medium">{warehouses.find(w => w.id === depotOptions[0].warehouse_id)?.name ?? "—"}</div>
+                                <div className="text-muted-foreground">Stock : {depotOptions[0].stock_quantity}</div>
+                              </div>
+                            ) : (
+                              <Select value={l.product_id ?? ""} onValueChange={(v) => {
+                                const p = depotOptions.find(x => x.id === v);
+                                if (p) update({ product_id: p.id, warehouse_id: p.warehouse_id, unit_price: Number(p.selling_price) });
+                              }}>
+                                <SelectTrigger className="h-8"><SelectValue placeholder="Choisir…" /></SelectTrigger>
+                                <SelectContent>
+                                  {depotOptions.map(p => (
+                                    <SelectItem key={p.id} value={p.id}>
+                                      {warehouses.find(w => w.id === p.warehouse_id)?.name ?? "—"} · {p.stock_quantity}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
                           </TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.quantity} onChange={e => update({ quantity: Number(e.target.value) })} /></TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.unit_price} onChange={e => update({ unit_price: Number(e.target.value) })} /></TableCell>
