@@ -95,7 +95,7 @@ function OrdersPage() {
   const [pickerSel, setPickerSel] = useState<Record<string, number>>({});
 
   const [customerId, setCustomerId] = useState<string>("");
-  const [warehouseId] = useState<string>("");
+  
   const [orderDate, setOrderDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
