@@ -99,7 +99,7 @@ function SalesPage() {
     queryKey: ["sales"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sales").select("*, customers(name), warehouses(name)").order("created_at", { ascending: false });
+        .from("sales").select("*, customers(name), warehouses(name), sale_items(warehouse_id, warehouses(name))").order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Sale[];
     },
