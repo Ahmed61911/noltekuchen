@@ -502,6 +502,7 @@ export type Database = {
           quantity: number
           tax_rate: number
           unit_price: number
+          warehouse_id: string | null
         }
         Insert: {
           created_at?: string
@@ -516,6 +517,7 @@ export type Database = {
           quantity?: number
           tax_rate?: number
           unit_price?: number
+          warehouse_id?: string | null
         }
         Update: {
           created_at?: string
@@ -530,6 +532,7 @@ export type Database = {
           quantity?: number
           tax_rate?: number
           unit_price?: number
+          warehouse_id?: string | null
         }
         Relationships: [
           {
@@ -544,6 +547,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]

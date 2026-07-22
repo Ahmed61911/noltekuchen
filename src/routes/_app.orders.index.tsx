@@ -55,13 +55,14 @@ type Order = {
 type Warehouse = { id: string; name: string };
 
 type Customer = { id: string; name: string };
-type Product = { id: string; name: string; selling_price: number };
+type Product = { id: string; name: string; selling_price: number; warehouse_id: string | null; stock_quantity: number };
 type LineForm = {
   product_id: string | null; description: string; quantity: number;
   unit_price: number; tax_rate: number; discount_rate: number;
+  warehouse_id: string | null;
 };
 const emptyLine = (): LineForm => ({
-  product_id: null, description: "", quantity: 1, unit_price: 0, tax_rate: 20, discount_rate: 0,
+  product_id: null, description: "", quantity: 1, unit_price: 0, tax_rate: 20, discount_rate: 0, warehouse_id: null,
 });
 const fmt = (n: number) =>
   `${new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2 }).format(Number(n) || 0)} ${CURRENCY}`;
@@ -94,7 +95,7 @@ function OrdersPage() {
   const [pickerSel, setPickerSel] = useState<Record<string, number>>({});
 
   const [customerId, setCustomerId] = useState<string>("");
-  const [warehouseId, setWarehouseId] = useState<string>("");
+  
   const [orderDate, setOrderDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
@@ -121,7 +122,7 @@ function OrdersPage() {
   const { data: products = [] } = useQuery({
     queryKey: ["products-list"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("products").select("id,name,selling_price").order("name");
+      const { data, error } = await supabase.from("products").select("id,name,selling_price,warehouse_id,stock_quantity").order("name");
       if (error) throw error;
       return data as Product[];
     },
@@ -142,7 +143,7 @@ function OrdersPage() {
   }, [lines]);
 
   const reset = () => {
-    setCustomerId(""); setWarehouseId(""); setOrderDate(new Date().toISOString().slice(0, 10));
+    setCustomerId(""); setOrderDate(new Date().toISOString().slice(0, 10));
     setDueDate(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
     setNotes(""); setLines([emptyLine()]);
   };
@@ -153,11 +154,27 @@ function OrdersPage() {
       if (validLines.length === 0) throw new Error("Ajoutez au moins une ligne");
       if (!customerId) throw new Error("Sélectionnez un client");
 
+      // Validate depot & stock per line
+      for (const [i, l] of validLines.entries()) {
+        if (!l.warehouse_id) throw new Error(`Ligne ${i + 1}: dépôt requis`);
+        if (l.product_id) {
+          const p = products.find(x => x.id === l.product_id);
+          if (!p) throw new Error(`Ligne ${i + 1}: produit introuvable`);
+          if (p.warehouse_id !== l.warehouse_id) {
+            const wname = warehouses.find(w => w.id === l.warehouse_id)?.name ?? "";
+            throw new Error(`Ligne ${i + 1}: "${p.name}" n'existe pas dans le dépôt ${wname}`);
+          }
+          if (Number(p.stock_quantity ?? 0) < l.quantity) {
+            throw new Error(`Ligne ${i + 1}: stock insuffisant pour "${p.name}" (disponible: ${p.stock_quantity ?? 0})`);
+          }
+        }
+      }
+
       const { data: order, error: e1 } = await supabase.from("orders").insert({
         customer_id: customerId, order_date: orderDate, due_date: dueDate,
         status: "pending", subtotal_ht: totals.ht, tax_amount: totals.tva, total_ttc: totals.ttc,
         notes: notes || null, created_by: user?.id ?? null,
-        warehouse_id: warehouseId || null,
+        warehouse_id: null,
       }).select("id").single();
       if (e1) throw e1;
 
@@ -169,6 +186,7 @@ function OrdersPage() {
           quantity: l.quantity, unit_price: l.unit_price, tax_rate: l.tax_rate,
           discount_rate: l.discount_rate,
           line_total_ht: c.ht, line_tax: c.tva, line_total_ttc: c.ttc,
+          warehouse_id: l.warehouse_id,
         };
       });
       const { error: e2 } = await supabase.from("order_items").insert(payload);
@@ -259,16 +277,6 @@ function OrdersPage() {
               </div>
               <div><Label>Date commande</Label><Input type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)} /></div>
               <div><Label>Dernier jour</Label><Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
-              <div className="col-span-2">
-                <Label>Dépôt</Label>
-                <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">— Aucun —</SelectItem>
-                    {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
 
@@ -287,7 +295,8 @@ function OrdersPage() {
               <div className="rounded-md border">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead className="w-[32%]">Produit / Description</TableHead>
+                    <TableHead className="w-[28%]">Produit / Description</TableHead>
+                    <TableHead className="w-[15%]">Dépôt</TableHead>
                     <TableHead>Qté</TableHead><TableHead>PU</TableHead>
                     <TableHead>TVA %</TableHead><TableHead>Rem %</TableHead>
                     <TableHead className="text-right">Total HT</TableHead><TableHead></TableHead>
@@ -298,6 +307,9 @@ function OrdersPage() {
                       const upd = (p: Partial<LineForm>) => {
                         const nx = [...lines]; nx[idx] = { ...l, ...p }; setLines(nx);
                       };
+                      const lineProducts = l.warehouse_id
+                        ? products.filter(p => p.warehouse_id === l.warehouse_id)
+                        : products;
                       return (
                         <TableRow key={idx}>
                           <TableCell>
@@ -306,13 +318,26 @@ function OrdersPage() {
                               const p = products.find(x => x.id === v);
                               if (p) upd({ product_id: p.id, description: p.name, unit_price: Number(p.selling_price) });
                             }}>
-                              <SelectTrigger className="h-8 mb-1"><SelectValue placeholder="Produit…" /></SelectTrigger>
+                              <SelectTrigger className="h-8 mb-1"><SelectValue placeholder={l.warehouse_id ? "Produit…" : "Choisir dépôt…"} /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="_custom">— Libre —</SelectItem>
-                                {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                {lineProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                               </SelectContent>
                             </Select>
                             <Input className="h-8" placeholder="Description" value={l.description} onChange={e => upd({ description: e.target.value })} />
+                          </TableCell>
+                          <TableCell>
+                            <Select value={l.warehouse_id ?? ""} onValueChange={(v) => {
+                              // reset product if it doesn't belong to new warehouse
+                              const p = l.product_id ? products.find(x => x.id === l.product_id) : null;
+                              const clearProduct = p && p.warehouse_id !== v;
+                              upd({ warehouse_id: v, ...(clearProduct ? { product_id: null, description: "", unit_price: 0 } : {}) });
+                            }}>
+                              <SelectTrigger className="h-8"><SelectValue placeholder="Dépôt…" /></SelectTrigger>
+                              <SelectContent>
+                                {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
                           </TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.quantity} onChange={e => upd({ quantity: Number(e.target.value) })} /></TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.unit_price} onChange={e => upd({ unit_price: Number(e.target.value) })} /></TableCell>
@@ -418,6 +443,7 @@ function OrdersPage() {
                     return {
                       product_id: p.id, description: p.name, quantity: qty,
                       unit_price: Number(p.selling_price), tax_rate: 20, discount_rate: 0,
+                      warehouse_id: p.warehouse_id,
                     };
                   });
                   const base = lines.filter(l => l.description || l.unit_price > 0);
