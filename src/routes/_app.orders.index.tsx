@@ -157,8 +157,11 @@ function OrdersPage() {
 
       // Validate depot & stock per line
       for (const [i, l] of validLines.entries()) {
-        if (!l.warehouse_id) throw new Error(`Ligne ${i + 1}: dépôt requis`);
+        if (l.product_key && !l.product_id) {
+          throw new Error(`Ligne ${i + 1}: sélectionnez le dépôt du produit`);
+        }
         if (l.product_id) {
+          if (!l.warehouse_id) throw new Error(`Ligne ${i + 1}: dépôt requis`);
           const p = products.find(x => x.id === l.product_id);
           if (!p) throw new Error(`Ligne ${i + 1}: produit introuvable`);
           if (p.warehouse_id !== l.warehouse_id) {
