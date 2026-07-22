@@ -144,6 +144,26 @@ function SalesPage() {
     mutationFn: async () => {
       const validLines = lines.filter(l => l.description && l.quantity > 0);
       if (validLines.length === 0) throw new Error("Ajoutez au moins une ligne");
+
+      // Validate depot & stock per line
+      for (const [i, l] of validLines.entries()) {
+        if (l.product_key && !l.product_id) {
+          throw new Error(`Ligne ${i + 1}: sélectionnez le dépôt du produit`);
+        }
+        if (l.product_id) {
+          if (!l.warehouse_id) throw new Error(`Ligne ${i + 1}: dépôt requis`);
+          const p = products.find(x => x.id === l.product_id);
+          if (!p) throw new Error(`Ligne ${i + 1}: produit introuvable`);
+          if (p.warehouse_id !== l.warehouse_id) {
+            const wname = warehouses.find(w => w.id === l.warehouse_id)?.name ?? "";
+            throw new Error(`Ligne ${i + 1}: "${p.name}" n'existe pas dans le dépôt ${wname}`);
+          }
+          if (Number(p.stock_quantity ?? 0) < l.quantity) {
+            throw new Error(`Ligne ${i + 1}: stock insuffisant pour "${p.name}" (disponible: ${p.stock_quantity ?? 0})`);
+          }
+        }
+      }
+
       const ttc = totals.ttc;
       const paid = Math.min(paidAmount || 0, ttc);
       const ps: PayStatus = paid <= 0 ? "unpaid" : paid >= ttc ? "paid" : "partial";
@@ -172,6 +192,7 @@ function SalesPage() {
           quantity: l.quantity, unit_price: l.unit_price, tax_rate: l.tax_rate,
           discount_rate: l.discount_rate,
           line_total_ht: c.ht, line_tax: c.tva, line_total_ttc: c.ttc,
+          warehouse_id: l.warehouse_id,
         };
       });
       const { error: e2 } = await supabase.from("sale_items").insert(itemsPayload);
