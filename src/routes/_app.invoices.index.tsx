@@ -53,22 +53,25 @@ type Invoice = {
 };
 
 type Customer = { id: string; name: string };
-type Product = { id: string; name: string; reference: string; selling_price: number };
+type Product = { id: string; name: string; reference: string | null; selling_price: number; warehouse_id: string | null; stock_quantity: number };
 type Warehouse = { id: string; name: string };
 
 
 type LineForm = {
   product_id: string | null;
+  product_key: string | null;
   description: string;
   quantity: number;
   unit_price: number;
   tax_rate: number;
   discount_rate: number;
+  warehouse_id: string | null;
 };
 
 const emptyLine = (): LineForm => ({
-  product_id: null, description: "", quantity: 1, unit_price: 0, tax_rate: 20, discount_rate: 0,
+  product_id: null, product_key: null, description: "", quantity: 1, unit_price: 0, tax_rate: 20, discount_rate: 0, warehouse_id: null,
 });
+const productKey = (p: Product) => (p.reference && p.reference.trim()) ? `ref:${p.reference}` : `name:${p.name}`;
 
 const fmt = (n: number) => `${new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2 }).format(n)} ${CURRENCY}`;
 
@@ -91,7 +94,7 @@ function InvoicesPage() {
 
   // Form state
   const [customerId, setCustomerId] = useState<string>("");
-  const [warehouseId, setWarehouseId] = useState<string>("");
+  
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));
   const [status, setStatus] = useState<Status>("draft");
@@ -124,7 +127,7 @@ function InvoicesPage() {
   const { data: products = [] } = useQuery({
     queryKey: ["products-list"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("products").select("id,name,reference,selling_price").order("name");
+      const { data, error } = await supabase.from("products").select("id,name,reference,selling_price,warehouse_id,stock_quantity").order("name");
       if (error) throw error;
       return data as Product[];
     },
@@ -146,7 +149,7 @@ function InvoicesPage() {
   }, [lines]);
 
   const resetForm = () => {
-    setCustomerId(""); setWarehouseId(""); setInvoiceDate(new Date().toISOString().slice(0, 10));
+    setCustomerId(""); setInvoiceDate(new Date().toISOString().slice(0, 10));
     setDueDate(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));
     setStatus("draft"); setNotes(""); setLines([emptyLine()]);
   };
@@ -156,6 +159,26 @@ function InvoicesPage() {
       const validLines = lines.filter(l => l.description && l.quantity > 0);
       if (validLines.length === 0) throw new Error("Ajoutez au moins une ligne");
       if (!customerId) throw new Error("Sélectionnez un client");
+
+      // Validate depot & stock per line (only if status will apply stock)
+      const willApplyStock = status === "pending" || status === "paid";
+      for (const [i, l] of validLines.entries()) {
+        if (l.product_key && !l.product_id) {
+          throw new Error(`Ligne ${i + 1}: sélectionnez le dépôt du produit`);
+        }
+        if (l.product_id) {
+          if (!l.warehouse_id) throw new Error(`Ligne ${i + 1}: dépôt requis`);
+          const p = products.find(x => x.id === l.product_id);
+          if (!p) throw new Error(`Ligne ${i + 1}: produit introuvable`);
+          if (p.warehouse_id !== l.warehouse_id) {
+            const wname = warehouses.find(w => w.id === l.warehouse_id)?.name ?? "";
+            throw new Error(`Ligne ${i + 1}: "${p.name}" n'existe pas dans le dépôt ${wname}`);
+          }
+          if (willApplyStock && Number(p.stock_quantity ?? 0) < l.quantity) {
+            throw new Error(`Ligne ${i + 1}: stock insuffisant pour "${p.name}" (disponible: ${p.stock_quantity ?? 0})`);
+          }
+        }
+      }
 
       // 1) Insert invoice as draft first
       const { data: inv, error: e1 } = await supabase.from("invoices").insert({
@@ -168,7 +191,7 @@ function InvoicesPage() {
         total_ttc: totals.ttc,
         notes: notes || null,
         created_by: user?.id ?? null,
-        warehouse_id: warehouseId || null,
+        warehouse_id: null,
       }).select("id").single();
       if (e1) throw e1;
 
@@ -187,9 +210,10 @@ function InvoicesPage() {
           line_total_ht: c.ht,
           line_tax: c.tva,
           line_total_ttc: c.ttc,
+          warehouse_id: l.warehouse_id,
         };
       });
-      const { error: e2 } = await supabase.from("invoice_items").insert(itemsPayload);
+      const { error: e2 } = await supabase.from("invoice_items").insert(itemsPayload as never);
       if (e2) throw e2;
 
       // 3) Update to chosen status (triggers stock if pending/paid)
@@ -303,16 +327,6 @@ function InvoicesPage() {
               </div>
               <div><Label>Date facture</Label><Input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} /></div>
               <div><Label>Échéance</Label><Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
-              <div className="col-span-2">
-                <Label>Dépôt</Label>
-                <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">— Aucun —</SelectItem>
-                    {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
 
@@ -328,13 +342,14 @@ function InvoicesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[28%]">Produit / Description</TableHead>
-                      <TableHead className="w-[10%]">Qté</TableHead>
-                      <TableHead className="w-[14%]">PU</TableHead>
-                      <TableHead className="w-[10%]">TVA %</TableHead>
-                      <TableHead className="w-[10%]">Rem %</TableHead>
-                      <TableHead className="w-[18%] text-right">Total HT</TableHead>
-                      <TableHead className="w-[10%]"></TableHead>
+                      <TableHead className="w-[26%]">Produit / Description</TableHead>
+                      <TableHead className="w-[15%]">Dépôt</TableHead>
+                      <TableHead className="w-[8%]">Qté</TableHead>
+                      <TableHead className="w-[12%]">PU</TableHead>
+                      <TableHead className="w-[8%]">TVA %</TableHead>
+                      <TableHead className="w-[8%]">Rem %</TableHead>
+                      <TableHead className="w-[15%] text-right">Total HT</TableHead>
+                      <TableHead className="w-[8%]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -343,21 +358,72 @@ function InvoicesPage() {
                       const update = (patch: Partial<LineForm>) => {
                         const nx = [...lines]; nx[idx] = { ...l, ...patch }; setLines(nx);
                       };
+                      const depotOptions = l.product_key
+                        ? products.filter(p => productKey(p) === l.product_key && Number(p.stock_quantity ?? 0) > 0)
+                        : [];
+                      const outOfStock = !!l.product_key && depotOptions.length === 0;
                       return (
                         <TableRow key={idx}>
                           <TableCell>
-                            <Select value={l.product_id ?? "_custom"} onValueChange={(v) => {
-                              if (v === "_custom") { update({ product_id: null }); return; }
-                              const p = products.find(x => x.id === v);
-                              if (p) update({ product_id: p.id, description: p.name, unit_price: Number(p.selling_price) });
+                            <Select value={l.product_key ?? "_custom"} onValueChange={(v) => {
+                              if (v === "_custom") {
+                                update({ product_id: null, product_key: null, warehouse_id: null, description: "", unit_price: 0 });
+                                return;
+                              }
+                              const matches = products.filter(p => productKey(p) === v);
+                              const inStock = matches.filter(p => Number(p.stock_quantity ?? 0) > 0);
+                              const first = matches[0];
+                              if (!first) return;
+                              if (inStock.length === 0) {
+                                update({ product_key: v, product_id: null, warehouse_id: null, description: first.name, unit_price: Number(first.selling_price) });
+                                toast.error("Produit indisponible en stock");
+                                return;
+                              }
+                              if (inStock.length === 1) {
+                                const p = inStock[0];
+                                update({ product_key: v, product_id: p.id, warehouse_id: p.warehouse_id, description: p.name, unit_price: Number(p.selling_price) });
+                              } else {
+                                update({ product_key: v, product_id: null, warehouse_id: null, description: first.name, unit_price: Number(first.selling_price) });
+                              }
                             }}>
                               <SelectTrigger className="h-8 mb-1"><SelectValue placeholder="Produit…" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="_custom">— Libre —</SelectItem>
-                                {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                {Array.from(new Map(products.map(p => [productKey(p), p])).values()).map(p => (
+                                  <SelectItem key={productKey(p)} value={productKey(p)}>{p.name}</SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                             <Input className="h-8" placeholder="Description" value={l.description} onChange={e => update({ description: e.target.value })} />
+                            {outOfStock && (
+                              <p className="mt-1 text-xs text-rose-600">Produit indisponible en stock</p>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {!l.product_key ? (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            ) : outOfStock ? (
+                              <span className="text-xs text-rose-600">Indisponible</span>
+                            ) : depotOptions.length === 1 ? (
+                              <div className="text-xs">
+                                <div className="font-medium">{warehouses.find(w => w.id === depotOptions[0].warehouse_id)?.name ?? "—"}</div>
+                                <div className="text-muted-foreground">Stock : {depotOptions[0].stock_quantity}</div>
+                              </div>
+                            ) : (
+                              <Select value={l.product_id ?? ""} onValueChange={(v) => {
+                                const p = depotOptions.find(x => x.id === v);
+                                if (p) update({ product_id: p.id, warehouse_id: p.warehouse_id, unit_price: Number(p.selling_price) });
+                              }}>
+                                <SelectTrigger className="h-8"><SelectValue placeholder="Choisir…" /></SelectTrigger>
+                                <SelectContent>
+                                  {depotOptions.map(p => (
+                                    <SelectItem key={p.id} value={p.id}>
+                                      {warehouses.find(w => w.id === p.warehouse_id)?.name ?? "—"} · {p.stock_quantity}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
                           </TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.quantity} onChange={e => update({ quantity: Number(e.target.value) })} /></TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.unit_price} onChange={e => update({ unit_price: Number(e.target.value) })} /></TableCell>
