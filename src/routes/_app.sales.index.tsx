@@ -50,6 +50,7 @@ type Sale = {
   warehouse_id: string | null;
   customers: { name: string } | null;
   warehouses: { name: string } | null;
+  sale_items: { warehouse_id: string | null; warehouses: { name: string } | null }[];
 };
 type Customer = { id: string; name: string };
 type Product = { id: string; name: string; reference: string | null; selling_price: number; warehouse_id: string | null; stock_quantity: number };
