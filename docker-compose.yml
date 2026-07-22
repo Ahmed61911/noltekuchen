@@ -25,9 +25,15 @@ services:
       - "${POSTGRES_PORT}:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
-      # Migrations replay on first boot (empty volume only).
-      - ./database/migrations:/docker-entrypoint-initdb.d/migrations:ro
-      - ./backend/volumes/db/init:/docker-entrypoint-initdb.d/init:ro
+      # First-boot init (empty volume only). Postgres' docker-entrypoint
+      # only runs files at the TOP level of /docker-entrypoint-initdb.d/,
+      # so each file is mounted individually (subdirectory mounts are
+      # silently ignored). Migrations live in /migrations and are applied
+      # by 10-run-migrations.sh which also seeds public._schema_migrations
+      # so scripts/migrate.sh stays idempotent afterwards.
+      - ./backend/volumes/db/init/00-roles.sql:/docker-entrypoint-initdb.d/00-roles.sql:ro
+      - ./backend/volumes/db/init/10-run-migrations.sh:/docker-entrypoint-initdb.d/10-run-migrations.sh:ro
+      - ./database/migrations:/migrations:ro
 
   # ---------- Auth (GoTrue) ----------------------------------------------
   auth:
