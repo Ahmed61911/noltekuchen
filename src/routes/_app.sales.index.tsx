@@ -544,7 +544,7 @@ function SalesPage() {
                   <TableRow key={s.id}>
                     <TableCell className="font-mono text-sm">{s.sale_number}</TableCell>
                     <TableCell>{s.customers?.name ?? <span className="text-muted-foreground">Comptoir</span>}</TableCell>
-                    <TableCell className="text-sm">{s.warehouses?.name ?? "—"}</TableCell>
+                    <TableCell className="text-sm">{Array.from(new Set((s.sale_items ?? []).map(it => it.warehouses?.name).filter(Boolean))).join(", ") || "—"}</TableCell>
                     <TableCell>{new Date(s.sale_date).toLocaleDateString("fr-FR")}</TableCell>
 
                     <TableCell className="text-right tabular-nums">{fmt(ttc)}</TableCell>
