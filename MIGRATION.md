@@ -91,10 +91,19 @@ Requirements: Docker Desktop (or Docker Engine + Compose plugin), `openssl`,
 git clone <your-repo>
 cd <repo>
 scripts/bootstrap.sh          # generates secrets, mints anon/service_role JWTs
-docker compose up -d          # first boot: ~2 minutes
+docker compose up -d          # first boot: ~2 minutes; migrations auto-apply
 scripts/create-admin.sh admin@example.com 'ChangeMe!123'
 open http://localhost:8080
 ```
+
+> **First-boot migrations.** On an empty `pg_data` volume, Postgres runs
+> `backend/volumes/db/init/00-roles.sql` (Supabase roles/schemas) and then
+> `10-run-migrations.sh`, which applies every `database/migrations/*.sql`
+> in order and records each filename in `public._schema_migrations`.
+> To apply new migrations later against a live database, run
+> `scripts/migrate.sh` — it skips already-recorded files, so the two paths
+> never conflict. To fully reset, `docker compose down -v` wipes the
+> volume and the next `up` re-runs first-boot init.
 
 `scripts/bootstrap.sh` writes `.env` (from `.env.example`) with:
 - random `POSTGRES_PASSWORD`, `MINIO_ROOT_PASSWORD`, `SESSION_SECRET`,
