@@ -160,6 +160,26 @@ function InvoicesPage() {
       if (validLines.length === 0) throw new Error("Ajoutez au moins une ligne");
       if (!customerId) throw new Error("Sélectionnez un client");
 
+      // Validate depot & stock per line (only if status will apply stock)
+      const willApplyStock = status === "pending" || status === "paid";
+      for (const [i, l] of validLines.entries()) {
+        if (l.product_key && !l.product_id) {
+          throw new Error(`Ligne ${i + 1}: sélectionnez le dépôt du produit`);
+        }
+        if (l.product_id) {
+          if (!l.warehouse_id) throw new Error(`Ligne ${i + 1}: dépôt requis`);
+          const p = products.find(x => x.id === l.product_id);
+          if (!p) throw new Error(`Ligne ${i + 1}: produit introuvable`);
+          if (p.warehouse_id !== l.warehouse_id) {
+            const wname = warehouses.find(w => w.id === l.warehouse_id)?.name ?? "";
+            throw new Error(`Ligne ${i + 1}: "${p.name}" n'existe pas dans le dépôt ${wname}`);
+          }
+          if (willApplyStock && Number(p.stock_quantity ?? 0) < l.quantity) {
+            throw new Error(`Ligne ${i + 1}: stock insuffisant pour "${p.name}" (disponible: ${p.stock_quantity ?? 0})`);
+          }
+        }
+      }
+
       // 1) Insert invoice as draft first
       const { data: inv, error: e1 } = await supabase.from("invoices").insert({
         customer_id: customerId,
@@ -168,10 +188,10 @@ function InvoicesPage() {
         status: "draft",
         subtotal_ht: totals.ht,
         tax_amount: totals.tva,
-        total_ttc: totals.ttc,
+        total_ttc: totals.tva + totals.ht,
         notes: notes || null,
         created_by: user?.id ?? null,
-        warehouse_id: warehouseId || null,
+        warehouse_id: null,
       }).select("id").single();
       if (e1) throw e1;
 
@@ -190,9 +210,10 @@ function InvoicesPage() {
           line_total_ht: c.ht,
           line_tax: c.tva,
           line_total_ttc: c.ttc,
+          warehouse_id: l.warehouse_id,
         };
       });
-      const { error: e2 } = await supabase.from("invoice_items").insert(itemsPayload);
+      const { error: e2 } = await supabase.from("invoice_items").insert(itemsPayload as never);
       if (e2) throw e2;
 
       // 3) Update to chosen status (triggers stock if pending/paid)
