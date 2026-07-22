@@ -188,7 +188,7 @@ function InvoicesPage() {
         status: "draft",
         subtotal_ht: totals.ht,
         tax_amount: totals.tva,
-        total_ttc: totals.tva + totals.ht,
+        total_ttc: totals.ttc,
         notes: notes || null,
         created_by: user?.id ?? null,
         warehouse_id: null,
