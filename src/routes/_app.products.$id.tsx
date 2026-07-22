@@ -104,7 +104,7 @@ function ProductDetailPage() {
   );
 
   const [form, setForm] = useState<Partial<Product> & { gallery: string[] }>({
-    reference: "", name: "", brand: "", sku: "", description: "",
+    name: "", reference: "", brand: "", sku: "", description: "",
     purchase_price: 0, selling_price: 0, stock_quantity: 0, min_stock: 5,
     dimensions: "", warehouse_id: null, gallery: [],
   });
@@ -159,8 +159,8 @@ function ProductDetailPage() {
   function startEdit() {
     if (!product) return;
     setForm({
-      reference: product.reference,
       name: product.name,
+      reference: product.reference,
       brand: product.brand ?? "",
       sku: product.sku ?? "",
       description: product.description ?? "",

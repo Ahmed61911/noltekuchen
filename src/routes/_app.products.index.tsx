@@ -53,7 +53,7 @@ type Warehouse = { id: string; name: string; description: string | null; is_acti
 type FormState = Omit<Product, "id" | "image_url" | "images"> & { gallery: string[] };
 
 const empty: FormState = {
-  reference: "", name: "", brand: "", sku: "", description: "",
+  name: "", reference: "", brand: "", sku: "", description: "",
   purchase_price: 0, selling_price: 0, stock_quantity: 0, min_stock: 5,
   dimensions: "", gallery: [], warehouse_id: null,
 };
@@ -155,7 +155,7 @@ function ProductsIndexPage() {
     setEditing(p);
     const gallery = [p.image_url, ...(p.images ?? [])].filter((x): x is string => !!x);
     setForm({
-      reference: p.reference, name: p.name,
+      name: p.name, reference: p.reference,
       brand: p.brand ?? "", sku: p.sku ?? "",
       description: p.description ?? "",
       purchase_price: p.purchase_price, selling_price: p.selling_price,
