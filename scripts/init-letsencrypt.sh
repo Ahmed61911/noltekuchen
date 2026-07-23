@@ -27,15 +27,24 @@ set -a; . ./.env; set +a
 
 : "${DOMAIN_APP:?set DOMAIN_APP in .env}"
 : "${DOMAIN_SUPABASE:?set DOMAIN_SUPABASE in .env}"
-: "${LETSENCRYPT_EMAIL:?set LETSENCRYPT_EMAIL in .env}"
 
-for d in "$DOMAIN_APP" "$DOMAIN_SUPABASE" "$LETSENCRYPT_EMAIL"; do
+for d in "$DOMAIN_APP" "$DOMAIN_SUPABASE"; do
   if [[ "$d" == *example.com ]]; then
     echo "Refusing to run: .env still has an example.com placeholder ($d)." >&2
-    echo "Set DOMAIN_APP, DOMAIN_SUPABASE, LETSENCRYPT_EMAIL to your real values first." >&2
+    echo "Set DOMAIN_APP, DOMAIN_SUPABASE to your real values first." >&2
     exit 1
   fi
 done
+
+# LETSENCRYPT_EMAIL is optional — Let's Encrypt allows registering without
+# one via --register-unsafely-without-email, you just lose renewal-failure
+# and expiry notifications. Recommended, but not required to proceed.
+EMAIL_ARG="--register-unsafely-without-email"
+if [[ -n "${LETSENCRYPT_EMAIL:-}" && "$LETSENCRYPT_EMAIL" != *example.com ]]; then
+  EMAIL_ARG="--email $LETSENCRYPT_EMAIL --no-eff-email"
+else
+  echo "[init-letsencrypt] LETSENCRYPT_EMAIL not set — registering without an email (no renewal-failure notifications)."
+fi
 
 STAGING_ARG=""
 if [[ "${1:-}" == "--staging" ]]; then
@@ -75,7 +84,7 @@ for domain in "$DOMAIN_APP" "$DOMAIN_SUPABASE"; do
     rm -rf /etc/letsencrypt/live/$domain /etc/letsencrypt/archive/$domain /etc/letsencrypt/renewal/$domain.conf && \
     certbot certonly --webroot -w /var/www/certbot \
       -d $domain \
-      --email $LETSENCRYPT_EMAIL --agree-tos --no-eff-email $STAGING_ARG
+      $EMAIL_ARG --agree-tos $STAGING_ARG
   "
 done
 
