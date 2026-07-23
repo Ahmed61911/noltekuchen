@@ -11,9 +11,14 @@ cd "$ROOT"
 set -a; . ./.env; set +a
 
 : "${SUPABASE_SERVICE_ROLE_KEY:?run scripts/bootstrap.sh first}"
+: "${VITE_SUPABASE_URL:?run scripts/bootstrap.sh first}"
 
+# VITE_SUPABASE_URL, not a hardcoded localhost:8000 — Kong's port is only
+# published to the host in dev. In prod (correctly) only nginx is public,
+# so localhost:8000 just gets "connection refused" there; VITE_SUPABASE_URL
+# is already the right public URL in both environments.
 # Create user (email_confirm=true so they can log in immediately)
-RESP=$(curl -s -X POST "http://localhost:8000/auth/v1/admin/users" \
+RESP=$(curl -s -X POST "${VITE_SUPABASE_URL}/auth/v1/admin/users" \
   -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
   -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
   -H "Content-Type: application/json" \
