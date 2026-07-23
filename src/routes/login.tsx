@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import kitchenAsset from "@/assets/login-kitchen.png.asset.json";
+import kitchenImg from "@/assets/login-kitchen.png";
 import logoSvg from "@/assets/nolte-logo.svg";
 
 
@@ -38,7 +38,7 @@ function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="relative hidden overflow-hidden p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <img src={kitchenAsset.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <img src={kitchenImg} alt="" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/30 to-black/70" />
         <div className="relative z-10 flex h-full flex-col justify-between">
           <img src={logoSvg} alt="Nolte Küchen" className="h-14 w-auto self-start" />
