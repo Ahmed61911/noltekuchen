@@ -97,13 +97,19 @@ open http://localhost:8080
 ```
 
 > **First-boot migrations.** On an empty `pg_data` volume, Postgres runs
-> `backend/volumes/db/init/00-roles.sql` (Supabase roles/schemas) and then
-> `10-run-migrations.sh`, which applies every `database/migrations/*.sql`
-> in order and records each filename in `public._schema_migrations`.
-> To apply new migrations later against a live database, run
-> `scripts/migrate.sh` — it skips already-recorded files, so the two paths
-> never conflict. To fully reset, `docker compose down -v` wipes the
-> volume and the next `up` re-runs first-boot init.
+> `backend/volumes/db/init/00-roles.sh` (Supabase roles/schemas) during its
+> own `docker-entrypoint-initdb.d` phase. The app schema in
+> `database/migrations/*.sql` is applied separately, by the one-shot
+> `db-migrate` service, *after* `auth` (GoTrue) is healthy — most migrations
+> have foreign keys into `auth.users`, which doesn't exist until GoTrue has
+> run its own migrations, and that can't have happened yet while `db` is
+> still in its first-boot init phase (the `auth` container isn't even
+> started at that point). `db-migrate` records each applied filename in
+> `public._schema_migrations`. To apply new migrations later against a live
+> database, run `scripts/migrate.sh` — it skips already-recorded files, so
+> the two paths never conflict. To fully reset, `docker compose down -v`
+> wipes the volume and the next `up` re-runs both first-boot init and
+> `db-migrate`.
 
 `scripts/bootstrap.sh` writes `.env` (from `.env.example`) with:
 - random `POSTGRES_PASSWORD`, `MINIO_ROOT_PASSWORD`, `SESSION_SECRET`,
@@ -139,19 +145,16 @@ and for prod.
    # SMTP_* (real provider), APP_URL=https://<DOMAIN_APP>,
    # VITE_SUPABASE_URL=https://<DOMAIN_SUPABASE>
    ```
-4. **Update Nginx configs** — replace `app.example.com` / `supabase.example.com`
-   in `nginx/conf.d/app.conf` with your real domains.
-5. **First-run TLS**: certbot needs port 80 reachable before certs exist.
-   Comment out the two `ssl_certificate*` lines and the `listen 443` blocks,
-   `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d nginx`,
-   then:
+4. **First-run TLS**: `scripts/init-letsencrypt.sh` renders
+   `nginx/conf.d/app.conf` from `app.conf.template` with your real domains
+   (nginx doesn't interpolate `.env` itself), bootstraps a throwaway
+   self-signed cert so nginx can start at all, requests real Let's Encrypt
+   certs via the webroot method, then reloads nginx with them:
    ```bash
-   docker compose run --rm certbot certonly --webroot -w /var/www/certbot \
-     -d app.example.com -d supabase.example.com \
-     --email "$LETSENCRYPT_EMAIL" --agree-tos --no-eff-email
+   scripts/init-letsencrypt.sh --staging   # verify DNS/ports first, no rate limit
+   scripts/init-letsencrypt.sh             # then for real
    ```
-   Uncomment the SSL blocks, restart Nginx.
-6. **Bring up the full prod stack**:
+5. **Bring up the full prod stack**:
    ```bash
    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
    scripts/create-admin.sh admin@yourdomain.com '<strong-password>'
@@ -188,16 +191,20 @@ re-running is safe.
 
 **Backup** (daily cron on the VPS):
 
+```bash
+scripts/install-cron.sh   # idempotent; installs both lines below for you
 ```
-0 3 * * *  cd /opt/nolte && ./scripts/backup.sh >> /var/log/nolte-backup.log 2>&1
+
+which installs:
+
+```
+0 3 * * *  cd <repo path> && ./scripts/backup.sh          >> /var/log/nolte-backup.log 2>&1
+15 3 * * * cd <repo path> && ./scripts/backup-offsite.sh  >> /var/log/nolte-offsite.log 2>&1
 ```
 
 Produces `backups/backup-YYYYMMDD-HHMMSS.tar.gz` (pg_dump + all MinIO bucket
-contents). Keeps the last 14. Rsync those off-host with:
-
-```bash
-rsync -avz backups/ user@offsite:/mnt/backups/nolte/
-```
+contents). Keeps the last 14 locally; `backup-offsite.sh` additionally syncs
+to restic (see §9) for 14 daily / 8 weekly / 6 monthly off-host retention.
 
 **Restore**:
 
@@ -218,10 +225,12 @@ interactively.
 | Login returns 401 immediately | `SUPABASE_JWT_SECRET` changed but anon/service_role keys weren't regenerated. Re-run `scripts/bootstrap.sh` (delete those three env keys first). |
 | `Expected 3 parts in JWT; got 1` | You put an `sb_publishable_*` key in `SUPABASE_PUBLISHABLE_KEY`. Self-hosted uses HS256 JWTs from `bootstrap.sh`, not new-format keys. |
 | MinIO bucket missing (`NoSuchBucket`) | The `minio-init` one-shot didn't run. `docker compose up minio-init`. |
-| `role "anon" does not exist` on first boot | `backend/volumes/db/init/00-roles.sql` didn't run. That only executes on an **empty** volume. `docker compose down -v` (WARNING: wipes data) and back up. |
+| `role "anon" does not exist` on first boot | `backend/volumes/db/init/00-roles.sh` didn't run. That only executes on an **empty** volume. `docker compose down -v` (WARNING: wipes data) and back up. |
+| `relation "auth.users" does not exist` applying a migration | You're running `database/migrations/*.sql` too early — most have FKs into `auth.users`, which only exists after GoTrue's own migrations run. On first boot this is handled by the `db-migrate` service (gated on `auth` being healthy); for manual runs use `scripts/migrate.sh` after `docker compose up`, not before. |
+| PostgREST shows "0 Relations" in its logs | `db-migrate` hasn't completed yet, or failed. `docker compose logs db-migrate`. |
 | Certbot fails with "connection refused" | Port 80 not reachable from the internet. Check firewall/DNS. |
 | `docker compose exec db …` hangs | Postgres still starting; wait for `pg_isready` (~10s). |
-| Nginx: `no such file … fullchain.pem` | Certs not issued yet — follow §4 step 5 (comment SSL blocks for first cert issuance). |
+| Nginx: `no such file … fullchain.pem` | Certs not issued yet — run `scripts/init-letsencrypt.sh` (§4). |
 
 ---
 
@@ -240,18 +249,25 @@ interactively.
 
 ## 9. Production hardening (added)
 
-- **Nginx rate limiting** (`nginx/nginx.conf` + `nginx/conf.d/app.conf`):
+- **Nginx rate limiting** (`nginx/nginx.conf` + `nginx/conf.d/app.conf.template`):
   `/auth/v1/{token,signup,recover,otp,verify,magiclink}` limited to 5 r/s
-  (burst 10) per IP; general API to 30 r/s (burst 60). Blocks brute-force
-  without fail2ban.
+  (burst 10) per IP; general API to 30 r/s (burst 60).
+- **Nginx security headers** (`nginx/conf.d/security-headers.conf` +
+  `app.conf.template`): HSTS, X-Frame-Options, X-Content-Type-Options,
+  Referrer-Policy, Permissions-Policy, and a CSP on the app domain.
 - **Off-site backups** (`scripts/backup-offsite.sh`): restic-based encrypted
-  sync to Backblaze B2 / S3 / SFTP. Run daily after `scripts/backup.sh`:
-  ```
-  0 3 * * *  cd /opt/nolte && ./scripts/backup.sh          >> /var/log/nolte-backup.log 2>&1
-  15 3 * * * cd /opt/nolte && ./scripts/backup-offsite.sh  >> /var/log/nolte-offsite.log 2>&1
-  ```
-  Set `RESTIC_REPOSITORY`, `RESTIC_PASSWORD` (and provider creds) in `.env`,
-  then `restic init` once.
+  sync to Backblaze B2 / S3 / SFTP, 14 daily / 8 weekly / 6 monthly
+  retention. Run daily after `scripts/backup.sh` — `scripts/install-cron.sh`
+  sets up both. Set `RESTIC_REPOSITORY`, `RESTIC_PASSWORD` (and provider
+  creds) in `.env`, then `restic init` once.
+- **Monitoring** (optional, opt-in): `docker compose -f docker-compose.yml
+  -f docker-compose.monitoring.yml up -d` adds Grafana + Loki + Promtail +
+  Prometheus + postgres-exporter. See `docker-compose.monitoring.yml` for
+  details.
+- **Host hardening** (`scripts/harden-host.sh`, run once on the VPS as
+  root): UFW allowing only 22/80/443, fail2ban for SSH + nginx rate-limit
+  429s, and a `/etc/docker/daemon.json` with log rotation, live-restore, and
+  userland-proxy disabled.
 - **CI/CD** (`.github/workflows/deploy.yml`): on push to `main`, SSH into
   the VPS, `git pull`, rebuild the `app` image, run migrations, restart.
   Configure repo secrets `SSH_HOST`, `SSH_USER`, `SSH_KEY`, `DEPLOY_PATH`.

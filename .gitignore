@@ -16,6 +16,19 @@ dist-ssr
 .nitro
 *.local
 
+# Secrets — never commit real env values, only .env.example
+.env
+.env.local
+.env.*.local
+.env.lovable.bak
+backups/
+lovable-export/
+
+# Generated from nginx/conf.d/app.conf.template by scripts/render-nginx.sh —
+# contains real domain names, regenerate per-deployment instead of committing.
+nginx/conf.d/app.conf
+nginx/logs/
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

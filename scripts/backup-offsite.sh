@@ -26,8 +26,8 @@ set -a; . ./.env; set +a
 echo "[offsite] backing up ./backups to $RESTIC_REPOSITORY"
 restic backup ./backups --tag nolte-erp
 
-echo "[offsite] pruning old snapshots (keep 7 daily, 4 weekly, 6 monthly)"
+echo "[offsite] pruning old snapshots (keep 14 daily, 8 weekly, 6 monthly)"
 restic forget --prune \
-  --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --tag nolte-erp
+  --keep-daily 14 --keep-weekly 8 --keep-monthly 6 --tag nolte-erp
 
 echo "[offsite] done"

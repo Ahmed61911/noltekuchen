@@ -28,12 +28,10 @@ services:
       # First-boot init (empty volume only). Postgres' docker-entrypoint
       # only runs files at the TOP level of /docker-entrypoint-initdb.d/,
       # so each file is mounted individually (subdirectory mounts are
-      # silently ignored). Migrations live in /migrations and are applied
-      # by 10-run-migrations.sh which also seeds public._schema_migrations
-      # so scripts/migrate.sh stays idempotent afterwards.
-      - ./backend/volumes/db/init/00-roles.sql:/docker-entrypoint-initdb.d/00-roles.sql:ro
-      - ./backend/volumes/db/init/10-run-migrations.sh:/docker-entrypoint-initdb.d/10-run-migrations.sh:ro
-      - ./database/migrations:/migrations:ro
+      # silently ignored). Only roles/schemas are created here — the app's
+      # own database/migrations/*.sql run separately, later, via the
+      # `db-migrate` one-shot service below (see its comment for why).
+      - ./backend/volumes/db/init/00-roles.sh:/docker-entrypoint-initdb.d/00-roles.sh:ro
 
   # ---------- Auth (GoTrue) ----------------------------------------------
   auth:
@@ -42,11 +40,29 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # The upstream image ships with no HEALTHCHECK, but db-migrate needs
+    # `auth: condition: service_healthy` to know when auth.users exists —
+    # without this, compose refuses to start at all ("has no healthcheck
+    # configured").
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9999/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     environment:
       GOTRUE_API_HOST: 0.0.0.0
       GOTRUE_API_PORT: 9999
       GOTRUE_DB_DRIVER: postgres
+      # Without this, GoTrue creates its tables in `public` — where
+      # supabase_auth_admin has no privileges — instead of the `auth` schema
+      # 00-roles.sh actually grants it ownership of.
+      GOTRUE_DB_NAMESPACE: auth
       GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # GoTrue v2.158 reads this one unprefixed (API_EXTERNAL_URL) despite
+      # every other setting using the GOTRUE_ prefix — confirmed by testing;
+      # GOTRUE_API_EXTERNAL_URL alone was silently ignored.
+      API_EXTERNAL_URL: ${VITE_SUPABASE_URL}
+      GOTRUE_API_EXTERNAL_URL: ${VITE_SUPABASE_URL}
       GOTRUE_SITE_URL: ${GOTRUE_SITE_URL}
       GOTRUE_URI_ALLOW_LIST: ${GOTRUE_URI_ALLOW_LIST}
       GOTRUE_DISABLE_SIGNUP: ${GOTRUE_DISABLE_SIGNUP}
@@ -61,6 +77,29 @@ services:
       GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
       GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
 
+  # ---------- App schema migrations (one-shot, after GoTrue is up) -------
+  # database/migrations/*.sql mostly have foreign keys into auth.users, which
+  # only exists once GoTrue has run ITS OWN migrations — that can't have
+  # happened yet during db's docker-entrypoint-initdb.d phase, since the
+  # `auth` container doesn't even start until db reports healthy. So this
+  # runs as a separate one-shot service, gated on `auth` being healthy,
+  # exactly like minio-init below gates on `minio`.
+  db-migrate:
+    image: supabase/postgres:15.6.1.146
+    depends_on:
+      db:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./database/migrations:/migrations:ro
+      - ./backend/volumes/db/run-app-migrations.sh:/run-app-migrations.sh:ro
+    entrypoint: ["bash", "/run-app-migrations.sh"]
+
   # ---------- PostgREST (Data API) ---------------------------------------
   rest:
     image: postgrest/postgrest:v12.2.3
@@ -68,6 +107,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       PGRST_DB_SCHEMAS: public,storage
@@ -107,15 +148,41 @@ services:
     image: kong:2.8
     <<: *default-restart
     depends_on: [auth, rest, storage]
+    # kong.yml contains ${SUPABASE_PUBLISHABLE_KEY} / ${SUPABASE_SERVICE_ROLE_KEY}
+    # placeholders. Kong's declarative-config loader does NOT interpolate env
+    # vars itself, so we mount the file as a template and expand it before
+    # Kong starts. Deliberately a targeted `sed` substitution rather than the
+    # common `eval "echo \"$(cat file)\""` trick — eval re-parses the whole
+    # file as shell syntax a second time, which silently strips the quotes
+    # around `_format_version: "2.1"` (Kong then rejects it: "expected a
+    # string") and would just as easily mangle any other quoting in the file.
+    #
+    # The search-pattern side of each sed rule needs to survive TWO parsing
+    # passes untouched: Compose's own ${VAR} interpolation (escaped with $$,
+    # not \$ — Compose substitutes ${VAR} anywhere in this file regardless of
+    # a preceding backslash) and then sh's double-quote parsing (escaped with
+    # \, so sh doesn't ALSO expand it as its own parameter reference). Only
+    # the replacement side should actually expand, and only at the sh layer.
+    # (Confirmed by testing: getting either escape wrong makes the sed
+    # pattern silently match nothing, leaving the placeholders in kong.yml
+    # untouched — the actual anon/service keys never reached the file.)
+    entrypoint: >
+      sh -c 'sed
+      -e "s|\$${SUPABASE_PUBLISHABLE_KEY}|$$SUPABASE_PUBLISHABLE_KEY|g"
+      -e "s|\$${SUPABASE_SERVICE_ROLE_KEY}|$$SUPABASE_SERVICE_ROLE_KEY|g"
+      /home/kong/temp.yml > /home/kong/kong.yml &&
+      /docker-entrypoint.sh kong docker-start'
     environment:
       KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_PLUGINS: request-transformer,cors,key-auth,acl
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/volumes/api/kong.yml:/var/lib/kong/kong.yml:ro
+      - ./backend/volumes/api/kong.yml:/home/kong/temp.yml:ro
 
   # ---------- MinIO (S3-compatible object store) -------------------------
   minio:
@@ -163,6 +230,10 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+        VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
     <<: *default-restart
     depends_on: [kong]
     environment:

@@ -1,0 +1,74 @@
+# App + Supabase reverse proxy — TEMPLATE.
+#
+# This file is NOT read by nginx directly. Run `scripts/render-nginx.sh`
+# (reads DOMAIN_APP / DOMAIN_SUPABASE from .env, runs envsubst) to generate
+# the real `nginx/conf.d/app.conf` that nginx actually loads. Edit this
+# template, not the generated app.conf — it gets overwritten every render.
+
+# --- ACME HTTP-01 challenge (Let's Encrypt) -----------------------------
+server {
+  listen 80;
+  server_name ${DOMAIN_APP} ${DOMAIN_SUPABASE};
+
+  location /.well-known/acme-challenge/ {
+    root /var/www/certbot;
+  }
+  location / {
+    return 301 https://$host$request_uri;
+  }
+}
+
+# --- App --------------------------------------------------------------------
+server {
+  listen 443 ssl http2;
+  server_name ${DOMAIN_APP};
+
+  ssl_certificate     /etc/letsencrypt/live/${DOMAIN_APP}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/${DOMAIN_APP}/privkey.pem;
+  ssl_protocols       TLSv1.2 TLSv1.3;
+
+  # Repeats conf.d/security-headers.conf's headers rather than relying on
+  # http-level inheritance: nginx's `add_header` REPLACES (doesn't merge
+  # with) the parent context's list as soon as a server block defines its
+  # own — and this block needs its own CSP (connect-src has to name the
+  # Supabase domain, which the shared file can't know). Starting point, not
+  # exhaustive — tighten further once you've inventoried every external
+  # asset domain the app actually loads.
+  add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+  add_header X-Frame-Options "SAMEORIGIN" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+  add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://${DOMAIN_SUPABASE} wss://${DOMAIN_SUPABASE}; frame-ancestors 'self'; base-uri 'self'; form-action 'self'" always;
+
+  location / {
+    proxy_pass http://app:3000;
+  }
+}
+
+# --- Supabase API gateway (Kong) ---------------------------------------
+server {
+  listen 443 ssl http2;
+  server_name ${DOMAIN_SUPABASE};
+
+  ssl_certificate     /etc/letsencrypt/live/${DOMAIN_SUPABASE}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/${DOMAIN_SUPABASE}/privkey.pem;
+  ssl_protocols       TLSv1.2 TLSv1.3;
+
+  # No CSP here — this serves JSON, not HTML, so it's not meaningful. The
+  # shared conf.d/security-headers.conf headers apply here via inheritance
+  # since this block defines no add_header of its own.
+
+  # Aggressive rate-limit on auth endpoints (login, signup, token refresh,
+  # password recovery). Blocks brute-force without needing fail2ban.
+  location ~ ^/auth/v1/(token|signup|recover|otp|verify|magiclink) {
+    limit_req zone=auth_zone burst=10 nodelay;
+    proxy_pass http://kong:8000;
+  }
+
+  # General API traffic (rest, storage, remaining auth reads).
+  location / {
+    limit_req zone=api_zone burst=60 nodelay;
+    proxy_pass http://kong:8000;
+  }
+}

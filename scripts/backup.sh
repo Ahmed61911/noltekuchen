@@ -11,7 +11,13 @@ OUT="./backups/$STAMP"
 mkdir -p "$OUT"
 
 echo "[backup] pg_dump -> $OUT/db.sql.gz"
-docker compose exec -T db pg_dump -U "$POSTGRES_USER" -Fp --no-owner "$POSTGRES_DB" | gzip > "$OUT/db.sql.gz"
+# Dumps the WHOLE database (public + auth + storage — GoTrue/Storage own
+# schemas too, and we want auth.users et al. backed up, not just app data).
+# --clean --if-exists makes the dump self-cleaning on restore (DROP ...  IF
+# EXISTS right before each CREATE) so restore.sh doesn't need its own
+# schema-drop logic and doesn't hit "already exists" conflicts against
+# whatever GoTrue/Storage already created on the target.
+docker compose exec -T db pg_dump -U "$POSTGRES_USER" -Fp --no-owner --clean --if-exists "$POSTGRES_DB" | gzip > "$OUT/db.sql.gz"
 
 echo "[backup] MinIO buckets -> $OUT/storage/"
 docker compose run --rm -T \

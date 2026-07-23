@@ -6,8 +6,17 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-if [[ -f .env ]]; then
+if [[ -f .env ]] && grep -qE '^POSTGRES_PASSWORD=' .env; then
   echo "[bootstrap] .env exists — skipping generation."
+elif [[ -f .env ]]; then
+  # Lovable's dev-preview environment also writes a 6-key .env (SUPABASE_URL,
+  # SUPABASE_PUBLISHABLE_KEY, etc. pointed at Lovable Cloud) which is a
+  # different shape than the self-host template and would otherwise get
+  # silently reused with the wrong backend. Preserve it and start fresh.
+  echo "[bootstrap] Existing .env doesn't look like a self-host env (no POSTGRES_PASSWORD)."
+  echo "[bootstrap] Assuming it's Lovable's dev-preview file — backing it up to .env.lovable.bak"
+  mv .env .env.lovable.bak
+  cp .env.example .env
 else
   cp .env.example .env
 fi
@@ -26,7 +35,16 @@ patch() { # patch KEY VALUE
 [[ "$(grep -E '^SESSION_SECRET=' .env | cut -d= -f2-)" =~ ^$|change-me ]] && patch SESSION_SECRET "$(gen)"
 [[ "$(grep -E '^POSTGRES_PASSWORD=' .env | cut -d= -f2-)" =~ ^$|change-me ]] && patch POSTGRES_PASSWORD "$(gen)"
 [[ "$(grep -E '^MINIO_ROOT_PASSWORD=' .env | cut -d= -f2-)" =~ ^$|change-me ]] && patch MINIO_ROOT_PASSWORD "$(gen)"
-[[ -z "$(grep -E '^SUPABASE_JWT_SECRET=' .env | cut -d= -f2-)" ]] && patch SUPABASE_JWT_SECRET "$(gen)"
+
+# GoTrue/PostgREST/Storage all sign or verify with this — anything short makes
+# the anon/service_role HS256 JWTs trivially brute-forceable. `gen` already
+# produces 64 hex chars, but guard the case where someone hand-edited .env
+# with a weak value instead of running this script.
+CURRENT_JWT_SECRET="$(grep -E '^SUPABASE_JWT_SECRET=' .env | cut -d= -f2-)"
+if [[ -z "$CURRENT_JWT_SECRET" || ${#CURRENT_JWT_SECRET} -lt 32 ]]; then
+  [[ -n "$CURRENT_JWT_SECRET" ]] && echo "[bootstrap] SUPABASE_JWT_SECRET is under 32 chars — regenerating."
+  patch SUPABASE_JWT_SECRET "$(gen)"
+fi
 
 JWT_SECRET="$(grep -E '^SUPABASE_JWT_SECRET=' .env | cut -d= -f2-)"
 

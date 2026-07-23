@@ -1,0 +1,73 @@
+# Optional observability stack: Grafana + Loki + Promtail (container logs) +
+# Prometheus + postgres-exporter (Postgres stats). NOT started by default —
+# opt in explicitly:
+#   docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+# In production, layer it on top of the prod override too:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.monitoring.yml up -d
+#
+# Grafana: http://<host>:3001 — default login admin / admin unless you set
+# GRAFANA_ADMIN_PASSWORD in .env before first boot. Change it on first login
+# either way. Port 3001 is mapped directly to the host for simplicity; if
+# this VPS is public, put it behind the nginx vhost + basic auth (or an SSH
+# tunnel) rather than leaving it open on the internet.
+#
+# postgres-exporter connects as the `postgres` superuser for simplicity. For
+# a tighter setup, create a dedicated read-only monitoring role instead.
+
+services:
+  loki:
+    image: grafana/loki:3.2.1
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+
+  promtail:
+    # 2.9.x's bundled Docker client only speaks API <=1.42; current Docker
+    # Engine releases require >=1.44 and refuse older clients outright
+    # ("client version 1.42 is too old"), which breaks docker_sd_configs
+    # discovery entirely. 3.x bundles a client that negotiates correctly.
+    image: grafana/promtail:3.2.1
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on: [loki]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on: [loki, prometheus]
+
+volumes:
+  loki_data:
+  prometheus_data:
+  grafana_data:

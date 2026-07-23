@@ -64,6 +64,12 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - letsencrypt:/etc/letsencrypt
       - letsencrypt_www:/var/www/certbot
+      # Bind-mounted (not a named volume) so it's readable from the host
+      # filesystem directly — scripts/harden-host.sh's fail2ban jail tails
+      # this to catch repeated 429s. Must exist and be writable by nginx's
+      # worker process before first start; scripts/init-letsencrypt.sh and
+      # scripts/harden-host.sh both ensure that.
+      - ./nginx/logs:/var/log/nginx-shared
     environment:
       DOMAIN_APP: ${DOMAIN_APP}
       DOMAIN_SUPABASE: ${DOMAIN_SUPABASE}

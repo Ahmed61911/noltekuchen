@@ -15,12 +15,15 @@ The "backend" is a bundle of open-source services orchestrated by
 Files:
 - `volumes/api/kong.yml` — declarative Kong config, routes `/auth`, `/rest`,
   `/storage` to the correct upstream services.
-- `volumes/db/init/` — additional SQL run on first boot of an empty Postgres
-  volume, **after** the `database/migrations/` files. Used to create the
-  Supabase-internal roles (`anon`, `authenticated`, `service_role`,
+- `volumes/db/init/00-roles.sh` — runs during Postgres's own first-boot
+  `docker-entrypoint-initdb.d` phase, before any other service starts. Creates
+  the Supabase-internal roles (`anon`, `authenticated`, `service_role`,
   `authenticator`, `supabase_auth_admin`, `supabase_storage_admin`).
-- `volumes/functions/` — placeholder for future Supabase Edge Functions
-  (empty; the app doesn't currently use any).
+- `volumes/db/run-app-migrations.sh` — applies `database/migrations/*.sql`,
+  run by the one-shot `db-migrate` compose service *after* `auth` (GoTrue) is
+  healthy. This has to be a separate, later step: most app migrations have
+  foreign keys into `auth.users`, which only exists once GoTrue has run its
+  own migrations — that hasn't happened yet during `00-roles.sh`'s init phase.
 
 See `MIGRATION.md` at the repo root for setup, secret generation, and the
 one-time migration from Lovable Cloud.

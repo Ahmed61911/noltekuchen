@@ -1,0 +1,7 @@
+# Shell scripts must keep LF endings regardless of a contributor's local
+# core.autocrlf setting. Docker (including Docker Desktop on Windows) bind-mounts
+# these straight from the working tree, and a shebang line with a trailing \r
+# fails outright: `/usr/bin/env: 'bash\r': No such file or directory` — this
+# broke backend/volumes/db/init/10-run-migrations.sh silently on this exact
+# checkout (app schema never got created, no error surfaced to the user).
+*.sh text eol=lf
