@@ -21,7 +21,14 @@ x-logging: &prod-logging
 services:
   db:
     <<: [*prod-restart, *prod-logging]
-    ports: []
+    # Compose merges list fields like `ports` across -f files by
+    # concatenation, not replacement — a plain `ports: []` here has nothing
+    # to add and silently leaves the base file's published port intact.
+    # `!reset` is the compose-spec's explicit tag for "replace, don't merge"
+    # and is what's actually needed to drop the port in prod. Confirmed via
+    # a real production exposure: db (5432) and app (8080) stayed published
+    # to the internet with plain `ports: []` despite this file's intent.
+    ports: !reset []
 
   auth:
     <<: [*prod-restart, *prod-logging]
@@ -34,11 +41,25 @@ services:
 
   kong:
     <<: [*prod-restart, *prod-logging]
-    ports: []
+    # Compose merges list fields like `ports` across -f files by
+    # concatenation, not replacement — a plain `ports: []` here has nothing
+    # to add and silently leaves the base file's published port intact.
+    # `!reset` is the compose-spec's explicit tag for "replace, don't merge"
+    # and is what's actually needed to drop the port in prod. Confirmed via
+    # a real production exposure: db (5432) and app (8080) stayed published
+    # to the internet with plain `ports: []` despite this file's intent.
+    ports: !reset []
 
   minio:
     <<: [*prod-restart, *prod-logging]
-    ports: []
+    # Compose merges list fields like `ports` across -f files by
+    # concatenation, not replacement — a plain `ports: []` here has nothing
+    # to add and silently leaves the base file's published port intact.
+    # `!reset` is the compose-spec's explicit tag for "replace, don't merge"
+    # and is what's actually needed to drop the port in prod. Confirmed via
+    # a real production exposure: db (5432) and app (8080) stayed published
+    # to the internet with plain `ports: []` despite this file's intent.
+    ports: !reset []
 
   # No dev SMTP in prod
   smtp:
@@ -46,7 +67,14 @@ services:
 
   app:
     <<: [*prod-restart, *prod-logging]
-    ports: []
+    # Compose merges list fields like `ports` across -f files by
+    # concatenation, not replacement — a plain `ports: []` here has nothing
+    # to add and silently leaves the base file's published port intact.
+    # `!reset` is the compose-spec's explicit tag for "replace, don't merge"
+    # and is what's actually needed to drop the port in prod. Confirmed via
+    # a real production exposure: db (5432) and app (8080) stayed published
+    # to the internet with plain `ports: []` despite this file's intent.
+    ports: !reset []
     deploy:
       resources:
         limits:
