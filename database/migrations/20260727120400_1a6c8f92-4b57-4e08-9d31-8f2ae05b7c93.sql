@@ -1,0 +1,23 @@
+-- Let storage-api impersonate the caller — the actual cause of every
+-- storage failure.
+--
+-- storage-api opens its connection pool as supabase_storage_admin and then
+-- runs, as the first statement of every single request:
+--
+--   SELECT set_config('role', $1, true), set_config('request.jwt.claims', ...)
+--
+-- set_config('role', 'authenticated') is SET ROLE, which requires role
+-- membership. backend/volumes/db/init/00-roles.sh grants
+-- `anon, authenticated, service_role TO authenticator` for PostgREST but
+-- has no equivalent line for supabase_storage_admin, so that statement
+-- failed with SQLSTATE 42501 (insufficient_privilege, raised in guc.c's
+-- call_string_check_hook) before storage-api ever reached a bucket, an
+-- object, or a policy.
+--
+-- storage-api catches that and reports "new row violates row-level security
+-- policy", which is why this looked like an RLS or bucket problem through
+-- three earlier rounds of fixes rather than a missing role membership.
+--
+-- 00-roles.sh is fixed in the same commit, but that script only runs on a
+-- fresh Postgres volume, so existing deployments need this migration.
+GRANT anon, authenticated, service_role TO supabase_storage_admin;

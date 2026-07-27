@@ -48,6 +48,15 @@ ALTER ROLE supabase_storage_admin PASSWORD :'pgpass';
 
 GRANT anon, authenticated, service_role TO authenticator;
 
+-- storage-api needs the same memberships for the same reason PostgREST does:
+-- it opens its pool as supabase_storage_admin and then impersonates the
+-- caller with set_config('role', 'authenticated', true) — i.e. SET ROLE —
+-- to make RLS on storage.objects apply. SET ROLE requires membership, so
+-- without this every storage request dies on its very first statement with
+-- SQLSTATE 42501, which storage-api then reports as the thoroughly
+-- misleading "new row violates row-level security policy".
+GRANT anon, authenticated, service_role TO supabase_storage_admin;
+
 -- Schemas expected by the Supabase services
 CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION supabase_auth_admin;
 CREATE SCHEMA IF NOT EXISTS storage AUTHORIZATION supabase_storage_admin;
