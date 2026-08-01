@@ -21,6 +21,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { generateInvoicePdf, type PdfInvoice } from "@/lib/invoice-pdf";
+import { computeLine, computeTotals } from "@/lib/money";
 
 export const Route = createFileRoute("/_app/invoices/")({
   component: InvoicesPage,
@@ -76,11 +77,6 @@ const productKey = (p: Product) => (p.reference && p.reference.trim()) ? `ref:${
 
 const fmt = (n: number) => `${new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2 }).format(n)} ${CURRENCY}`;
 
-function computeLine(l: LineForm) {
-  const ht = l.quantity * l.unit_price * (1 - l.discount_rate / 100);
-  const tva = ht * (l.tax_rate / 100);
-  return { ht, tva, ttc: ht + tva };
-}
 
 function InvoicesPage() {
   const qc = useQueryClient();
@@ -143,11 +139,7 @@ function InvoicesPage() {
   });
 
 
-  const totals = useMemo(() => {
-    let ht = 0, tva = 0, ttc = 0;
-    for (const l of lines) { const c = computeLine(l); ht += c.ht; tva += c.tva; ttc += c.ttc; }
-    return { ht, tva, ttc };
-  }, [lines]);
+  const totals = useMemo(() => computeTotals(lines), [lines]);
 
   const resetForm = () => {
     setCustomerId(""); setInvoiceDate(new Date().toISOString().slice(0, 10));
@@ -247,11 +239,9 @@ function InvoicesPage() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      // Revert stock if needed by passing through cancelled first
-      const { data: inv } = await supabase.from("invoices").select("status, stock_applied").eq("id", id).single();
-      if (inv?.stock_applied) {
-        await supabase.from("invoices").update({ status: "cancelled" }).eq("id", id);
-      }
+      // Stock reversal is handled by the BEFORE DELETE trigger, so it can't be
+      // skipped by whoever deletes. The old cancelled-then-delete round trip
+      // did the same job here but was missing on sales and orders entirely.
       const { error } = await supabase.from("invoices").delete().eq("id", id);
       if (error) throw error;
     },

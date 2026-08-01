@@ -439,6 +439,7 @@ export type Database = {
           notes: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           stock_applied: boolean
+          source_sale_id: string | null
           subtotal_ht: number
           tax_amount: number
           total_ttc: number
@@ -457,6 +458,7 @@ export type Database = {
           notes?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           stock_applied?: boolean
+          source_sale_id?: string | null
           subtotal_ht?: number
           tax_amount?: number
           total_ttc?: number
@@ -475,6 +477,7 @@ export type Database = {
           notes?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           stock_applied?: boolean
+          source_sale_id?: string | null
           subtotal_ht?: number
           tax_amount?: number
           total_ttc?: number

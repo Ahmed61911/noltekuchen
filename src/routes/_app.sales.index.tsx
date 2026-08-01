@@ -24,6 +24,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { generateInvoicePdf, type PdfInvoice } from "@/lib/invoice-pdf";
+import { computeLine, computeTotals } from "@/lib/money";
 
 export const Route = createFileRoute("/_app/sales/")({
   component: SalesPage,
@@ -68,11 +69,6 @@ const emptyLine = (): LineForm => ({
 const productKey = (p: Product) => (p.reference && p.reference.trim()) ? `ref:${p.reference}` : `name:${p.name}`;
 const fmt = (n: number) =>
   `${new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2 }).format(Number(n) || 0)} ${CURRENCY}`;
-const computeLine = (l: LineForm) => {
-  const ht = l.quantity * l.unit_price * (1 - l.discount_rate / 100);
-  const tva = ht * (l.tax_rate / 100);
-  return { ht, tva, ttc: ht + tva };
-};
 
 function SalesPage() {
   const qc = useQueryClient();
@@ -129,11 +125,7 @@ function SalesPage() {
     },
   });
 
-  const totals = useMemo(() => {
-    let ht = 0, tva = 0, ttc = 0;
-    for (const l of lines) { const c = computeLine(l); ht += c.ht; tva += c.tva; ttc += c.ttc; }
-    return { ht, tva, ttc };
-  }, [lines]);
+  const totals = useMemo(() => computeTotals(lines), [lines]);
 
   const resetForm = () => {
     setCustomerId(""); setSaleDate(new Date().toISOString().slice(0, 10));
@@ -237,6 +229,9 @@ function SalesPage() {
         notes: `Issue de la vente ${sale.sale_number}`,
         created_by: user?.id ?? null,
         warehouse_id: sale.warehouse_id,
+        // The sale already moved these goods out of stock. Marking the origin
+        // stops the invoice trigger deducting them a second time.
+        source_sale_id: sale.id,
       }).select("id").single();
       if (error) throw error;
       if (items?.length) {
