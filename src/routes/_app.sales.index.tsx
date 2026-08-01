@@ -161,42 +161,38 @@ function SalesPage() {
       const paid = Math.min(paidAmount || 0, ttc);
       const ps: PayStatus = paid <= 0 ? "unpaid" : paid >= ttc ? "paid" : "partial";
 
-      const { data: sale, error: e1 } = await supabase.from("sales").insert({
-        customer_id: customerId || null,
-        sale_date: saleDate,
-        payment_due_date: dueDate || null,
-        payment_method: method,
-        payment_status: ps,
-        subtotal_ht: totals.ht,
-        tax_amount: totals.tva,
-        total_ttc: ttc,
-        paid_amount: paid,
-        notes: notes || null,
-        created_by: user?.id ?? null,
-        warehouse_id: null,
-      }).select("id").single();
-      if (e1) throw e1;
-
-
-      const itemsPayload = validLines.map(l => {
-        const c = computeLine(l);
-        return {
-          sale_id: sale.id, product_id: l.product_id, description: l.description,
-          quantity: l.quantity, unit_price: l.unit_price, tax_rate: l.tax_rate,
-          discount_rate: l.discount_rate,
-          line_total_ht: c.ht, line_tax: c.tva, line_total_ttc: c.ttc,
-          warehouse_id: l.warehouse_id,
-        };
-      });
-      const { error: e2 } = await supabase.from("sale_items").insert(itemsPayload);
-      if (e2) throw e2;
-
-      if (paid > 0) {
-        await supabase.from("sale_payments").insert({
-          sale_id: sale.id, amount: paid, method, created_by: user?.id ?? null,
-        });
-      }
-      await supabase.from("sales").update({ stock_applied: true }).eq("id", sale.id);
+      // One transaction server-side. Previously this was four sequential
+      // requests: a failure between them left a sale with no lines (having
+      // consumed a sale number), or lines inserted — so stock already
+      // deducted — without stock_applied set, which let the same goods be
+      // deducted again later and blocked the delete trigger from returning
+      // them.
+      const { error } = await supabase.rpc("create_sale", {
+        _sale: {
+          customer_id: customerId || null,
+          sale_date: saleDate,
+          payment_due_date: dueDate || null,
+          payment_method: method,
+          payment_status: ps,
+          subtotal_ht: totals.ht,
+          tax_amount: totals.tva,
+          total_ttc: ttc,
+          paid_amount: paid,
+          notes: notes || null,
+          warehouse_id: null,
+        },
+        _items: validLines.map(l => {
+          const c = computeLine(l);
+          return {
+            product_id: l.product_id, description: l.description,
+            quantity: l.quantity, unit_price: l.unit_price, tax_rate: l.tax_rate,
+            discount_rate: l.discount_rate,
+            line_total_ht: c.ht, line_tax: c.tva, line_total_ttc: c.ttc,
+            warehouse_id: l.warehouse_id,
+          };
+        }),
+      } as never);
+      if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Vente enregistrée");

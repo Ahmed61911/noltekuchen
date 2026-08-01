@@ -1723,6 +1723,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_sale: { Args: { _sale: Json; _items: Json }; Returns: string }
+      create_order: { Args: { _order: Json; _items: Json }; Returns: string }
+      create_invoice: { Args: { _invoice: Json; _items: Json }; Returns: string }
       generate_invoice_number: { Args: never; Returns: string }
       generate_order_number: { Args: never; Returns: string }
       generate_purchase_order_number: { Args: never; Returns: string }

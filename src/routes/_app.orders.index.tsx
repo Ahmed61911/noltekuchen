@@ -22,7 +22,6 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 import { computeLine, computeTotals } from "@/lib/money";
 
 export const Route = createFileRoute("/_app/orders/")({
@@ -79,7 +78,6 @@ function daysLeft(due: string, status: OrderStatus) {
 
 function OrdersPage() {
   const qc = useQueryClient();
-  const { user } = useAuth();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [payFilter, setPayFilter] = useState("all");
@@ -167,27 +165,26 @@ function OrdersPage() {
         }
       }
 
-      const { data: order, error: e1 } = await supabase.from("orders").insert({
-        customer_id: customerId, order_date: orderDate, due_date: dueDate,
-        status: "pending", subtotal_ht: totals.ht, tax_amount: totals.tva, total_ttc: totals.ttc,
-        notes: notes || null, created_by: user?.id ?? null,
-        warehouse_id: null,
-      }).select("id").single();
-      if (e1) throw e1;
-
-
-      const payload = validLines.map(l => {
-        const c = computeLine(l);
-        return {
-          order_id: order.id, product_id: l.product_id, description: l.description,
-          quantity: l.quantity, unit_price: l.unit_price, tax_rate: l.tax_rate,
-          discount_rate: l.discount_rate,
-          line_total_ht: c.ht, line_tax: c.tva, line_total_ttc: c.ttc,
-          warehouse_id: l.warehouse_id,
-        };
-      });
-      const { error: e2 } = await supabase.from("order_items").insert(payload);
-      if (e2) throw e2;
+      // One transaction server-side, so a failure can't leave an order with no
+      // lines that has already consumed an order number.
+      const { error } = await supabase.rpc("create_order", {
+        _order: {
+          customer_id: customerId, order_date: orderDate, due_date: dueDate,
+          status: "pending", subtotal_ht: totals.ht, tax_amount: totals.tva,
+          total_ttc: totals.ttc, notes: notes || null, warehouse_id: null,
+        },
+        _items: validLines.map(l => {
+          const c = computeLine(l);
+          return {
+            product_id: l.product_id, description: l.description,
+            quantity: l.quantity, unit_price: l.unit_price, tax_rate: l.tax_rate,
+            discount_rate: l.discount_rate,
+            line_total_ht: c.ht, line_tax: c.tva, line_total_ttc: c.ttc,
+            warehouse_id: l.warehouse_id,
+          };
+        }),
+      } as never);
+      if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Commande créée");

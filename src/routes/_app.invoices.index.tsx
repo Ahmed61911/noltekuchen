@@ -19,7 +19,6 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 import { generateInvoicePdf, type PdfInvoice } from "@/lib/invoice-pdf";
 import { computeLine, computeTotals } from "@/lib/money";
 
@@ -80,7 +79,6 @@ const fmt = (n: number) => `${new Intl.NumberFormat("fr-FR", { minimumFractionDi
 
 function InvoicesPage() {
   const qc = useQueryClient();
-  const { user } = useAuth();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [customerFilter, setCustomerFilter] = useState("all");
@@ -173,47 +171,40 @@ function InvoicesPage() {
         }
       }
 
-      // 1) Insert invoice as draft first
-      const { data: inv, error: e1 } = await supabase.from("invoices").insert({
-        customer_id: customerId,
-        invoice_date: invoiceDate,
-        due_date: dueDate,
-        status: "draft",
-        subtotal_ht: totals.ht,
-        tax_amount: totals.tva,
-        total_ttc: totals.ttc,
-        notes: notes || null,
-        created_by: user?.id ?? null,
-        warehouse_id: null,
-      }).select("id").single();
-      if (e1) throw e1;
-
-
-      // 2) Insert items
-      const itemsPayload = validLines.map(l => {
-        const c = computeLine(l);
-        return {
-          invoice_id: inv.id,
-          product_id: l.product_id,
-          description: l.description,
-          quantity: l.quantity,
-          unit_price: l.unit_price,
-          tax_rate: l.tax_rate,
-          discount_rate: l.discount_rate,
-          line_total_ht: c.ht,
-          line_tax: c.tva,
-          line_total_ttc: c.ttc,
-          warehouse_id: l.warehouse_id,
-        };
-      });
-      const { error: e2 } = await supabase.from("invoice_items").insert(itemsPayload as never);
-      if (e2) throw e2;
-
-      // 3) Update to chosen status (triggers stock if pending/paid)
-      if (status !== "draft") {
-        const { error: e3 } = await supabase.from("invoices").update({ status }).eq("id", inv.id);
-        if (e3) throw e3;
-      }
+      // One transaction server-side: header, lines, then the status change
+      // that moves stock. Splitting this across three requests could leave an
+      // invoice with no lines that had already consumed an invoice number.
+      // The RPC still creates it as draft first, so the stock trigger fires
+      // only once the lines exist.
+      const { error } = await supabase.rpc("create_invoice", {
+        _invoice: {
+          customer_id: customerId,
+          invoice_date: invoiceDate,
+          due_date: dueDate,
+          status,
+          subtotal_ht: totals.ht,
+          tax_amount: totals.tva,
+          total_ttc: totals.ttc,
+          notes: notes || null,
+          warehouse_id: null,
+        },
+        _items: validLines.map(l => {
+          const c = computeLine(l);
+          return {
+            product_id: l.product_id,
+            description: l.description,
+            quantity: l.quantity,
+            unit_price: l.unit_price,
+            tax_rate: l.tax_rate,
+            discount_rate: l.discount_rate,
+            line_total_ht: c.ht,
+            line_tax: c.tva,
+            line_total_ttc: c.ttc,
+            warehouse_id: l.warehouse_id,
+          };
+        }),
+      } as never);
+      if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Facture créée");
