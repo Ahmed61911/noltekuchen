@@ -32,7 +32,23 @@ const ACTIONS: { key: string; label: string }[] = [
 const MODULE_LABELS: Record<string, string> = {
   products: "Produits", stock: "Stock", sales: "Ventes", orders: "Commandes",
   customers: "Clients", suppliers: "Fournisseurs", reports: "Rapports", users: "Utilisateurs",
+  projects: "Projets", purchase_orders: "Achats", quotes: "Devis",
 };
+
+/**
+ * Références stables pour les listes vides.
+ *
+ * `useQuery({...}).data` vaut `undefined` tant que la requête est désactivée,
+ * en cours ou en erreur. Écrire `data: x = []` fabriquait alors un tableau neuf
+ * à CHAQUE rendu, et l'effet qui dépend de `rolePerms` se redéclenchait sans
+ * fin en appelant setDraft(new Set(...)) — soit React #185 (Maximum update
+ * depth exceeded). Le piège se déclenchait dès l'ouverture de la page, car
+ * `enabled: isAdmin` laisse les requêtes désactivées le temps que l'auth se
+ * résolve.
+ */
+const EMPTY_ROLES: { key: string; label: string; is_system: boolean }[] = [];
+const EMPTY_CATALOG: { id: string; module: string; action: string; label: string }[] = [];
+const EMPTY_ROLE_PERMS: { role: string; permission_id: string }[] = [];
 
 function RolesPage() {
   const { isAdmin, loading } = useAuth();
@@ -45,9 +61,18 @@ function RolesPage() {
   const catFn = useServerFn(listPermissionsCatalog);
   const rpFn = useServerFn(listRolePermissions);
 
-  const { data: roles = [] } = useQuery({ queryKey: ["roles"], queryFn: () => rolesFn(), enabled: isAdmin });
-  const { data: catalog = [] } = useQuery({ queryKey: ["perm_catalog_full"], queryFn: () => catFn(), enabled: isAdmin });
-  const { data: rolePerms = [] } = useQuery({ queryKey: ["role_perm_all"], queryFn: () => rpFn(), enabled: isAdmin });
+  const rolesQ = useQuery({ queryKey: ["roles"], queryFn: () => rolesFn(), enabled: isAdmin });
+  const catalogQ = useQuery({ queryKey: ["perm_catalog_full"], queryFn: () => catFn(), enabled: isAdmin });
+  const rolePermsQ = useQuery({ queryKey: ["role_perm_all"], queryFn: () => rpFn(), enabled: isAdmin });
+
+  const roles = (rolesQ.data ?? EMPTY_ROLES) as typeof EMPTY_ROLES;
+  const catalog = (catalogQ.data ?? EMPTY_CATALOG) as typeof EMPTY_CATALOG;
+  const rolePerms = (rolePermsQ.data ?? EMPTY_ROLE_PERMS) as typeof EMPTY_ROLE_PERMS;
+
+  // Une liste vide sans explication est indiscernable d'un chargement réussi
+  // mais sans données : on remonte l'erreur au lieu de la taire.
+  const loadError = rolesQ.error ?? catalogQ.error ?? rolePermsQ.error;
+  const isLoadingData = rolesQ.isLoading || catalogQ.isLoading || rolePermsQ.isLoading;
 
   const modules = useMemo(() => {
     const set = new Set<string>();
@@ -74,11 +99,28 @@ function RolesPage() {
   }, [roles, selected]);
 
   const currentRole = roles.find((r: any) => r.key === selected);
-  const currentIds = permsByRole[selected ?? ""] ?? new Set<string>();
+  // Mémoïsé : sans cela, un rôle sans permission renvoyait un Set neuf à chaque
+  // rendu, ce qui rendait instables tous les calculs qui en dépendent.
+  const currentIds = useMemo(
+    () => permsByRole[selected ?? ""] ?? new Set<string>(),
+    [permsByRole, selected],
+  );
 
   // Draft toggles
-  const [draft, setDraft] = useState<Set<string>>(new Set());
-  useEffect(() => { setDraft(new Set(currentIds)); }, [selected, rolePerms]);
+  const [draft, setDraft] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    // Ne remplace l'état que si le contenu diffère réellement. setDraft avec un
+    // Set neuf identique en contenu suffirait sinon à relancer un rendu, et
+    // c'est précisément ce qui bouclait.
+    setDraft((prev) => {
+      if (prev.size === currentIds.size) {
+        let same = true;
+        for (const id of currentIds) if (!prev.has(id)) { same = false; break; }
+        if (same) return prev;
+      }
+      return new Set(currentIds);
+    });
+  }, [currentIds]);
 
   const dirty = useMemo(() => {
     if (draft.size !== currentIds.size) return true;
@@ -166,10 +208,22 @@ function RolesPage() {
         <Button onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4" /> Nouveau rôle</Button>
       </div>
 
+      {loadError && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Impossible de charger les rôles : {(loadError as Error).message}
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <Card className="shadow-card">
           <CardHeader><CardTitle className="text-base">Rôles</CardTitle></CardHeader>
           <CardContent className="p-0">
+            {isLoadingData && (
+              <p className="px-4 py-6 text-sm text-muted-foreground">Chargement…</p>
+            )}
+            {!isLoadingData && !loadError && roles.length === 0 && (
+              <p className="px-4 py-6 text-sm text-muted-foreground">Aucun rôle trouvé.</p>
+            )}
             <div className="divide-y">
               {roles.map((r: any) => {
                 const active = r.key === selected;
