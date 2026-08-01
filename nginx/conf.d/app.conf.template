@@ -39,7 +39,19 @@ server {
   add_header X-Content-Type-Options "nosniff" always;
   add_header Referrer-Policy "strict-origin-when-cross-origin" always;
   add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
-  add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://${DOMAIN_SUPABASE} wss://${DOMAIN_SUPABASE}; frame-ancestors 'self'; base-uri 'self'; form-action 'self'" always;
+  # blob: est nécessaire à l'aperçu des documents : le fichier est téléchargé
+  # puis affiché via URL.createObjectURL(). Sans blob: dans img-src, l'aperçu
+  # d'une image était bloqué ; sans blob: dans connect-src, pdf.js ne pouvait
+  # pas lire le PDF ; et worker-src / frame-src, absents, retombaient sur
+  # default-src 'self', ce qui bloquait le worker pdf.js et l'aperçu des
+  # autres types de fichiers. Le téléchargement, lui, n'est soumis à aucune de
+  # ces directives — d'où un fichier qui se télécharge mais ne s'affiche pas.
+  #
+  # Ces blob: désignent uniquement des données créées par la page elle-même,
+  # à partir de fichiers déjà récupérés depuis notre propre stockage.
+  # script-src reste volontairement sans blob: — worker-src le couvre pour le
+  # seul cas légitime, sans autoriser l'exécution de script arbitraire.
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' blob: https://${DOMAIN_SUPABASE} wss://${DOMAIN_SUPABASE}; frame-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self'" always;
 
   location / {
     proxy_pass http://app:3000;
