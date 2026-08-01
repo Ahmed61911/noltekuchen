@@ -13,8 +13,15 @@
 # server that serves dist/client/ directly and bridges everything else into
 # that fetch handler.
 
+# Node 22, not 20: @supabase/supabase-js instantiates its Realtime client on
+# createClient(), which needs a global WebSocket. Node 20 has none, so every
+# server-side client threw "Node.js 20 detected without native WebSocket
+# support" — breaking *all* server functions (Rôles, Utilisateurs), not just
+# realtime features. Node 22 ships WebSocket natively, which is the fix
+# Supabase itself recommends over shimming with the "ws" package.
+
 # ---- deps -------------------------------------------------------------------
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 # The repo pins deps with Bun's text lockfile (bun.lock), not the legacy
@@ -28,7 +35,7 @@ RUN if [ -f bun.lock ] || [ -f bun.lockb ]; then \
     fi
 
 # ---- build ------------------------------------------------------------------
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -45,7 +52,7 @@ ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
 RUN npm run build
 
 # ---- runtime ----------------------------------------------------------------
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production PORT=3000
 RUN addgroup -S app && adduser -S app -G app
