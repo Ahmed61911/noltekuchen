@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
-  Upload, Search, Trash2, Download, Eye, FileText, FileSpreadsheet, FileImage,
-  File as FileIcon, History, Loader2, ChevronLeft, ChevronRight,
+  Upload, Search, Trash2, Download, FileText, FileSpreadsheet, FileImage,
+  File as FileIcon, History, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -26,7 +26,6 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 
 export const Route = createFileRoute("/_app/documents")({
   component: DocumentsPage,
@@ -74,104 +73,6 @@ const fileIcon = (type: string | null) => {
   return FileIcon;
 };
 
-function PdfPreview({ url, name }: { url: string; name: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [pdfDoc, setPdfDoc] = useState<any>(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [pageCount, setPageCount] = useState(0);
-  const [isRendering, setIsRendering] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    setIsRendering(true);
-    setError("");
-    setPageNumber(1);
-
-    import("pdfjs-dist")
-      .then((pdfjs) => {
-        pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-        return pdfjs.getDocument({ url }).promise;
-      })
-      .then((loadedPdf) => {
-        if (cancelled) return;
-        setPdfDoc(loadedPdf);
-        setPageCount(loadedPdf.numPages);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setError(e?.message ?? "Aperçu PDF impossible");
-        setIsRendering(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
-
-  useEffect(() => {
-    if (!pdfDoc || !canvasRef.current) return;
-    let cancelled = false;
-    setIsRendering(true);
-
-    pdfDoc.getPage(pageNumber).then((page: any) => {
-      if (cancelled || !canvasRef.current) return;
-      const containerWidth = canvasRef.current.parentElement?.clientWidth ?? 900;
-      const baseViewport = page.getViewport({ scale: 1 });
-      const scale = Math.min(2, Math.max(0.7, (containerWidth - 48) / baseViewport.width));
-      const viewport = page.getViewport({ scale });
-      const canvas = canvasRef.current;
-      const context = canvas.getContext("2d");
-      if (!context) return;
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      canvas.style.width = `${viewport.width}px`;
-      canvas.style.height = `${viewport.height}px`;
-      return page.render({ canvasContext: context, viewport }).promise;
-    }).then(() => {
-      if (!cancelled) setIsRendering(false);
-    }).catch((e: any) => {
-      if (cancelled) return;
-      setError(e?.message ?? "Aperçu PDF impossible");
-      setIsRendering(false);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [pdfDoc, pageNumber]);
-
-  return (
-    <div className="flex min-h-full flex-col bg-muted/30">
-      <div className="flex items-center justify-between gap-3 border-b bg-background/80 px-3 py-2">
-        <p className="truncate text-sm font-medium text-muted-foreground">{name}</p>
-        {pageCount > 0 && (
-          <div className="flex items-center gap-2">
-            <Button size="icon" variant="outline" onClick={() => setPageNumber((p) => Math.max(1, p - 1))} disabled={pageNumber <= 1 || isRendering}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="min-w-20 text-center text-sm text-muted-foreground">{pageNumber} / {pageCount}</span>
-            <Button size="icon" variant="outline" onClick={() => setPageNumber((p) => Math.min(pageCount, p + 1))} disabled={pageNumber >= pageCount || isRendering}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-      </div>
-      <div className="relative flex-1 overflow-auto p-4">
-        {isRendering && (
-          <div className="absolute inset-0 z-10 grid place-items-center bg-background/60">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        )}
-        {error ? (
-          <div className="grid h-full place-items-center text-sm text-muted-foreground">{error}</div>
-        ) : (
-          <canvas ref={canvasRef} className="mx-auto rounded-sm bg-background shadow-sm" aria-label={name} />
-        )}
-      </div>
-    </div>
-  );
-}
 
 function DocumentsPage() {
   const qc = useQueryClient();
@@ -179,8 +80,6 @@ function DocumentsPage() {
   const [cat, setCat] = useState<string>("all");
   const [customer, setCustomer] = useState<string>("all");
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [previewDoc, setPreviewDoc] = useState<Doc | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>("");
   const [historyDoc, setHistoryDoc] = useState<Doc | null>(null);
   const [deleteDoc, setDeleteDoc] = useState<Doc | null>(null);
 
@@ -314,15 +213,6 @@ function DocumentsPage() {
     } catch (e: any) { toast.error(e.message ?? "Téléchargement impossible"); }
   };
 
-  const handlePreview = async (d: Doc) => {
-    try {
-      const { data, error } = await supabase.storage.from("documents").download(d.file_path);
-      if (error) throw error;
-      const blob = new Blob([data], { type: d.file_type || "application/octet-stream" });
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url); setPreviewDoc(d);
-    } catch (e: any) { toast.error(e.message ?? "Aperçu impossible"); }
-  };
 
   return (
     <div className="space-y-6">
@@ -428,9 +318,6 @@ function DocumentsPage() {
                   <TableCell className="text-sm">{formatSize(d.file_size)}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
-                      <Button size="icon" variant="ghost" title="Aperçu" onClick={() => handlePreview(d)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
                       <Button size="icon" variant="ghost" title="Télécharger" onClick={() => handleDownload(d)}>
                         <Download className="h-4 w-4" />
                       </Button>
@@ -506,31 +393,6 @@ function DocumentsPage() {
             <Button variant="outline" onClick={() => setUploadOpen(false)}>Annuler</Button>
             <Button onClick={() => uploadMut.mutate()} disabled={!upFile || uploadMut.isPending}>
               {uploadMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Importer"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Preview dialog */}
-      <Dialog open={!!previewDoc} onOpenChange={(o) => { if (!o) { if (previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl); setPreviewDoc(null); setPreviewUrl(""); } }}>
-        <DialogContent className="max-w-5xl">
-          <DialogHeader><DialogTitle className="flex items-center gap-2">
-            {previewDoc?.name}
-          </DialogTitle></DialogHeader>
-          <div className="h-[70vh] w-full overflow-auto rounded-md border bg-muted/30">
-            {previewDoc && previewUrl && (
-              previewDoc.file_type?.startsWith("image/") ? (
-                <img src={previewUrl} alt={previewDoc.name} className="mx-auto max-h-full" />
-              ) : previewDoc.file_type?.includes("pdf") || previewDoc.name.toLowerCase().endsWith(".pdf") ? (
-                <PdfPreview url={previewUrl} name={previewDoc.name} />
-              ) : (
-                <iframe src={previewUrl} title={previewDoc.name} className="h-full w-full" />
-              )
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => previewDoc && handleDownload(previewDoc)} className="gap-2">
-              <Download className="h-4 w-4" /> Télécharger
             </Button>
           </DialogFooter>
         </DialogContent>
