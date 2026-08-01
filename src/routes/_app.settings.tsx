@@ -1,12 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Languages, Palette, Bell, Sun, Moon } from "lucide-react";
+import { Languages, Palette, Bell, Sun, Moon, KeyRound, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
+import { useAuth } from "@/lib/auth";
+import { useConfirm } from "@/components/confirm-dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
@@ -32,12 +37,108 @@ function SettingsPage() {
     toast.success(t("saved"));
   };
 
+  // ---- Changement de mot de passe ----
+  const { user } = useAuth();
+  const confirm = useConfirm();
+  const [currentPwd, setCurrentPwd] = useState("");
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+  const [pwdBusy, setPwdBusy] = useState(false);
+
+  const pwdTooShort = newPwd.length > 0 && newPwd.length < 8;
+  const pwdMismatch = confirmPwd.length > 0 && newPwd !== confirmPwd;
+  const canSubmitPwd =
+    currentPwd.length > 0 && newPwd.length >= 8 && newPwd === confirmPwd && !pwdBusy;
+
+  async function changePassword() {
+    if (!user?.email) return;
+    if (newPwd === currentPwd) {
+      toast.error("Le nouveau mot de passe doit être différent de l'actuel");
+      return;
+    }
+    const ok = await confirm({
+      title: "Changer votre mot de passe ?",
+      description:
+        "Vous resterez connecté sur cet appareil, mais l'ancien mot de passe cessera immédiatement de fonctionner. Assurez-vous d'avoir noté le nouveau.",
+      confirmLabel: "Changer le mot de passe",
+    });
+    if (!ok) return;
+
+    setPwdBusy(true);
+    try {
+      // Supabase n'exige pas le mot de passe actuel pour en définir un nouveau.
+      // On le revérifie donc explicitement : sans cela, une session laissée
+      // ouverte sur un poste partagé suffirait à s'approprier le compte.
+      const { error: authErr } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPwd,
+      });
+      if (authErr) {
+        toast.error("Mot de passe actuel incorrect");
+        return;
+      }
+      const { error } = await supabase.auth.updateUser({ password: newPwd });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Mot de passe modifié");
+      setCurrentPwd(""); setNewPwd(""); setConfirmPwd("");
+    } finally {
+      setPwdBusy(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t("settings")}</h1>
         <p className="text-sm text-muted-foreground">Préférences de l'application</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><KeyRound className="h-4 w-4" /> Sécurité</CardTitle>
+          <CardDescription>Changer votre mot de passe</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:max-w-md">
+            <div className="space-y-1.5">
+              <Label htmlFor="cur-pwd">Mot de passe actuel</Label>
+              <Input
+                id="cur-pwd" type="password" autoComplete="current-password"
+                value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-pwd">Nouveau mot de passe</Label>
+              <Input
+                id="new-pwd" type="password" autoComplete="new-password"
+                value={newPwd} onChange={(e) => setNewPwd(e.target.value)}
+              />
+              <p className={`text-xs ${pwdTooShort ? "text-destructive" : "text-muted-foreground"}`}>
+                8 caractères minimum.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cfm-pwd">Confirmer le nouveau mot de passe</Label>
+              <Input
+                id="cfm-pwd" type="password" autoComplete="new-password"
+                value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)}
+              />
+              {pwdMismatch && (
+                <p className="text-xs text-destructive">Les deux mots de passe ne correspondent pas.</p>
+              )}
+            </div>
+            <div>
+              <Button onClick={changePassword} disabled={!canSubmitPwd}>
+                {pwdBusy && <Loader2 className="h-4 w-4 animate-spin" />}
+                Changer le mot de passe
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
