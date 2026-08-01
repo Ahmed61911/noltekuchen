@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { computeLine, computeTotals } from "@/lib/money";
 
 export const Route = createFileRoute("/_app/orders/")({
   component: OrdersPage,
@@ -68,11 +69,6 @@ const emptyLine = (): LineForm => ({
 const productKey = (p: Product) => (p.reference && p.reference.trim()) ? `ref:${p.reference}` : `name:${p.name}`;
 const fmt = (n: number) =>
   `${new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2 }).format(Number(n) || 0)} ${CURRENCY}`;
-const computeLine = (l: LineForm) => {
-  const ht = l.quantity * l.unit_price * (1 - l.discount_rate / 100);
-  const tva = ht * (l.tax_rate / 100);
-  return { ht, tva, ttc: ht + tva };
-};
 
 function daysLeft(due: string, status: OrderStatus) {
   if (status === "delivered" || status === "cancelled") return null;
@@ -138,11 +134,7 @@ function OrdersPage() {
   });
 
 
-  const totals = useMemo(() => {
-    let ht = 0, tva = 0, ttc = 0;
-    for (const l of lines) { const c = computeLine(l); ht += c.ht; tva += c.tva; ttc += c.ttc; }
-    return { ht, tva, ttc };
-  }, [lines]);
+  const totals = useMemo(() => computeTotals(lines), [lines]);
 
   const reset = () => {
     setCustomerId(""); setOrderDate(new Date().toISOString().slice(0, 10));
