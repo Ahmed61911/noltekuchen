@@ -24,6 +24,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
+import { pdfMoney, pdfText } from "@/lib/pdf-safe";
 
 export const Route = createFileRoute("/_app/reports")({
   component: ReportsPage,
@@ -267,17 +268,25 @@ function ReportsPage() {
   };
 
   const exportPdf = () => {
+    // pdfMoney / pdfText, pas fmtMoney : les polices standard de jsPDF
+    // encodent en WinAnsi et ne connaissent ni U+202F (le séparateur de
+    // milliers de Intl.NumberFormat("fr-FR"), qui sortait « 504/260 ») ni
+    // « → » (qui sortait « !' »). À l'écran, fmtMoney reste correct.
     const doc = new jsPDF();
     doc.setFontSize(16);
-    doc.text("Rapport — Nolte Küchen", 14, 18);
+    doc.text(pdfText("Rapport — Nolte Küchen"), 14, 18);
     doc.setFontSize(10);
-    doc.text(`Période : ${dateFrom} → ${dateTo}`, 14, 25);
-    doc.text(`CA total : ${fmtMoney(kpis.totalCA)}   |   Ventes mois : ${fmtMoney(kpis.monthCA)}`, 14, 32);
+    doc.text(pdfText(`Période : ${dateFrom} - ${dateTo}`), 14, 25);
+    doc.text(
+      pdfText(`CA total : ${pdfMoney(kpis.totalCA)}   |   Ventes mois : ${pdfMoney(kpis.monthCA)}`),
+      14, 32,
+    );
     autoTable(doc, {
       startY: 40,
-      head: [["Référence", "Produit", "Qté", "CA HT", "Marge"]],
+      head: [["Référence", "Produit", "Qté", "CA HT", "Marge"].map(pdfText)],
       body: performance.map((p) => [
-        p.reference, p.name, p.quantity, fmtMoney(p.revenue), fmtMoney(p.margin),
+        pdfText(p.reference), pdfText(p.name), pdfText(p.quantity),
+        pdfMoney(p.revenue), pdfMoney(p.margin),
       ]),
       styles: { fontSize: 9 },
       headStyles: { fillColor: [30, 41, 59] },
