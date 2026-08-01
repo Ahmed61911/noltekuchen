@@ -19,6 +19,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { logAction } from "@/lib/audit-log";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_app/warehouses")({
   component: WarehousesPage,
@@ -49,6 +50,7 @@ const empty: FormState = { name: "", merchandise: "", description: "", address: 
 function WarehousesPage() {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Warehouse | null>(null);
@@ -269,7 +271,7 @@ function WarehousesPage() {
                       <Power className={`h-4 w-4 ${w.is_active ? "text-success" : "text-muted-foreground"}`} />
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => startEdit(w)}><Pencil className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => { if (confirm("Supprimer ce dépôt ?")) remove.mutate(w.id); }}>
+                    <Button variant="ghost" size="icon" onClick={async () => { if (await confirm({ title: `Supprimer le dépôt ${w.name} ?`, description: "Les produits qui y sont rattachés ne seront plus affectés à aucun dépôt.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(w.id); }}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </TableCell>

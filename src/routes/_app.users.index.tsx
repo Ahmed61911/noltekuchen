@@ -28,6 +28,7 @@ import {
   listUsers, createUser, setUserStatus, setUserRole, deleteUser, updateUser, resetUserPassword,
 } from "@/lib/users.functions";
 import { listRoles } from "@/lib/roles.functions";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_app/users/")({
   component: UsersPage,
@@ -78,6 +79,7 @@ function UsersPage() {
   const { isAdmin, loading } = useAuth();
   const nav = useNavigate();
   const qc = useQueryClient();
+  const confirm = useConfirm();
 
   useEffect(() => { if (!loading && !isAdmin) nav({ to: "/dashboard" }); }, [loading, isAdmin, nav]);
 
@@ -298,14 +300,14 @@ function UsersPage() {
                       <TableCell className="text-sm text-muted-foreground">{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "Jamais"}</TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" title="Réinitialiser mot de passe" onClick={() => { setResetTarget(u); setResetPwd(null); resetMut.mutate(u.id); }}><KeyRound className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" title="Réinitialiser mot de passe" onClick={async () => { if (await confirm({ title: `Réinitialiser le mot de passe de ${u.full_name || u.email} ?`, description: "Son mot de passe actuel cessera immédiatement de fonctionner. Un nouveau mot de passe sera généré et affiché une seule fois — notez-le avant de fermer.", confirmLabel: "Réinitialiser", destructive: true })) { setResetTarget(u); setResetPwd(null); resetMut.mutate(u.id); } }}><KeyRound className="h-4 w-4" /></Button>
                           {u.status === "blocked" ? (
-                            <Button variant="ghost" size="icon" title="Débloquer" onClick={() => statusMut.mutate({ user_id: u.id, status: "active" })}><Unlock className="h-4 w-4 text-emerald-600" /></Button>
+                            <Button variant="ghost" size="icon" title="Débloquer" onClick={async () => { if (await confirm({ title: `Débloquer ${u.full_name || u.email} ?`, description: "Cette personne pourra de nouveau se connecter et agir selon son rôle.", confirmLabel: "Débloquer" })) statusMut.mutate({ user_id: u.id, status: "active" }); }}><Unlock className="h-4 w-4 text-emerald-600" /></Button>
                           ) : (
-                            <Button variant="ghost" size="icon" title="Bloquer" onClick={() => statusMut.mutate({ user_id: u.id, status: "blocked" })}><Lock className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" title="Bloquer" onClick={async () => { if (await confirm({ title: `Bloquer ${u.full_name || u.email} ?`, description: "Cette personne ne pourra plus se connecter. Ses données et son historique sont conservés.", confirmLabel: "Bloquer", destructive: true })) statusMut.mutate({ user_id: u.id, status: "blocked" }); }}><Lock className="h-4 w-4" /></Button>
                           )}
                           <Button variant="ghost" size="icon" title="Modifier" onClick={() => openEdit(u)}><Pencil className="h-4 w-4 text-blue-600" /></Button>
-                          <Button variant="ghost" size="icon" title="Supprimer" onClick={() => { if (confirm(`Supprimer ${u.full_name || u.email} ?`)) delMut.mutate({ user_id: u.id }); }}><Trash2 className="h-4 w-4 text-rose-600" /></Button>
+                          <Button variant="ghost" size="icon" title="Supprimer" onClick={async () => { if (await confirm({ title: `Supprimer ${u.full_name || u.email} ?`, description: "Le compte et son accès seront définitivement supprimés. Cette action est irréversible — pour un départ temporaire, préférez « Bloquer ».", confirmLabel: "Supprimer définitivement", destructive: true })) delMut.mutate({ user_id: u.id }); }}><Trash2 className="h-4 w-4 text-rose-600" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>

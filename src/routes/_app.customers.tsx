@@ -15,6 +15,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_app/customers")({
   component: CustomersPage,
@@ -38,6 +39,7 @@ const empty: FormState = {
 
 function CustomersPage() {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
@@ -152,7 +154,7 @@ function CustomersPage() {
                     setForm({ name: c.name, email: c.email, phone: c.phone, address: c.address, city: c.city, postal_code: c.postal_code, notes: c.notes });
                     setOpen(true);
                   }}><Pencil className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => { if (confirm("Supprimer ?")) remove.mutate(c.id); }}>
+                  <Button size="icon" variant="ghost" onClick={async () => { if (await confirm({ title: `Supprimer le client ${c.name} ?`, description: "Le client sera définitivement retiré du carnet d'adresses. Les documents déjà émis à son nom sont conservés.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(c.id); }}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </TableCell>

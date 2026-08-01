@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_app/suppliers")({
   component: SuppliersPage,
@@ -33,6 +34,7 @@ const empty = { name: "", contact_name: "", email: "", phone: "", address: "" };
 function SuppliersPage() {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [form, setForm] = useState(empty);
@@ -131,7 +133,7 @@ function SuppliersPage() {
                     <Button variant="ghost" size="icon" onClick={() => { setEditing(s); setForm({ name: s.name, contact_name: s.contact_name ?? "", email: s.email ?? "", phone: s.phone ?? "", address: s.address ?? "" }); setOpen(true); }}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => { if (confirm("Supprimer ?")) remove.mutate(s.id); }}>
+                    <Button variant="ghost" size="icon" onClick={async () => { if (await confirm({ title: `Supprimer le fournisseur ${s.name} ?`, description: "Les produits qui lui étaient rattachés ne seront plus associés à aucun fournisseur.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(s.id); }}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </TableCell>

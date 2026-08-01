@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/lib/auth";
+import { useConfirm } from "@/components/confirm-dialog";
 import {
   listRoles, listPermissionsCatalog, listRolePermissions,
   createRole, renameRole, deleteRole, setRolePermissions,
@@ -54,6 +55,7 @@ function RolesPage() {
   const { isAdmin, loading } = useAuth();
   const nav = useNavigate();
   const qc = useQueryClient();
+  const confirm = useConfirm();
 
   useEffect(() => { if (!loading && !isAdmin) nav({ to: "/dashboard" }); }, [loading, isAdmin, nav]);
 
@@ -261,12 +263,12 @@ function RolesPage() {
                   <Button variant="outline" size="sm" onClick={() => { setRenameLabel(currentRole.label); setRenameOpen(true); }}>
                     <Pencil className="h-3.5 w-3.5" /> Renommer
                   </Button>
-                  <Button variant="outline" size="sm" className="text-rose-600 hover:text-rose-700" onClick={() => { if (confirm(`Supprimer le rôle "${currentRole.label}" ? Les utilisateurs concernés reviendront au rôle Employé.`)) delMut.mutate(currentRole.key); }}>
+                  <Button variant="outline" size="sm" className="text-rose-600 hover:text-rose-700" onClick={async () => { if (await confirm({ title: `Supprimer le rôle « ${currentRole.label} » ?`, description: "Les utilisateurs qui portent ce rôle basculeront automatiquement sur Employé, et perdront donc les droits que ce rôle leur accordait.", confirmLabel: "Supprimer le rôle", destructive: true })) delMut.mutate(currentRole.key); }}>
                     <Trash2 className="h-3.5 w-3.5" /> Supprimer
                   </Button>
                 </>
               )}
-              <Button size="sm" onClick={() => saveMut.mutate()} disabled={!dirty || saveMut.isPending || isAdminRole}>
+              <Button size="sm" onClick={async () => { if (await confirm({ title: `Modifier les permissions de « ${currentRole?.label ?? selected} » ?`, description: "Le changement s'applique immédiatement à tous les utilisateurs portant ce rôle." , confirmLabel: "Appliquer" })) saveMut.mutate(); }} disabled={!dirty || saveMut.isPending || isAdminRole}>
                 {saveMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Enregistrer
               </Button>
             </div>

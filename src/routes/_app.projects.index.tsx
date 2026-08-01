@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_app/projects/")({
   component: ProjectsPage,
@@ -46,6 +47,7 @@ const fmt = (n: number) => `${new Intl.NumberFormat("fr-FR", { minimumFractionDi
 
 function ProjectsPage() {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const { user } = useAuth();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -213,7 +215,7 @@ function ProjectsPage() {
                   <Button size="icon" variant="ghost" asChild>
                     <Link to="/projects/$id" params={{ id: p.id }}><Eye className="h-4 w-4" /></Link>
                   </Button>
-                  <Button size="icon" variant="ghost" onClick={() => { if (confirm("Supprimer ce projet ?")) remove.mutate(p.id); }}>
+                  <Button size="icon" variant="ghost" onClick={async () => { if (await confirm({ title: `Supprimer le projet ${p.name} ?`, description: "Toutes ses étapes, pièces jointes et activités seront supprimées.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(p.id); }}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </TableCell>

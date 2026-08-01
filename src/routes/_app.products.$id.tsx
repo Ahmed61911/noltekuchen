@@ -21,6 +21,7 @@ import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { logAction } from "@/lib/audit-log";
 import { StockHistoryButton } from "@/components/stock-history-dialog";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_app/products/$id")({
   component: ProductDetailPage,
@@ -73,6 +74,7 @@ function ProductDetailPage() {
   const { t } = useI18n();
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [isEditing, setIsEditing] = useState(false);
   const [viewer, setViewer] = useState<{ paths: string[]; index: number } | null>(null);
 
@@ -225,7 +227,7 @@ function ProductDetailPage() {
             <Button variant="outline" onClick={startEdit}><Pencil className="h-4 w-4 me-1" /> Modifier</Button>
             <Button
               variant="destructive"
-              onClick={() => { if (confirm(t("confirm_delete"))) remove.mutate(); }}
+              onClick={async () => { if (await confirm({ title: "Supprimer ce produit ?", description: "Son historique de mouvements de stock sera conservé, mais le produit ne sera plus sélectionnable.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(); }}
               disabled={remove.isPending}
             >
               {remove.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 me-1" />}

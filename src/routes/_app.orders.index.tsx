@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { computeLine, computeTotals } from "@/lib/money";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_app/orders/")({
   component: OrdersPage,
@@ -78,6 +79,7 @@ function daysLeft(due: string, status: OrderStatus) {
 
 function OrdersPage() {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [payFilter, setPayFilter] = useState("all");
@@ -596,7 +598,7 @@ function OrdersPage() {
                             <XCircle className="h-4 w-4 text-rose-600" />
                           </Button>
                         )}
-                        <Button size="icon" variant="ghost" title="Supprimer" onClick={() => { if (confirm("Supprimer ?")) remove.mutate(o.id); }}>
+                        <Button size="icon" variant="ghost" title="Supprimer" onClick={async () => { if (await confirm({ title: `Supprimer la commande ${o.order_number} ?`, description: "Si elle était livrée, la marchandise sera automatiquement réintégrée au stock.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(o.id); }}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

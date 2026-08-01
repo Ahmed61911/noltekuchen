@@ -23,6 +23,7 @@ import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { logAction } from "@/lib/audit-log";
 import { StockHistoryButton } from "@/components/stock-history-dialog";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_app/products/")({
   component: ProductsIndexPage,
@@ -63,6 +64,7 @@ function ProductsIndexPage() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate({ from: "/products" });
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [q, setQ] = useState("");
   const [stockFilter, setStockFilter] = useState<"all" | "in" | "low" | "out">("all");
   const [priceMin, setPriceMin] = useState("");
@@ -431,7 +433,7 @@ function ProductsIndexPage() {
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <StockHistoryButton productId={p.id} productName={p.name} />
                       <Button variant="ghost" size="icon" onClick={() => startEdit(p)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => { if (confirm(t("confirm_delete"))) remove.mutate(p.id); }}>
+                      <Button variant="ghost" size="icon" onClick={async () => { if (await confirm({ title: `Supprimer ${p.name} ?`, description: "Son historique de mouvements de stock sera conservé, mais le produit ne sera plus sélectionnable.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(p.id); }}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </TableCell>

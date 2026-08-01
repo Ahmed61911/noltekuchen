@@ -21,6 +21,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { generateInvoicePdf, type PdfInvoice } from "@/lib/invoice-pdf";
 import { computeLine, computeTotals } from "@/lib/money";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_app/invoices/")({
   component: InvoicesPage,
@@ -79,6 +80,7 @@ const fmt = (n: number) => `${new Intl.NumberFormat("fr-FR", { minimumFractionDi
 
 function InvoicesPage() {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [customerFilter, setCustomerFilter] = useState("all");
@@ -546,7 +548,7 @@ function InvoicesPage() {
                     <Link to="/invoices/$id" params={{ id: i.id }}><Eye className="h-4 w-4" /></Link>
                   </Button>
                   <Button size="icon" variant="ghost" onClick={() => downloadPdf(i.id)}><FileDown className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => { if (confirm("Supprimer cette facture ?")) remove.mutate(i.id); }}>
+                  <Button size="icon" variant="ghost" onClick={async () => { if (await confirm({ title: `Supprimer la facture ${i.invoice_number} ?`, description: "Si elle avait sorti la marchandise du stock, celle-ci sera automatiquement réintégrée.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(i.id); }}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </TableCell>
