@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -8,6 +9,9 @@ import {
 import { Boxes, TrendingUp, TrendingDown, DollarSign, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 
@@ -15,53 +19,105 @@ export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
 });
 
-function useDashboardData() {
+export type Period = "month" | "quarter" | "semester" | "year" | "all";
+
+/** Début de la période, ou null pour « Total » (pas de borne). */
+function periodStart(p: Period): Date | null {
+  if (p === "all") return null;
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  if (p === "month") d.setMonth(d.getMonth() - 1);
+  if (p === "quarter") d.setMonth(d.getMonth() - 3);
+  if (p === "semester") d.setMonth(d.getMonth() - 6);
+  if (p === "year") d.setFullYear(d.getFullYear() - 1);
+  return d;
+}
+
+/**
+ * Granularité du graphe : un point par jour sur un mois deviendrait 365 points
+ * sur un an, illisible. On agrège donc par jour / semaine / mois selon
+ * l'étendue demandée.
+ */
+function granularity(p: Period): "day" | "week" | "month" {
+  if (p === "month") return "day";
+  if (p === "quarter") return "week";
+  return "month";
+}
+
+/** Clé de regroupement d'une date selon la granularité. */
+function bucketKey(iso: string, g: "day" | "week" | "month"): string {
+  if (g === "month") return iso.slice(0, 7);          // AAAA-MM
+  if (g === "day") return iso.slice(0, 10);           // AAAA-MM-JJ
+  const d = new Date(iso);                            // début de semaine (lundi)
+  const dow = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - dow);
+  return d.toISOString().slice(0, 10);
+}
+
+function useDashboardData(period: Period) {
   return useQuery({
-    queryKey: ["dashboard"],
+    queryKey: ["dashboard", period],
     queryFn: async () => {
+      const start = periodStart(period);
+
+      // La borne de date est appliquée par la base, pas après coup. L'ancien
+      // code prenait les 200 derniers mouvements toutes périodes confondues :
+      // un filtre « année » n'aurait montré que ces 200 lignes.
+      let q = supabase
+        .from("stock_movements")
+        .select("id,type,quantity,created_at,product_id,products(name)")
+        .order("created_at", { ascending: false })
+        .limit(5000);
+      if (start) q = q.gte("created_at", start.toISOString());
+
       const [products, movements] = await Promise.all([
         supabase.from("products").select("id,name,reference,stock_quantity,min_stock,selling_price"),
-        supabase.from("stock_movements")
-          .select("id,type,quantity,created_at,product_id,products(name)")
-          .order("created_at", { ascending: false })
-          .limit(200),
+        q,
       ]);
       const prods = products.data ?? [];
       const movs = movements.data ?? [];
 
-      const totalStock = prods.reduce((s, p) => s + (p.stock_quantity ?? 0), 0);
-      const stockIn = movs.filter((m) => m.type === "in").reduce((s, m) => s + m.quantity, 0);
-      const stockOut = movs.filter((m) => m.type === "out").reduce((s, m) => s + m.quantity, 0);
+      const IN = ["in", "purchase", "customer_return", "inventory"];
+      const OUT = ["out", "sale", "supplier_return"];
+
+      // Stock total = photo de l'instant : volontairement hors période.
+      const totalStock = prods.reduce((s, p) => s + Number(p.stock_quantity ?? 0), 0);
+      const stockIn = movs.filter((m) => IN.includes(m.type)).reduce((s, m) => s + Number(m.quantity), 0);
+      const stockOut = movs.filter((m) => OUT.includes(m.type)).reduce((s, m) => s + Number(m.quantity), 0);
       const revenue = movs
-        .filter((m) => m.type === "out")
+        .filter((m) => OUT.includes(m.type))
         .reduce((s, m) => {
           const price = prods.find((p) => p.id === m.product_id)?.selling_price ?? 0;
-          return s + Number(price) * m.quantity;
+          return s + Number(price) * Number(m.quantity);
         }, 0);
 
-      const lowStock = prods.filter((p) => p.stock_quantity <= p.min_stock).slice(0, 6);
+      const lowStock = prods.filter((p) => Number(p.stock_quantity) <= Number(p.min_stock)).slice(0, 6);
 
-      // 30-day buckets
-      const days = Array.from({ length: 30 }).map((_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - (29 - i));
-        return d.toISOString().slice(0, 10);
+      // Agrégation par intervalle, en partant des mouvements réellement
+      // présents pour que « Total » couvre l'historique complet.
+      const g = granularity(period);
+      const buckets = new Map<string, { in: number; out: number }>();
+      movs.forEach((m) => {
+        const k = bucketKey(m.created_at, g);
+        const cur = buckets.get(k) ?? { in: 0, out: 0 };
+        if (IN.includes(m.type)) cur.in += Number(m.quantity);
+        if (OUT.includes(m.type)) cur.out += Number(m.quantity);
+        buckets.set(k, cur);
       });
-      const chart = days.map((day) => {
-        const dayMovs = movs.filter((m) => m.created_at.slice(0, 10) === day);
-        return {
-          date: day.slice(5),
-          in: dayMovs.filter((m) => m.type === "in").reduce((s, m) => s + m.quantity, 0),
-          out: dayMovs.filter((m) => m.type === "out").reduce((s, m) => s + m.quantity, 0),
-        };
-      });
+      const chart = [...buckets.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => ({
+          date: g === "month" ? k.slice(2) : k.slice(5),
+          in: v.in,
+          out: v.out,
+        }));
 
-      // top products by movement count
+      // top produits sur la période
       const counts = new Map<string, { name: string; qty: number }>();
       movs.forEach((m) => {
         const name = (m.products as { name?: string } | null)?.name ?? "—";
         const cur = counts.get(m.product_id) ?? { name, qty: 0 };
-        cur.qty += m.quantity;
+        cur.qty += Number(m.quantity);
         counts.set(m.product_id, cur);
       });
       const top = [...counts.values()].sort((a, b) => b.qty - a.qty).slice(0, 5);
@@ -109,29 +165,51 @@ function Stat({ icon: Icon, label, value, tone, delta }: { icon: typeof Boxes; l
 
 function Dashboard() {
   const { t } = useI18n();
-  const { data, isLoading } = useDashboardData();
+  const [period, setPeriod] = useState<Period>("month");
+  const { data, isLoading } = useDashboardData(period);
+
+  const periodLabels: Record<Period, string> = {
+    month: t("period_month"),
+    quarter: t("period_quarter"),
+    semester: t("period_semester"),
+    year: t("period_year"),
+    all: t("period_all"),
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">{t("dashboard")}</h1>
           <p className="text-sm text-muted-foreground">Vue d'ensemble de l'activité Nolte Küchen</p>
         </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">{t("period")}</span>
+          <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(periodLabels) as Period[]).map((p) => (
+                <SelectItem key={p} value={p}>{periodLabels[p]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat icon={Boxes} label={t("total_stock")} value={fmt.format(data?.totalStock ?? 0)} tone="primary" />
-        <Stat icon={TrendingUp} label={t("stock_in")} value={fmt.format(data?.stockIn ?? 0)} tone="success" />
-        <Stat icon={TrendingDown} label={t("stock_out")} value={fmt.format(data?.stockOut ?? 0)} tone="navy" />
-        <Stat icon={DollarSign} label={t("revenue")} value={fmtMoney(data?.revenue ?? 0)} tone="info" />
+        <Stat icon={Boxes} label={t("total_stock")} value={fmt.format(data?.totalStock ?? 0)} tone="primary" delta={t("stock_total_hint")} />
+        <Stat icon={TrendingUp} label={t("stock_in")} value={fmt.format(data?.stockIn ?? 0)} tone="success" delta={periodLabels[period]} />
+        <Stat icon={TrendingDown} label={t("stock_out")} value={fmt.format(data?.stockOut ?? 0)} tone="navy" delta={periodLabels[period]} />
+        <Stat icon={DollarSign} label={t("revenue")} value={fmtMoney(data?.revenue ?? 0)} tone="info" delta={periodLabels[period]} />
 
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2 shadow-card">
           <CardHeader>
-            <CardTitle className="text-base">{t("movements_30d")}</CardTitle>
+            <CardTitle className="text-base">{t("movements")} — {periodLabels[period]}</CardTitle>
           </CardHeader>
           <CardContent className="h-72">
             {isLoading ? (
