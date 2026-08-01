@@ -33,4 +33,9 @@ for f in /migrations/*.sql; do
   "${PSQL[@]}" -c "INSERT INTO public._schema_migrations(filename) VALUES ('${name}');"
 done
 
+# See scripts/migrate.sh: PostgREST caches the schema, so without this NOTIFY
+# a migration that adds a column or function applies cleanly yet stays
+# invisible to the API until something restarts the rest container.
+"${PSQL[@]}" -c "NOTIFY pgrst, 'reload schema';"
+
 echo "[migrate] done"

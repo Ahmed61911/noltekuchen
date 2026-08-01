@@ -21,4 +21,11 @@ for f in database/migrations/*.sql; do
   $PSQL < "$f"
   $PSQL -c "INSERT INTO public._schema_migrations(filename) VALUES ('$name');"
 done
+
+# PostgREST caches the schema and only refreshes on this NOTIFY (or a restart,
+# which the deploy does not do — it restarts `app` only). Without it, any
+# migration that adds a column or function is invisible to the API: new
+# functions 404 with PGRST202 and new columns are rejected, even though the
+# migration applied cleanly. Confirmed the hard way with create_sale.
+$PSQL -c "NOTIFY pgrst, 'reload schema';"
 echo "[migrate] done."
