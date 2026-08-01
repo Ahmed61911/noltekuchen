@@ -584,17 +584,17 @@ function OrdersPage() {
                           <Link to="/orders/$id" params={{ id: o.id }}><Eye className="h-4 w-4" /></Link>
                         </Button>
                         {o.status === "pending" && (
-                          <Button size="icon" variant="ghost" title="Valider" onClick={() => updateStatus.mutate({ id: o.id, status: "validated" })}>
+                          <Button size="icon" variant="ghost" title="Valider" onClick={async () => { if (await confirm({ title: `Valider la commande ${o.order_number} ?`, description: "La commande passe en préparation. Le stock n'est pas encore mouvementé — il le sera à la livraison.", confirmLabel: "Valider" })) updateStatus.mutate({ id: o.id, status: "validated" }); }}>
                             <CheckCircle2 className="h-4 w-4 text-blue-600" />
                           </Button>
                         )}
                         {(o.status === "pending" || o.status === "validated") && (
-                          <Button size="icon" variant="ghost" title="Livrer" onClick={() => updateStatus.mutate({ id: o.id, status: "delivered" })}>
+                          <Button size="icon" variant="ghost" title="Livrer" onClick={async () => { if (await confirm({ title: `Marquer la commande ${o.order_number} comme livrée ?`, description: "La marchandise sera immédiatement sortie du stock. En cas d'erreur, repasser la commande en Annulée la réintègre.", confirmLabel: "Livrer" })) updateStatus.mutate({ id: o.id, status: "delivered" }); }}>
                             <Truck className="h-4 w-4 text-emerald-600" />
                           </Button>
                         )}
                         {o.status !== "cancelled" && o.status !== "delivered" && (
-                          <Button size="icon" variant="ghost" title="Annuler" onClick={() => updateStatus.mutate({ id: o.id, status: "cancelled" })}>
+                          <Button size="icon" variant="ghost" title="Annuler" onClick={async () => { if (await confirm({ title: `Annuler la commande ${o.order_number} ?`, description: "Si elle avait déjà été livrée, la marchandise sera réintégrée au stock.", confirmLabel: "Annuler la commande", destructive: true })) updateStatus.mutate({ id: o.id, status: "cancelled" }); }}>
                             <XCircle className="h-4 w-4 text-rose-600" />
                           </Button>
                         )}

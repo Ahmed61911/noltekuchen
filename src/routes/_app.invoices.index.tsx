@@ -533,7 +533,7 @@ function InvoicesPage() {
                 <TableCell>{i.due_date}</TableCell>
                 <TableCell className="text-right tabular-nums">{fmt(Number(i.total_ttc))}</TableCell>
                 <TableCell>
-                  <Select value={i.status} onValueChange={(v) => updateStatus.mutate({ id: i.id, newStatus: v as Status })}>
+                  <Select value={i.status} onValueChange={async (v) => { const s = v as Status; const moves = (s === "pending" || s === "paid") !== (i.status === "pending" || i.status === "paid"); if (await confirm({ title: `Passer la facture ${i.invoice_number} en « ${STATUS[s].label} » ?`, description: moves ? (s === "pending" || s === "paid" ? "La marchandise facturée sera sortie du stock." : "La marchandise facturée sera réintégrée au stock.") : "Le stock n'est pas affecté par ce changement.", confirmLabel: "Changer le statut", destructive: s === "cancelled" })) updateStatus.mutate({ id: i.id, newStatus: s }); }}>
                     <SelectTrigger className={`h-7 w-32 border-0 ${STATUS[i.status].className}`}><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="draft">Brouillon</SelectItem>

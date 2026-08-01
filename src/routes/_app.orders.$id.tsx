@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_app/orders/$id")({
   component: OrderDetail,
@@ -35,6 +36,7 @@ const METHODS: Record<string, string> = { cash: "Espèces", card: "Carte", trans
 function OrderDetail() {
   const { id } = useParams({ from: "/_app/orders/$id" });
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const { user } = useAuth();
   const [amount, setAmount] = useState<number>(0);
   const [method, setMethod] = useState("cash");
@@ -96,13 +98,13 @@ function OrderDetail() {
         </div>
         <div className="flex gap-2">
           {order.status === "pending" && (
-            <Button variant="outline" onClick={() => updateStatus.mutate("validated")}><CheckCircle2 className="mr-2 h-4 w-4" />Valider</Button>
+            <Button variant="outline" onClick={async () => { if (await confirm({ title: "Valider cette commande ?", description: "La commande passe en préparation. Le stock sera mouvementé à la livraison.", confirmLabel: "Valider" })) updateStatus.mutate("validated"); }}><CheckCircle2 className="mr-2 h-4 w-4" />Valider</Button>
           )}
           {(order.status === "pending" || order.status === "validated") && (
-            <Button onClick={() => updateStatus.mutate("delivered")}><Truck className="mr-2 h-4 w-4" />Livrer</Button>
+            <Button onClick={async () => { if (await confirm({ title: "Marquer cette commande comme livrée ?", description: "La marchandise sera immédiatement sortie du stock. En cas d'erreur, l'annulation la réintègre.", confirmLabel: "Livrer" })) updateStatus.mutate("delivered"); }}><Truck className="mr-2 h-4 w-4" />Livrer</Button>
           )}
           {order.status !== "cancelled" && order.status !== "delivered" && (
-            <Button variant="outline" onClick={() => updateStatus.mutate("cancelled")}><XCircle className="mr-2 h-4 w-4" />Annuler</Button>
+            <Button variant="outline" onClick={async () => { if (await confirm({ title: "Annuler cette commande ?", description: "Si elle avait déjà été livrée, la marchandise sera réintégrée au stock.", confirmLabel: "Annuler la commande", destructive: true })) updateStatus.mutate("cancelled"); }}><XCircle className="mr-2 h-4 w-4" />Annuler</Button>
           )}
         </div>
       </div>
