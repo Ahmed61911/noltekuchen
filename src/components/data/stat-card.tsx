@@ -88,7 +88,9 @@ export function StatCard({
           <p
             className={cn(
               "truncate font-display font-semibold leading-tight tabular-nums",
-              dense ? "text-lg" : "text-2xl",
+              // A formatted amount ("84 200,00 DH") is twelve characters; at
+              // text-2xl it gets clipped as soon as five cards share a row.
+              dense ? "text-base" : "text-2xl",
             )}
           >
             {value}

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
-  Plus, Search, Trash2, Eye, FileDown, Printer, Loader2, ShoppingCart,
+  Plus, Trash2, Eye, FileDown, Printer, Loader2, ShoppingCart,
   TrendingUp, CalendarDays, Wallet, AlertCircle, Receipt, RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
