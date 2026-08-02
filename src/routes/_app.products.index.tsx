@@ -1,9 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Upload, ImageIcon, Loader2, X, ChevronLeft, ChevronRight, Package, AlertTriangle, PackageX } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, ImageIcon, Loader2, X, ChevronLeft, ChevronRight, Package, AlertTriangle, PackageX, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +23,14 @@ import { useAuth } from "@/lib/auth";
 import { logAction } from "@/lib/audit-log";
 import { StockHistoryButton } from "@/components/stock-history-dialog";
 import { useConfirm } from "@/components/confirm-dialog";
+import { PageHeader } from "@/components/data/page-header";
+import { ResultCount, SearchField, Toolbar } from "@/components/data/toolbar";
+import { StatCard } from "@/components/data/stat-card";
+import { StatusBadge } from "@/components/data/status-badge";
+import { TableShell, TableStateRow } from "@/components/data/table-shell";
+import { TableSkeleton } from "@/components/data/table-skeleton";
+import { EmptyState } from "@/components/data/empty-state";
+import { ErrorState } from "@/components/data/error-state";
 
 export const Route = createFileRoute("/_app/products/")({
   component: ProductsIndexPage,
@@ -88,7 +95,7 @@ function ProductsIndexPage() {
   });
   const warehouseMap = new Map(warehouses.map((w) => [w.id, w]));
 
-  const { data: products = [], isLoading } = useQuery({
+  const { data: products = [], isLoading, error, refetch } = useQuery({
     queryKey: ["products"],
     queryFn: async () => {
       const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
@@ -153,6 +160,12 @@ function ProductsIndexPage() {
     return true;
   });
 
+  const hasFilters = !!(q || stockFilter !== "all" || priceMin || priceMax || warehouseFilter !== "all");
+  const resetFilters = () => {
+    setQ(""); setStockFilter("all"); setPriceMin(""); setPriceMax(""); setWarehouseFilter("all");
+  };
+  const columnCount = isAdmin ? 9 : 8;
+
   function startEdit(p: Product) {
     setEditing(p);
     const gallery = [p.image_url, ...(p.images ?? [])].filter((x): x is string => !!x);
@@ -168,21 +181,14 @@ function ProductsIndexPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">{t("products")}</h1>
-          <p className="text-sm text-muted-foreground">Catalogue, prix et marges</p>
-        </div>
-        <div className="flex gap-2">
-          <div className="relative">
-            <Search className="absolute start-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} className="ps-9 w-64" />
-          </div>
-          {isAdmin && (
+    <div className="space-y-4">
+      <PageHeader
+        title={t("products")}
+        subtitle="Catalogue, prix et marges"
+        actions={isAdmin && (
             <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditing(null); setForm(empty); } }}>
               <DialogTrigger asChild>
-                <Button className="bg-gradient-primary text-primary-foreground shadow-elegant">
+                <Button className="elev-brand">
                   <Plus className="me-1 h-4 w-4" /> {t("add_product")}
                 </Button>
               </DialogTrigger>
@@ -314,14 +320,14 @@ function ProductsIndexPage() {
               </DialogContent>
             </Dialog>
           )}
-        </div>
-      </div>
+      />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatCard
           icon={Package}
           label="Total produits"
           value={baseFiltered.length}
+          loading={isLoading}
           active={stockFilter === "all"}
           onClick={() => setStockFilter("all")}
         />
@@ -329,6 +335,7 @@ function ProductsIndexPage() {
           icon={AlertTriangle}
           label="Stock faible"
           value={baseFiltered.filter((p) => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock).length}
+          loading={isLoading}
           active={stockFilter === "low"}
           onClick={() => setStockFilter("low")}
           tone="warning"
@@ -337,63 +344,95 @@ function ProductsIndexPage() {
           icon={PackageX}
           label="Rupture de stock"
           value={baseFiltered.filter((p) => p.stock_quantity === 0).length}
+          loading={isLoading}
           active={stockFilter === "out"}
           onClick={() => setStockFilter("out")}
           tone="danger"
         />
       </div>
 
-      <Card className="p-3 shadow-card">
-        <div className="flex flex-wrap items-center gap-2">
-          <Select value={stockFilter} onValueChange={(v) => setStockFilter(v as typeof stockFilter)}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="Stock" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous stocks</SelectItem>
-              <SelectItem value="in">En stock</SelectItem>
-              <SelectItem value="low">Stock faible</SelectItem>
-              <SelectItem value="out">Rupture</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input type="number" placeholder="Prix min" className="w-32" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
-          <Input type="number" placeholder="Prix max" className="w-32" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
-          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Dépôt" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les dépôts</SelectItem>
-              <SelectItem value="none">Sans dépôt</SelectItem>
-              {warehouses.map((w) => (
-                <SelectItem key={w.id} value={w.id}>{w.name}{!w.is_active ? " (inactif)" : ""}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {(q || stockFilter !== "all" || priceMin || priceMax || warehouseFilter !== "all") && (
-            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStockFilter("all"); setPriceMin(""); setPriceMax(""); setWarehouseFilter("all"); }}>Réinitialiser</Button>
-          )}
-          <span className="ml-auto text-xs text-muted-foreground">{filtered.length} / {products.length}</span>
-        </div>
-      </Card>
+      <Toolbar>
+        <SearchField value={q} onChange={setQ} placeholder={t("search")} />
+        <Select value={stockFilter} onValueChange={(v) => setStockFilter(v as typeof stockFilter)}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Stock" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous stocks</SelectItem>
+            <SelectItem value="in">En stock</SelectItem>
+            <SelectItem value="low">Stock faible</SelectItem>
+            <SelectItem value="out">Rupture</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input type="number" placeholder="Prix min" className="w-32" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
+        <Input type="number" placeholder="Prix max" className="w-32" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
+        <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les dépôts</SelectItem>
+            <SelectItem value="none">Sans dépôt</SelectItem>
+            {warehouses.map((w) => (
+              <SelectItem key={w.id} value={w.id}>{w.name}{!w.is_active ? " (inactif)" : ""}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={resetFilters}>
+            <RotateCcw className="me-1 h-3.5 w-3.5" /> Réinitialiser
+          </Button>
+        )}
+        <ResultCount shown={filtered.length} total={products.length} />
+      </Toolbar>
 
-      <Card className="overflow-hidden shadow-card">
-        <Table>
+      <TableShell>
+        <Table aria-busy={isLoading}>
+          <caption className="sr-only">{t("products")}</caption>
           <TableHeader>
             <TableRow>
               <TableHead className="w-16">Image</TableHead>
               <TableHead>{t("reference")}</TableHead>
               <TableHead>{t("name")}</TableHead>
               <TableHead>Dépôt</TableHead>
-              <TableHead className="text-right">{t("purchase_price")}</TableHead>
-              <TableHead className="text-right">{t("selling_price")}</TableHead>
-              <TableHead className="text-right">{t("margin")}</TableHead>
-              <TableHead className="text-right">{t("quantity")}</TableHead>
-              {isAdmin && <TableHead className="text-right">{t("actions")}</TableHead>}
+              <TableHead className="text-end">{t("purchase_price")}</TableHead>
+              <TableHead className="text-end">{t("selling_price")}</TableHead>
+              <TableHead className="text-end">{t("margin")}</TableHead>
+              <TableHead className="text-end">{t("quantity")}</TableHead>
+              {isAdmin && <TableHead className="text-end">{t("actions")}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-10">{t("loading")}</TableCell></TableRow>}
-            {!isLoading && filtered.length === 0 && (
-              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-10">{t("no_data")}</TableCell></TableRow>
+            {isLoading && <TableSkeleton rows={8} columns={columnCount} />}
+            {!isLoading && error && (
+              <TableStateRow colSpan={columnCount}>
+                <ErrorState title={t("error_load_products")} error={error} onRetry={() => refetch()} />
+              </TableStateRow>
             )}
-            {filtered.map((p) => {
+            {!isLoading && !error && filtered.length === 0 && (
+              <TableStateRow colSpan={columnCount}>
+                {products.length === 0 ? (
+                  <EmptyState
+                    icon={Package}
+                    title={t("empty_products")}
+                    description={t("empty_products_desc")}
+                    action={isAdmin ? (
+                      <Button size="sm" onClick={() => { setEditing(null); setForm(empty); setOpen(true); }}>
+                        <Plus className="me-1 h-4 w-4" /> {t("add_product")}
+                      </Button>
+                    ) : undefined}
+                  />
+                ) : (
+                  <EmptyState
+                    icon={Package}
+                    title={t("state_no_results_title")}
+                    description={t("state_no_results_desc").replace("{total}", String(products.length))}
+                    action={
+                      <Button variant="outline" size="sm" onClick={resetFilters}>
+                        <RotateCcw className="me-1 h-3.5 w-3.5" /> {t("state_reset_filters")}
+                      </Button>
+                    }
+                  />
+                )}
+              </TableStateRow>
+            )}
+            {!isLoading && !error && filtered.map((p) => {
               const margin = p.selling_price - p.purchase_price;
               const marginPct = p.purchase_price > 0 ? (margin / p.purchase_price) * 100 : 0;
               const low = p.stock_quantity <= p.min_stock;
@@ -401,14 +440,26 @@ function ProductsIndexPage() {
               return (
                 <TableRow
                   key={p.id}
-                  className="cursor-pointer hover:bg-muted/50"
+                  className="cursor-pointer"
                   onClick={() => navigate({ to: "/products/$id", params: { id: p.id } })}
                 >
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <ProductThumbs paths={gallery} onClick={(i) => setViewer({ paths: gallery, index: i })} />
                   </TableCell>
                   <TableCell className="font-mono text-xs">{p.reference}</TableCell>
-                  <TableCell className="font-medium">{p.name}</TableCell>
+                  <TableCell className="font-medium">
+                    {/* The row has been clickable since 1.0, but only with a
+                        mouse. A real link in the identifying cell puts the same
+                        destination on the keyboard path. */}
+                    <Link
+                      to="/products/$id"
+                      params={{ id: p.id }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="hover:underline"
+                    >
+                      {p.name}
+                    </Link>
+                  </TableCell>
                   <TableCell className="text-sm">
                     {p.warehouse_id && warehouseMap.get(p.warehouse_id) ? (
                       <div className="flex flex-col gap-0.5">
@@ -419,21 +470,35 @@ function ProductsIndexPage() {
                       </div>
                     ) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
-                  <TableCell className="text-right">{p.purchase_price.toFixed(2)} {CURRENCY}</TableCell>
-                  <TableCell className="text-right">{p.selling_price.toFixed(2)} {CURRENCY}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-end tabular-nums">{p.purchase_price.toFixed(2)} {CURRENCY}</TableCell>
+                  <TableCell className="text-end tabular-nums">{p.selling_price.toFixed(2)} {CURRENCY}</TableCell>
+                  <TableCell className="text-end tabular-nums">
                     <span className={margin >= 0 ? "text-success" : "text-destructive"}>
                       {margin.toFixed(2)} {CURRENCY} ({marginPct.toFixed(0)}%)
                     </span>
                   </TableCell>
-                  <TableCell className="text-right">
-                    {low ? <Badge variant="destructive">{p.stock_quantity}</Badge> : <span>{p.stock_quantity}</span>}
+                  <TableCell className="text-end tabular-nums">
+                    {p.stock_quantity === 0 ? (
+                      <StatusBadge tone="danger" label={p.stock_quantity} />
+                    ) : low ? (
+                      <StatusBadge tone="warning" label={p.stock_quantity} />
+                    ) : (
+                      <span>{p.stock_quantity}</span>
+                    )}
                   </TableCell>
                   {isAdmin && (
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    // Icon buttons drop to 32px here — five of them per row is
+                    // 20px of table width given back. The selector also reaches
+                    // StockHistoryButton, which owns its own size.
+                    <TableCell
+                      className="text-end [&_button]:h-8 [&_button]:w-8"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <StockHistoryButton productId={p.id} productName={p.name} />
-                      <Button variant="ghost" size="icon" onClick={() => startEdit(p)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={async () => { if (await confirm({ title: `Supprimer ${p.name} ?`, description: "Son historique de mouvements de stock sera conservé, mais le produit ne sera plus sélectionnable.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(p.id); }}>
+                      <Button variant="ghost" size="icon" title={t("edit_product")} onClick={() => startEdit(p)}>
+                        <Pencil className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                      <Button variant="ghost" size="icon" title={t("delete")} onClick={async () => { if (await confirm({ title: `Supprimer ${p.name} ?`, description: "Son historique de mouvements de stock sera conservé, mais le produit ne sera plus sélectionnable.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(p.id); }}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </TableCell>
@@ -443,7 +508,7 @@ function ProductsIndexPage() {
             })}
           </TableBody>
         </Table>
-      </Card>
+      </TableShell>
 
       {viewer && (
         <ImageViewer
@@ -453,35 +518,6 @@ function ProductsIndexPage() {
         />
       )}
     </div>
-  );
-}
-
-function StatCard({ icon: Icon, label, value, active, onClick, tone = "default" }: { icon: typeof Package; label: string; value: number; active?: boolean; onClick?: () => void; tone?: "default" | "warning" | "danger"; }) {
-  const toneClasses = {
-    default: "hover:border-primary/60 hover:bg-primary/5",
-    warning: "hover:border-warning/60 hover:bg-warning/5",
-    danger: "hover:border-destructive/60 hover:bg-destructive/5",
-  }[tone];
-  const iconBg = {
-    default: "bg-primary/10 text-primary",
-    warning: "bg-warning/10 text-warning",
-    danger: "bg-destructive/10 text-destructive",
-  }[tone];
-  return (
-    <Card
-      className={`cursor-pointer border shadow-card transition-colors ${active ? "ring-1 ring-primary border-primary/70 bg-primary/5" : "border-border/60 bg-card"} ${toneClasses}`}
-      onClick={onClick}
-    >
-      <div className="flex items-center gap-4 p-4">
-        <div className={`grid h-11 w-11 place-items-center rounded-xl ${iconBg}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
-          <p className="font-display text-2xl font-semibold leading-tight">{value}</p>
-        </div>
-      </div>
-    </Card>
   );
 }
 
@@ -517,30 +553,44 @@ function useSignedUrl(path: string | null | undefined) {
 
 function Thumb({ path }: { path: string }) {
   const { data: url } = useSignedUrl(path);
-  if (!url) return <div className="h-10 w-10 rounded border bg-muted" />;
-  return <img src={url} alt="" className="h-10 w-10 rounded border object-cover" />;
+  if (!url) return <div className="h-8 w-8 rounded border bg-muted" />;
+  return <img src={url} alt="" className="h-8 w-8 rounded border object-cover" />;
 }
 
+// Thumbnails go from 40px × 4 to 32px × 3 (+N): four large stacked images were
+// the only thing pushing rows past the fixed row height. `-space-x-2` never
+// mirrored in Arabic — the stack started from the wrong side — so the overlap
+// is now a logical inline-start margin.
 function ProductThumbs({ paths, onClick }: { paths: string[]; onClick?: (index: number) => void }) {
   if (paths.length === 0) {
     return (
-      <div className="flex h-12 w-12 items-center justify-center rounded-md border bg-muted text-muted-foreground">
-        <ImageIcon className="h-5 w-5" />
+      <div className="flex h-8 w-8 items-center justify-center rounded-md border bg-muted text-muted-foreground">
+        <ImageIcon className="h-4 w-4" />
       </div>
     );
   }
+  const extra = paths.length - 3;
   return (
-    <div className="flex -space-x-2">
-      {paths.slice(0, 4).map((p, i) => (
+    <div className="flex items-center [&>*+*]:-ms-2">
+      {paths.slice(0, 3).map((p, i) => (
         <button
           key={i}
           type="button"
           onClick={() => onClick?.(i)}
-          className="ring-2 ring-background rounded cursor-pointer"
+          className="cursor-pointer rounded ring-2 ring-background"
         >
           <Thumb path={p} />
         </button>
       ))}
+      {extra > 0 && (
+        <button
+          type="button"
+          onClick={() => onClick?.(3)}
+          className="grid h-8 w-8 cursor-pointer place-items-center rounded-full border bg-muted text-[0.6875rem] font-medium text-muted-foreground ring-2 ring-background"
+        >
+          +{extra}
+        </button>
+      )}
     </div>
   );
 }
