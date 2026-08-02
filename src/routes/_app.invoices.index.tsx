@@ -1,14 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Plus, Search, Trash2, Eye, FileDown, Loader2, Receipt, TrendingUp, CheckCircle2, AlertCircle, Wallet } from "lucide-react";
+import { Plus, Trash2, Eye, FileDown, Loader2, Receipt, TrendingUp, CheckCircle2, AlertCircle, Wallet, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -22,17 +21,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { generateInvoicePdf, type PdfInvoice } from "@/lib/invoice-pdf";
 import { computeLine, computeTotals } from "@/lib/money";
 import { useConfirm } from "@/components/confirm-dialog";
+import { useI18n } from "@/lib/i18n";
+import { PageHeader } from "@/components/data/page-header";
+import { ResultCount, SearchField, Toolbar } from "@/components/data/toolbar";
+import { StatCard } from "@/components/data/stat-card";
+import { statusToneClasses } from "@/components/data/status-badge";
+import { TableShell, TableStateRow } from "@/components/data/table-shell";
+import { TableSkeleton } from "@/components/data/table-skeleton";
+import { EmptyState } from "@/components/data/empty-state";
+import { ErrorState } from "@/components/data/error-state";
 
 export const Route = createFileRoute("/_app/invoices/")({
   component: InvoicesPage,
 });
 
 const CURRENCY = "DH";
+// Labels unchanged. The status of an invoice is editable in place, so it is a
+// Select rather than a badge — but it now wears the same tones as every other
+// status in the app, taken from tokens so the dark theme follows.
 const STATUS = {
-  draft: { label: "Brouillon", className: "bg-muted text-muted-foreground" },
-  pending: { label: "En attente", className: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
-  paid: { label: "Payée", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
-  cancelled: { label: "Annulée", className: "bg-rose-500/15 text-rose-700 dark:text-rose-400" },
+  draft: { label: "Brouillon", tone: "neutral" },
+  pending: { label: "En attente", tone: "warning" },
+  paid: { label: "Payée", tone: "success" },
+  cancelled: { label: "Annulée", tone: "danger" },
 } as const;
 type Status = keyof typeof STATUS;
 
@@ -81,6 +92,7 @@ const fmt = (n: number) => `${new Intl.NumberFormat("fr-FR", { minimumFractionDi
 function InvoicesPage() {
   const qc = useQueryClient();
   const confirm = useConfirm();
+  const { t } = useI18n();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [customerFilter, setCustomerFilter] = useState("all");
@@ -99,7 +111,7 @@ function InvoicesPage() {
   const [lines, setLines] = useState<LineForm[]>([emptyLine()]);
 
 
-  const { data: invoices = [], isLoading } = useQuery({
+  const { data: invoices = [], isLoading, error, refetch } = useQuery({
     queryKey: ["invoices"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -269,6 +281,12 @@ function InvoicesPage() {
     return i.invoice_number.toLowerCase().includes(s) || (i.customers?.name ?? "").toLowerCase().includes(s);
   });
 
+  const hasFilters = !!(q || statusFilter !== "all" || customerFilter !== "all" || warehouseFilter !== "all" || dateFrom || dateTo);
+  const resetFilters = () => {
+    setQ(""); setStatusFilter("all"); setCustomerFilter("all");
+    setWarehouseFilter("all"); setDateFrom(""); setDateTo("");
+  };
+
   // KPIs
   const kpis = useMemo(() => {
     const now = new Date();
@@ -287,15 +305,14 @@ function InvoicesPage() {
   }, [invoices]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Facturation</h1>
-          <p className="text-sm text-muted-foreground">Factures clients et encaissements</p>
-        </div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Facturation"
+        subtitle="Factures clients et encaissements"
+        actions={
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" /> Nouvelle facture</Button>
+            <Button className="elev-brand"><Plus className="me-2 h-4 w-4" /> Nouvelle facture</Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Nouvelle facture</DialogTitle></DialogHeader>
@@ -319,7 +336,7 @@ function InvoicesPage() {
               <div className="flex items-center justify-between">
                 <Label>Produits / Lignes</Label>
                 <Button size="sm" variant="outline" onClick={() => setLines([...lines, emptyLine()])}>
-                  <Plus className="mr-1 h-3 w-3" /> Ligne
+                  <Plus className="me-1 h-3 w-3" /> Ligne
                 </Button>
               </div>
               <div className="rounded-md border">
@@ -453,88 +470,125 @@ function InvoicesPage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
               <Button onClick={() => create.mutate()} disabled={create.isPending}>
-                {create.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {create.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                 Créer la facture
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+        <StatCard icon={TrendingUp} label="CA total" value={fmt(kpis.totalRevenue)} dense loading={isLoading} />
+        <StatCard icon={Receipt} label="CA mois" value={fmt(kpis.monthRevenue)} dense loading={isLoading} />
+        <StatCard icon={CheckCircle2} label="Payées" value={String(kpis.paidCount)} tone="success" loading={isLoading} />
+        <StatCard icon={AlertCircle} label="Impayées" value={String(kpis.unpaidCount)} tone="warning" loading={isLoading} />
+        <StatCard icon={Wallet} label="Reste à encaisser" value={fmt(kpis.outstanding)} dense loading={isLoading} />
       </div>
 
-      {/* KPIs */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <KpiCard icon={TrendingUp} label="CA total" value={fmt(kpis.totalRevenue)} />
-        <KpiCard icon={Receipt} label="CA mois" value={fmt(kpis.monthRevenue)} />
-        <KpiCard icon={CheckCircle2} label="Payées" value={String(kpis.paidCount)} accent="emerald" />
-        <KpiCard icon={AlertCircle} label="Impayées" value={String(kpis.unpaidCount)} accent="amber" />
-        <KpiCard icon={Wallet} label="Reste à encaisser" value={fmt(kpis.outstanding)} />
-      </div>
+      <Toolbar>
+        <SearchField value={q} onChange={setQ} placeholder="Rechercher numéro ou client…" />
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les statuts</SelectItem>
+            <SelectItem value="draft">Brouillon</SelectItem>
+            <SelectItem value="pending">En attente</SelectItem>
+            <SelectItem value="paid">Payée</SelectItem>
+            <SelectItem value="cancelled">Annulée</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={customerFilter} onValueChange={setCustomerFilter}>
+          <SelectTrigger className="w-56"><SelectValue placeholder="Client" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous clients</SelectItem>
+            {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous dépôts</SelectItem>
+            {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Du" />
+        <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Au" />
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={resetFilters}>
+            <RotateCcw className="me-1 h-3.5 w-3.5" /> Réinitialiser
+          </Button>
+        )}
+        <ResultCount shown={filtered.length} total={invoices.length} />
+      </Toolbar>
 
-      <Card className="p-4">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <div className="relative max-w-sm flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-8" placeholder="Rechercher numéro ou client…" value={q} onChange={e => setQ(e.target.value)} />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les statuts</SelectItem>
-              <SelectItem value="draft">Brouillon</SelectItem>
-              <SelectItem value="pending">En attente</SelectItem>
-              <SelectItem value="paid">Payée</SelectItem>
-              <SelectItem value="cancelled">Annulée</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={customerFilter} onValueChange={setCustomerFilter}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Client" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous clients</SelectItem>
-              {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous dépôts</SelectItem>
-              {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Du" />
-          <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Au" />
-          {(q || statusFilter !== "all" || customerFilter !== "all" || warehouseFilter !== "all" || dateFrom || dateTo) && (
-            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStatusFilter("all"); setCustomerFilter("all"); setWarehouseFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
-          )}
-
-        </div>
-        <Table>
+      <TableShell>
+        <Table aria-busy={isLoading}>
+          <caption className="sr-only">Facturation</caption>
           <TableHeader>
             <TableRow>
               <TableHead>N°</TableHead><TableHead>Client</TableHead>
               <TableHead>Dépôt</TableHead>
               <TableHead>Date</TableHead><TableHead>Échéance</TableHead>
-              <TableHead className="text-right">Total TTC</TableHead>
+              <TableHead className="text-end">Total TTC</TableHead>
               <TableHead>Statut</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="sticky end-0 text-end">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Chargement…</TableCell></TableRow>
-            ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Aucune facture</TableCell></TableRow>
-            ) : filtered.map(i => (
-              <TableRow key={i.id}>
-                <TableCell className="font-medium">{i.invoice_number}</TableCell>
+            {isLoading && <TableSkeleton rows={8} columns={8} />}
+            {!isLoading && error && (
+              <TableStateRow colSpan={8}>
+                <ErrorState title={t("error_load_invoices")} error={error} onRetry={() => refetch()} />
+              </TableStateRow>
+            )}
+            {!isLoading && !error && filtered.length === 0 && (
+              <TableStateRow colSpan={8}>
+                {invoices.length === 0 ? (
+                  <EmptyState
+                    icon={Receipt}
+                    title={t("empty_invoices")}
+                    description={t("empty_invoices_desc")}
+                    action={
+                      <Button size="sm" onClick={() => setOpen(true)}>
+                        <Plus className="me-1 h-4 w-4" /> Nouvelle facture
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <EmptyState
+                    icon={Receipt}
+                    title={t("state_no_results_title")}
+                    description={t("state_no_results_desc").replace("{total}", String(invoices.length))}
+                    action={
+                      <Button variant="outline" size="sm" onClick={resetFilters}>
+                        <RotateCcw className="me-1 h-3.5 w-3.5" /> {t("state_reset_filters")}
+                      </Button>
+                    }
+                  />
+                )}
+              </TableStateRow>
+            )}
+            {!isLoading && !error && filtered.map(i => (
+              <TableRow key={i.id} className="group">
+                <TableCell className="font-medium">
+                  <Link to="/invoices/$id" params={{ id: i.id }} className="hover:underline">
+                    {i.invoice_number}
+                  </Link>
+                </TableCell>
                 <TableCell>{i.customers?.name ?? "—"}</TableCell>
                 <TableCell className="text-sm">{Array.from(new Set((i.invoice_items ?? []).map(it => it.warehouses?.name).filter(Boolean))).join(", ") || "—"}</TableCell>
-                <TableCell>{i.invoice_date}</TableCell>
+                <TableCell className="tabular-nums">{i.invoice_date}</TableCell>
 
-                <TableCell>{i.due_date}</TableCell>
-                <TableCell className="text-right tabular-nums">{fmt(Number(i.total_ttc))}</TableCell>
+                <TableCell className="tabular-nums">{i.due_date}</TableCell>
+                <TableCell className="text-end tabular-nums">{fmt(Number(i.total_ttc))}</TableCell>
                 <TableCell>
                   <Select value={i.status} onValueChange={async (v) => { const s = v as Status; const moves = (s === "pending" || s === "paid") !== (i.status === "pending" || i.status === "paid"); if (await confirm({ title: `Passer la facture ${i.invoice_number} en « ${STATUS[s].label} » ?`, description: moves ? (s === "pending" || s === "paid" ? "La marchandise facturée sera sortie du stock." : "La marchandise facturée sera réintégrée au stock.") : "Le stock n'est pas affecté par ce changement.", confirmLabel: "Changer le statut", destructive: s === "cancelled" })) updateStatus.mutate({ id: i.id, newStatus: s }); }}>
-                    <SelectTrigger className={`h-7 w-32 border-0 ${STATUS[i.status].className}`}><SelectValue /></SelectTrigger>
+                    {/* The trigger keeps its border instead of `border-0`: it is
+                        an editable control, and it must read as one while still
+                        wearing the shared status tone. */}
+                    <SelectTrigger className={`h-7 w-32 text-xs font-semibold ${statusToneClasses[STATUS[i.status].tone]}`}><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="draft">Brouillon</SelectItem>
                       <SelectItem value="pending">En attente</SelectItem>
@@ -543,40 +597,22 @@ function InvoicesPage() {
                     </SelectContent>
                   </Select>
                 </TableCell>
-                <TableCell className="text-right">
-                  <Button size="icon" variant="ghost" asChild>
-                    <Link to="/invoices/$id" params={{ id: i.id }}><Eye className="h-4 w-4" /></Link>
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => downloadPdf(i.id)}><FileDown className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={async () => { if (await confirm({ title: `Supprimer la facture ${i.invoice_number} ?`, description: "Si elle avait sorti la marchandise du stock, celle-ci sera automatiquement réintégrée.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(i.id); }}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <TableCell className="sticky end-0 z-10 bg-card text-end group-hover:bg-accent/40">
+                  <div className="flex justify-end gap-1 text-muted-foreground [&_button]:h-8 [&_button]:w-8">
+                    <Button size="icon" variant="ghost" asChild title="Voir">
+                      <Link to="/invoices/$id" params={{ id: i.id }}><Eye className="h-4 w-4" /></Link>
+                    </Button>
+                    <Button size="icon" variant="ghost" title="PDF" onClick={() => downloadPdf(i.id)}><FileDown className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" title="Supprimer" onClick={async () => { if (await confirm({ title: `Supprimer la facture ${i.invoice_number} ?`, description: "Si elle avait sorti la marchandise du stock, celle-ci sera automatiquement réintégrée.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(i.id); }}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </Card>
+      </TableShell>
     </div>
   );
 }
-
-function KpiCard({ icon: Icon, label, value, accent }: { icon: typeof Receipt; label: string; value: string; accent?: "emerald" | "amber" }) {
-  const color = accent === "emerald" ? "text-emerald-600 bg-emerald-500/10"
-    : accent === "amber" ? "text-amber-600 bg-amber-500/10"
-    : "text-primary bg-primary/10";
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className={`grid h-10 w-10 place-items-center rounded-lg ${color}`}><Icon className="h-5 w-5" /></div>
-        <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="truncate font-semibold tabular-nums">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// Keep Badge import used
-void Badge;
