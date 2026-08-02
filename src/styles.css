@@ -91,8 +91,14 @@
   --success: oklch(0.6 0.12 175);          /* teal/green stat card */
   --success-foreground: oklch(0.99 0 0);
 
-  --warning: oklch(0.72 0.19 50);          /* orange */
-  --warning-foreground: oklch(0.99 0 0);
+  /* Ambre, PAS l'orange de marque. Ces deux tokens portaient exactement la
+     même valeur, si bien que le graphique du tableau de bord traçait les
+     entrées et les sorties dans une seule et même couleur. La distinction
+     joue sur la teinte (85 vs 50) ET sur la clarté (0.80 vs 0.72), pour
+     rester lisible en vision deutéranope/protanope, où la seule teinte ne
+     suffirait pas. Texte foncé dessus : un ambre clair ne porte pas de blanc. */
+  --warning: oklch(0.80 0.14 85);
+  --warning-foreground: oklch(0.24 0.03 80);
 
   --info: oklch(0.58 0.18 260);            /* royal blue stat card */
   --info-foreground: oklch(0.99 0 0);
@@ -158,8 +164,8 @@
   --success: oklch(0.65 0.13 175);
   --success-foreground: oklch(0.99 0 0);
 
-  --warning: oklch(0.75 0.18 50);
-  --warning-foreground: oklch(0.18 0.02 260);
+  --warning: oklch(0.82 0.13 85);
+  --warning-foreground: oklch(0.20 0.02 80);
 
   --info: oklch(0.65 0.18 260);
   --info-foreground: oklch(0.99 0 0);
@@ -222,6 +228,157 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+}
+
+/* =========================================================================
+   v1.1a — Design foundation
+   =========================================================================
+   Visual identity is deliberately unchanged: the orange brand colour, the
+   deep navy, the warm cream background and the Space Grotesk / DM Sans
+   pairing above all stay exactly as they were in v1.0. What follows only
+   adds the layers v1.0 never had — a real elevation scale, a motion system
+   and entrance choreography — so screens gain depth and life without
+   becoming a different product.
+
+   Everything here is written with logical properties so it mirrors correctly
+   in Arabic, and every animation is disabled under prefers-reduced-motion.
+   ========================================================================= */
+
+@layer base {
+  :root {
+    /* --- Elevation ---------------------------------------------------
+       v1.0 had two shadows doing every job, so a dialog sat at the same
+       visual depth as a table row. Four deliberate steps instead. */
+    --elev-1: 0 1px 2px -1px oklch(0.2 0.04 260 / 0.06),
+              0 1px 3px 0 oklch(0.2 0.04 260 / 0.05);
+    --elev-2: 0 2px 4px -2px oklch(0.2 0.04 260 / 0.07),
+              0 6px 16px -8px oklch(0.2 0.04 260 / 0.10);
+    --elev-3: 0 4px 8px -4px oklch(0.2 0.04 260 / 0.08),
+              0 12px 28px -12px oklch(0.2 0.04 260 / 0.14);
+    --elev-4: 0 8px 16px -8px oklch(0.2 0.04 260 / 0.10),
+              0 24px 56px -20px oklch(0.2 0.04 260 / 0.20);
+
+    /* Brand-tinted glow, for primary actions only — used sparingly so it
+       keeps signalling "this is the main action on the screen". */
+    --elev-brand: 0 6px 20px -8px oklch(0.72 0.19 50 / 0.45);
+
+    /* --- Motion ------------------------------------------------------
+       Durations follow the 150-300ms band that reads as responsive without
+       feeling sluggish. Easings are asymmetric on purpose: things enter
+       fast and settle slowly, which is what makes motion feel physical. */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --dur-instant: 100ms;
+    --dur-fast: 160ms;
+    --dur-base: 240ms;
+    --dur-slow: 380ms;
+
+    /* --- Density -----------------------------------------------------
+       An ERP is read all day: the rhythm matters more than the decoration. */
+    --row-height: 3rem;
+    --section-gap: 1.5rem;
+  }
+
+  .dark {
+    --elev-1: 0 1px 2px -1px oklch(0 0 0 / 0.4), 0 1px 3px 0 oklch(0 0 0 / 0.3);
+    --elev-2: 0 2px 4px -2px oklch(0 0 0 / 0.45), 0 6px 16px -8px oklch(0 0 0 / 0.5);
+    --elev-3: 0 4px 8px -4px oklch(0 0 0 / 0.5), 0 12px 28px -12px oklch(0 0 0 / 0.6);
+    --elev-4: 0 8px 16px -8px oklch(0 0 0 / 0.55), 0 24px 56px -20px oklch(0 0 0 / 0.7);
+    --elev-brand: 0 6px 20px -8px oklch(0.75 0.18 50 / 0.4);
+  }
+
+  /* A single, consistent focus ring everywhere. v1.0 relied on each
+     component's own treatment, so focus visibility varied by screen —
+     the most common way a keyboard user gets stranded. */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+@layer utilities {
+  .elev-1 { box-shadow: var(--elev-1); }
+  .elev-2 { box-shadow: var(--elev-2); }
+  .elev-3 { box-shadow: var(--elev-3); }
+  .elev-4 { box-shadow: var(--elev-4); }
+  .elev-brand { box-shadow: var(--elev-brand); }
+
+  /* Lift on hover — the whole point is that it is barely noticeable
+     individually but makes a dense table feel responsive. */
+  .lift {
+    transition: box-shadow var(--dur-base) var(--ease-out),
+                transform var(--dur-base) var(--ease-out);
+  }
+  .lift:hover { box-shadow: var(--elev-3); transform: translateY(-2px); }
+
+  /* Entrance choreography. `.enter` on a container staggers its children,
+     which turns a page load into one orchestrated moment instead of a
+     dozen unrelated fades. */
+  .enter > * { animation: enter-up var(--dur-slow) var(--ease-out) both; }
+  .enter > *:nth-child(1) { animation-delay: 0ms; }
+  .enter > *:nth-child(2) { animation-delay: 40ms; }
+  .enter > *:nth-child(3) { animation-delay: 80ms; }
+  .enter > *:nth-child(4) { animation-delay: 120ms; }
+  .enter > *:nth-child(5) { animation-delay: 160ms; }
+  .enter > *:nth-child(6) { animation-delay: 200ms; }
+  .enter > *:nth-child(n + 7) { animation-delay: 240ms; }
+
+  .enter-item { animation: enter-up var(--dur-slow) var(--ease-out) both; }
+
+  /* Surface treatments that add depth without adding noise. */
+  .surface {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--elev-1);
+  }
+  .surface-raised { box-shadow: var(--elev-2); }
+
+  /* Hairline separator that reads correctly in both directions. */
+  .rule-start { border-inline-start: 3px solid var(--color-primary); }
+}
+
+@keyframes enter-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+/* Skeletons that shimmer instead of just pulsing: a loading table reads as
+   "content is coming" rather than "something is broken". */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-muted) 25%,
+    color-mix(in oklch, var(--color-muted), var(--color-background) 60%) 50%,
+    var(--color-muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* Motion is an enhancement, never a requirement. Anyone who has asked their
+   system to reduce motion gets the layout with none of the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .enter > *,
+  .enter-item,
+  .skeleton {
+    animation: none !important;
+  }
+  .lift { transition: none; }
+  .lift:hover { transform: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
