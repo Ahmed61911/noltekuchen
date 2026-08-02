@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   Plus, Search, Trash2, Eye, FileDown, Printer, Loader2, ShoppingCart,
-  TrendingUp, CalendarDays, Wallet, AlertCircle, Receipt,
+  TrendingUp, CalendarDays, Wallet, AlertCircle, Receipt, RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -26,16 +25,28 @@ import { useAuth } from "@/lib/auth";
 import { generateInvoicePdf, type PdfInvoice } from "@/lib/invoice-pdf";
 import { computeLine, computeTotals } from "@/lib/money";
 import { useConfirm } from "@/components/confirm-dialog";
+import { useI18n } from "@/lib/i18n";
+import { PageHeader } from "@/components/data/page-header";
+import { ResultCount, SearchField, Toolbar } from "@/components/data/toolbar";
+import { StatCard } from "@/components/data/stat-card";
+import { StatusBadge } from "@/components/data/status-badge";
+import { TableShell, TableStateRow } from "@/components/data/table-shell";
+import { TableSkeleton } from "@/components/data/table-skeleton";
+import { EmptyState } from "@/components/data/empty-state";
+import { ErrorState } from "@/components/data/error-state";
 
 export const Route = createFileRoute("/_app/sales/")({
   component: SalesPage,
 });
 
 const CURRENCY = "DH";
+// Labels unchanged; only the rendering joins the shared tone scale, which is
+// token-based and therefore follows the theme instead of being repainted by
+// hand on every screen.
 const PAY_STATUS = {
-  unpaid: { label: "Impayée", className: "bg-rose-500/15 text-rose-700 dark:text-rose-400" },
-  partial: { label: "Partielle", className: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
-  paid: { label: "Payée", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
+  unpaid: { label: "Impayée", tone: "danger" },
+  partial: { label: "Partielle", tone: "warning" },
+  paid: { label: "Payée", tone: "success" },
 } as const;
 const METHODS = {
   cash: "Espèces", card: "Carte", transfer: "Virement", check: "Chèque", credit: "Crédit",
@@ -75,6 +86,7 @@ function SalesPage() {
   const qc = useQueryClient();
   const confirm = useConfirm();
   const { user } = useAuth();
+  const { t } = useI18n();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
@@ -93,7 +105,7 @@ function SalesPage() {
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<LineForm[]>([emptyLine()]);
 
-  const { data: sales = [] } = useQuery({
+  const { data: sales = [], isLoading, error, refetch } = useQuery({
     queryKey: ["sales"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -274,6 +286,12 @@ function SalesPage() {
     return s.sale_number.toLowerCase().includes(x) || (s.customers?.name ?? "").toLowerCase().includes(x);
   });
 
+  const hasFilters = !!(q || statusFilter !== "all" || methodFilter !== "all" || customerFilter !== "all" || warehouseFilter !== "all" || dateFrom || dateTo);
+  const resetFilters = () => {
+    setQ(""); setStatusFilter("all"); setMethodFilter("all"); setCustomerFilter("all");
+    setWarehouseFilter("all"); setDateFrom(""); setDateTo("");
+  };
+
   const kpis = useMemo(() => {
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
@@ -290,15 +308,14 @@ function SalesPage() {
   }, [sales]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Ventes</h1>
-          <p className="text-sm text-muted-foreground">Transactions encaissées et facturation rapide</p>
-        </div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Ventes"
+        subtitle="Transactions encaissées et facturation rapide"
+        actions={
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" /> Nouvelle vente</Button>
+            <Button className="elev-brand"><Plus className="me-2 h-4 w-4" /> Nouvelle vente</Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Nouvelle vente</DialogTitle></DialogHeader>
@@ -333,7 +350,7 @@ function SalesPage() {
               <div className="flex items-center justify-between">
                 <Label>Produits</Label>
                 <Button size="sm" variant="outline" onClick={() => setLines([...lines, emptyLine()])}>
-                  <Plus className="mr-1 h-3 w-3" /> Ligne
+                  <Plus className="me-1 h-3 w-3" /> Ligne
                 </Button>
               </div>
               <div className="rounded-md border">
@@ -463,136 +480,158 @@ function SalesPage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
               <Button onClick={() => create.mutate()} disabled={create.isPending}>
-                {create.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {create.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                 Enregistrer
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+        <StatCard icon={TrendingUp} label="Chiffre d'affaires" value={fmt(kpis.revenue)} dense loading={isLoading} />
+        <StatCard icon={CalendarDays} label="Ventes du jour" value={fmt(kpis.dayRevenue)} dense loading={isLoading} />
+        <StatCard icon={ShoppingCart} label="Ventes du mois" value={fmt(kpis.monthRevenue)} dense loading={isLoading} />
+        <StatCard icon={Wallet} label="Encaissé" value={fmt(kpis.encaisse)} tone="success" dense loading={isLoading} />
+        <StatCard icon={AlertCircle} label="Restant" value={fmt(kpis.restant)} tone="warning" dense loading={isLoading} />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Kpi icon={TrendingUp} label="Chiffre d'affaires" value={fmt(kpis.revenue)} />
-        <Kpi icon={CalendarDays} label="Ventes du jour" value={fmt(kpis.dayRevenue)} />
-        <Kpi icon={ShoppingCart} label="Ventes du mois" value={fmt(kpis.monthRevenue)} />
-        <Kpi icon={Wallet} label="Encaissé" value={fmt(kpis.encaisse)} accent="emerald" />
-        <Kpi icon={AlertCircle} label="Restant" value={fmt(kpis.restant)} accent="amber" />
-      </div>
+      <Toolbar>
+        <SearchField value={q} onChange={setQ} placeholder="Rechercher N° ou client…" />
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous statuts</SelectItem>
+            {Object.entries(PAY_STATUS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={methodFilter} onValueChange={setMethodFilter}>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous modes</SelectItem>
+            {Object.entries(METHODS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={customerFilter} onValueChange={setCustomerFilter}>
+          <SelectTrigger className="w-56"><SelectValue placeholder="Client" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous clients</SelectItem>
+            {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous dépôts</SelectItem>
+            {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Du" />
+        <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Au" />
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={resetFilters}>
+            <RotateCcw className="me-1 h-3.5 w-3.5" /> Réinitialiser
+          </Button>
+        )}
+        <ResultCount shown={filtered.length} total={sales.length} />
+      </Toolbar>
 
-      <Card className="p-4">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <div className="relative max-w-sm flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-8" placeholder="Rechercher N° ou client…" value={q} onChange={e => setQ(e.target.value)} />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous statuts</SelectItem>
-              {Object.entries(PAY_STATUS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={methodFilter} onValueChange={setMethodFilter}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous modes</SelectItem>
-              {Object.entries(METHODS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={customerFilter} onValueChange={setCustomerFilter}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Client" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous clients</SelectItem>
-              {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous dépôts</SelectItem>
-              {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Du" />
-          <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Au" />
-          {(q || statusFilter !== "all" || methodFilter !== "all" || customerFilter !== "all" || warehouseFilter !== "all" || dateFrom || dateTo) && (
-            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStatusFilter("all"); setMethodFilter("all"); setCustomerFilter("all"); setWarehouseFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
-          )}
+      <TableShell>
+        <Table aria-busy={isLoading}>
+          <caption className="sr-only">Ventes</caption>
+          <TableHeader><TableRow>
+            <TableHead>N°</TableHead><TableHead>Client</TableHead>
+            <TableHead>Dépôt</TableHead>
+            <TableHead>Date</TableHead><TableHead className="text-end">Total</TableHead>
+            <TableHead className="text-end">Payé</TableHead><TableHead className="text-end">Reste</TableHead>
+            <TableHead>Mode</TableHead><TableHead>Échéance</TableHead>
+            <TableHead>Statut</TableHead>
+            {/* Onze colonnes : les actions restent au bord de fin même quand le
+                tableau défile horizontalement. */}
+            <TableHead className="sticky end-0 text-end">Actions</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {isLoading && <TableSkeleton rows={8} columns={11} />}
+            {!isLoading && error && (
+              <TableStateRow colSpan={11}>
+                <ErrorState title={t("error_load_sales")} error={error} onRetry={() => refetch()} />
+              </TableStateRow>
+            )}
+            {!isLoading && !error && filtered.length === 0 && (
+              <TableStateRow colSpan={11}>
+                {sales.length === 0 ? (
+                  <EmptyState
+                    icon={ShoppingCart}
+                    title={t("empty_sales")}
+                    description={t("empty_sales_desc")}
+                    action={
+                      <Button size="sm" onClick={() => setOpen(true)}>
+                        <Plus className="me-1 h-4 w-4" /> Nouvelle vente
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <EmptyState
+                    icon={ShoppingCart}
+                    title={t("state_no_results_title")}
+                    description={t("state_no_results_desc").replace("{total}", String(sales.length))}
+                    action={
+                      <Button variant="outline" size="sm" onClick={resetFilters}>
+                        <RotateCcw className="me-1 h-3.5 w-3.5" /> {t("state_reset_filters")}
+                      </Button>
+                    }
+                  />
+                )}
+              </TableStateRow>
+            )}
+            {!isLoading && !error && filtered.map(s => {
+              const ttc = Number(s.total_ttc), paid = Number(s.paid_amount);
+              const st = PAY_STATUS[s.payment_status];
+              return (
+                <TableRow key={s.id} className="group">
+                  <TableCell className="font-mono text-sm">
+                    <Link to="/sales/$id" params={{ id: s.id }} className="font-medium hover:underline">
+                      {s.sale_number}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{s.customers?.name ?? <span className="text-muted-foreground">Comptoir</span>}</TableCell>
+                  <TableCell className="text-sm">{Array.from(new Set((s.sale_items ?? []).map(it => it.warehouses?.name).filter(Boolean))).join(", ") || "—"}</TableCell>
+                  <TableCell className="tabular-nums">{new Date(s.sale_date).toLocaleDateString("fr-FR")}</TableCell>
 
-        </div>
-
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader><TableRow>
-              <TableHead>N°</TableHead><TableHead>Client</TableHead>
-              <TableHead>Dépôt</TableHead>
-              <TableHead>Date</TableHead><TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Payé</TableHead><TableHead className="text-right">Reste</TableHead>
-              <TableHead>Mode</TableHead><TableHead>Échéance</TableHead>
-              <TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={11} className="h-24 text-center text-muted-foreground">Aucune vente</TableCell></TableRow>
-              ) : filtered.map(s => {
-                const ttc = Number(s.total_ttc), paid = Number(s.paid_amount);
-                const st = PAY_STATUS[s.payment_status];
-                return (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-mono text-sm">{s.sale_number}</TableCell>
-                    <TableCell>{s.customers?.name ?? <span className="text-muted-foreground">Comptoir</span>}</TableCell>
-                    <TableCell className="text-sm">{Array.from(new Set((s.sale_items ?? []).map(it => it.warehouses?.name).filter(Boolean))).join(", ") || "—"}</TableCell>
-                    <TableCell>{new Date(s.sale_date).toLocaleDateString("fr-FR")}</TableCell>
-
-                    <TableCell className="text-right tabular-nums">{fmt(ttc)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{fmt(paid)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{fmt(Math.max(0, ttc - paid))}</TableCell>
-                    <TableCell>{METHODS[s.payment_method]}</TableCell>
-                    <TableCell>{s.payment_due_date ? new Date(s.payment_due_date).toLocaleDateString("fr-FR") : "—"}</TableCell>
-                    <TableCell><Badge className={st.className} variant="secondary">{st.label}</Badge></TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="icon" variant="ghost" asChild title="Voir">
-                          <Link to="/sales/$id" params={{ id: s.id }}><Eye className="h-4 w-4" /></Link>
-                        </Button>
-                        <Button size="icon" variant="ghost" title="Imprimer" onClick={() => printSale(s)}>
-                          <Printer className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" title="Générer facture"
-                          disabled={!!s.invoice_id || generateInvoice.isPending}
-                          onClick={() => generateInvoice.mutate(s)}>
-                          <Receipt className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" title="PDF" onClick={() => printSale(s)}>
-                          <FileDown className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" title="Supprimer" onClick={async () => { if (await confirm({ title: `Supprimer la vente ${s.sale_number} ?`, description: "La marchandise vendue sera automatiquement réintégrée au stock.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(s.id); }}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
+                  <TableCell className="text-end tabular-nums">{fmt(ttc)}</TableCell>
+                  <TableCell className="text-end tabular-nums">{fmt(paid)}</TableCell>
+                  <TableCell className="text-end tabular-nums">{fmt(Math.max(0, ttc - paid))}</TableCell>
+                  <TableCell>{METHODS[s.payment_method]}</TableCell>
+                  <TableCell className="tabular-nums">{s.payment_due_date ? new Date(s.payment_due_date).toLocaleDateString("fr-FR") : "—"}</TableCell>
+                  <TableCell><StatusBadge tone={st.tone} label={st.label} /></TableCell>
+                  <TableCell className="sticky end-0 z-10 bg-card text-end group-hover:bg-accent/40">
+                    <div className="flex justify-end gap-1 text-muted-foreground [&_button]:h-8 [&_button]:w-8">
+                      <Button size="icon" variant="ghost" asChild title="Voir">
+                        <Link to="/sales/$id" params={{ id: s.id }}><Eye className="h-4 w-4" /></Link>
+                      </Button>
+                      <Button size="icon" variant="ghost" title="Imprimer" onClick={() => printSale(s)}>
+                        <Printer className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" title="Générer facture"
+                        disabled={!!s.invoice_id || generateInvoice.isPending}
+                        onClick={() => generateInvoice.mutate(s)}>
+                        <Receipt className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" title="PDF" onClick={() => printSale(s)}>
+                        <FileDown className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" title="Supprimer" onClick={async () => { if (await confirm({ title: `Supprimer la vente ${s.sale_number} ?`, description: "La marchandise vendue sera automatiquement réintégrée au stock.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(s.id); }}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableShell>
     </div>
-  );
-}
-
-function Kpi({ icon: Icon, label, value, accent }: { icon: any; label: string; value: string; accent?: "emerald" | "amber" }) {
-  const color = accent === "emerald" ? "text-emerald-600" : accent === "amber" ? "text-amber-600" : "text-primary";
-  return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
-        </div>
-        <Icon className={`h-5 w-5 ${color}`} />
-      </div>
-    </Card>
   );
 }
