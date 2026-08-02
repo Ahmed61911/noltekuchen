@@ -32,6 +32,7 @@ import { TableShell, TableStateRow } from "@/components/data/table-shell";
 import { TableSkeleton } from "@/components/data/table-skeleton";
 import { EmptyState } from "@/components/data/empty-state";
 import { ErrorState } from "@/components/data/error-state";
+import { DataPagination, usePagination } from "@/components/data/pagination";
 
 export const Route = createFileRoute("/_app/orders/")({
   component: OrdersPage,
@@ -266,6 +267,14 @@ function OrdersPage() {
     }
     return { pending, validated, delivered, cancelled, late };
   }, [filtered]);
+
+  // Client-side: every order is already in memory, and the KPI banner above is
+  // computed on `filtered` — the whole matching set, never the visible page.
+  const pagination = usePagination({
+    total: filtered.length,
+    resetKey: [q, statusFilter, payFilter, customerFilter, warehouseFilter, dateFrom, dateTo].join(" "),
+  });
+  const pageRows = pagination.slice(filtered);
 
   return (
     <div className="space-y-4">
@@ -610,7 +619,7 @@ function OrdersPage() {
                 )}
               </TableStateRow>
             )}
-            {!isLoading && !error && filtered.map(o => {
+            {!isLoading && !error && pageRows.map(o => {
               const ttc = Number(o.total_ttc), paid = Number(o.paid_amount);
               const d = daysLeft(o.due_date, o.status);
               const dTone = d === null ? "neutral" : d < 0 ? "danger" : d <= 3 ? "warning" : "neutral";
@@ -671,6 +680,8 @@ function OrdersPage() {
           </TableBody>
         </Table>
       </TableShell>
+
+      <DataPagination pagination={pagination} />
     </div>
   );
 }

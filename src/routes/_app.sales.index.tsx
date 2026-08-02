@@ -34,6 +34,7 @@ import { TableShell, TableStateRow } from "@/components/data/table-shell";
 import { TableSkeleton } from "@/components/data/table-skeleton";
 import { EmptyState } from "@/components/data/empty-state";
 import { ErrorState } from "@/components/data/error-state";
+import { DataPagination, usePagination } from "@/components/data/pagination";
 
 export const Route = createFileRoute("/_app/sales/")({
   component: SalesPage,
@@ -306,6 +307,14 @@ function SalesPage() {
     }
     return { revenue, dayRevenue, monthRevenue, encaisse, restant };
   }, [sales]);
+
+  // Client-side: the sales are already in memory and the KPI banner sums the
+  // whole set, so paginating only changes how many rows are painted.
+  const pagination = usePagination({
+    total: filtered.length,
+    resetKey: [q, statusFilter, methodFilter, customerFilter, warehouseFilter, dateFrom, dateTo].join(" "),
+  });
+  const pageRows = pagination.slice(filtered);
 
   return (
     <div className="space-y-4">
@@ -585,7 +594,7 @@ function SalesPage() {
                 )}
               </TableStateRow>
             )}
-            {!isLoading && !error && filtered.map(s => {
+            {!isLoading && !error && pageRows.map(s => {
               const ttc = Number(s.total_ttc), paid = Number(s.paid_amount);
               const st = PAY_STATUS[s.payment_status];
               return (
@@ -632,6 +641,8 @@ function SalesPage() {
           </TableBody>
         </Table>
       </TableShell>
+
+      <DataPagination pagination={pagination} />
     </div>
   );
 }

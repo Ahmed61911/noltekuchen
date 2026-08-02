@@ -118,6 +118,15 @@ const fr: Dict = {
   empty_customers_desc: "Ajoutez un premier client à votre carnet d'adresses.",
   empty_suppliers: "Aucun fournisseur enregistré",
   empty_suppliers_desc: "Ajoutez un premier fournisseur à votre carnet de contacts.",
+  // pagination (1.1a)
+  pagination_label: "Pagination",
+  pagination_range: "{from}–{to} sur {total}",
+  pagination_page_of: "Page {page} sur {pageCount}",
+  pagination_rows_per_page: "Lignes par page",
+  pagination_first: "Première page",
+  pagination_previous: "Page précédente",
+  pagination_next: "Page suivante",
+  pagination_last: "Dernière page",
 };
 
 const ar: Dict = {
@@ -228,6 +237,14 @@ const ar: Dict = {
   empty_customers_desc: "أضف أول عميل إلى دفتر العناوين.",
   empty_suppliers: "لا يوجد موردون مسجّلون",
   empty_suppliers_desc: "أضف أول مورّد إلى دفتر جهات الاتصال.",
+  pagination_label: "ترقيم الصفحات",
+  pagination_range: "{from}–{to} من {total}",
+  pagination_page_of: "الصفحة {page} من {pageCount}",
+  pagination_rows_per_page: "عدد الصفوف في الصفحة",
+  pagination_first: "الصفحة الأولى",
+  pagination_previous: "الصفحة السابقة",
+  pagination_next: "الصفحة التالية",
+  pagination_last: "الصفحة الأخيرة",
 };
 
 const dicts = { fr, ar };

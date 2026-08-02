@@ -30,6 +30,7 @@ import { TableShell, TableStateRow } from "@/components/data/table-shell";
 import { TableSkeleton } from "@/components/data/table-skeleton";
 import { EmptyState } from "@/components/data/empty-state";
 import { ErrorState } from "@/components/data/error-state";
+import { DataPagination, usePagination } from "@/components/data/pagination";
 
 export const Route = createFileRoute("/_app/invoices/")({
   component: InvoicesPage,
@@ -304,6 +305,14 @@ function InvoicesPage() {
     return { totalRevenue, monthRevenue, paidCount, unpaidCount, outstanding };
   }, [invoices]);
 
+  // Client-side: the query already returns every invoice and the filters run in
+  // memory over the whole set; only the rows painted are cut into pages.
+  const pagination = usePagination({
+    total: filtered.length,
+    resetKey: [q, statusFilter, customerFilter, warehouseFilter, dateFrom, dateTo].join(" "),
+  });
+  const pageRows = pagination.slice(filtered);
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -570,7 +579,7 @@ function InvoicesPage() {
                 )}
               </TableStateRow>
             )}
-            {!isLoading && !error && filtered.map(i => (
+            {!isLoading && !error && pageRows.map(i => (
               <TableRow key={i.id} className="group">
                 <TableCell className="font-medium">
                   <Link to="/invoices/$id" params={{ id: i.id }} className="hover:underline">
@@ -613,6 +622,8 @@ function InvoicesPage() {
           </TableBody>
         </Table>
       </TableShell>
+
+      <DataPagination pagination={pagination} />
     </div>
   );
 }

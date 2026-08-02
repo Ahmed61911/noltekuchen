@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { logAction } from "@/lib/audit-log";
 import { useConfirm } from "@/components/confirm-dialog";
+import { DataPagination, usePagination } from "@/components/data/pagination";
 
 export const Route = createFileRoute("/_app/warehouses")({
   component: WarehousesPage,
@@ -145,6 +146,11 @@ function WarehousesPage() {
     return [w.name, w.merchandise, w.description, w.address, w.manager]
       .some((v) => (v ?? "").toLowerCase().includes(s));
   });
+
+  // Client-side: the warehouse list is loaded whole and searched in memory, so
+  // the search still runs over every depot.
+  const pagination = usePagination({ total: filtered.length, resetKey: q });
+  const pageRows = pagination.slice(filtered);
 
   function startEdit(w: Warehouse) {
     setEditing(w);

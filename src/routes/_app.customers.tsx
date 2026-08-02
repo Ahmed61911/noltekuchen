@@ -22,6 +22,7 @@ import { TableShell, TableStateRow } from "@/components/data/table-shell";
 import { TableSkeleton } from "@/components/data/table-skeleton";
 import { EmptyState } from "@/components/data/empty-state";
 import { ErrorState } from "@/components/data/error-state";
+import { DataPagination, usePagination } from "@/components/data/pagination";
 
 export const Route = createFileRoute("/_app/customers")({
   component: CustomersPage,
@@ -94,6 +95,11 @@ function CustomersPage() {
     (c.email ?? "").toLowerCase().includes(q.toLowerCase()) ||
     (c.phone ?? "").includes(q),
   );
+
+  // Client-side: the address book is loaded whole and searched in memory, so
+  // the search keeps looking at every customer, not at the page.
+  const pagination = usePagination({ total: filtered.length, resetKey: q });
+  const pageRows = pagination.slice(filtered);
 
   return (
     <div className="space-y-4">
@@ -187,7 +193,7 @@ function CustomersPage() {
                 )}
               </TableStateRow>
             )}
-            {!isLoading && !error && filtered.map(c => (
+            {!isLoading && !error && pageRows.map(c => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.name}</TableCell>
                 <TableCell>{c.email}</TableCell>
@@ -210,6 +216,8 @@ function CustomersPage() {
           </TableBody>
         </Table>
       </TableShell>
+
+      <DataPagination pagination={pagination} />
     </div>
   );
 }

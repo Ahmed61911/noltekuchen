@@ -21,6 +21,7 @@ import { TableShell, TableStateRow } from "@/components/data/table-shell";
 import { TableSkeleton } from "@/components/data/table-skeleton";
 import { EmptyState } from "@/components/data/empty-state";
 import { ErrorState } from "@/components/data/error-state";
+import { DataPagination, usePagination } from "@/components/data/pagination";
 
 export const Route = createFileRoute("/_app/suppliers")({
   component: SuppliersPage,
@@ -80,6 +81,11 @@ function SuppliersPage() {
     onSuccess: () => { toast.success("Supprimé"); qc.invalidateQueries({ queryKey: ["suppliers"] }); },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // Client-side: the screen has no filter bar at all, it lists the contact book
+  // as it comes back from the query.
+  const pagination = usePagination({ total: data.length });
+  const pageRows = pagination.slice(data);
 
   return (
     <div className="space-y-4">
@@ -145,7 +151,7 @@ function SuppliersPage() {
                 />
               </TableStateRow>
             )}
-            {!isLoading && !error && data.map((s) => (
+            {!isLoading && !error && pageRows.map((s) => (
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.name}</TableCell>
                 <TableCell>{s.contact_name ?? "—"}</TableCell>
@@ -168,6 +174,8 @@ function SuppliersPage() {
           </TableBody>
         </Table>
       </TableShell>
+
+      <DataPagination pagination={pagination} />
     </div>
   );
 }

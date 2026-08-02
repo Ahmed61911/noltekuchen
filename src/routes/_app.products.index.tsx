@@ -31,6 +31,7 @@ import { TableShell, TableStateRow } from "@/components/data/table-shell";
 import { TableSkeleton } from "@/components/data/table-skeleton";
 import { EmptyState } from "@/components/data/empty-state";
 import { ErrorState } from "@/components/data/error-state";
+import { DataPagination, usePagination } from "@/components/data/pagination";
 
 export const Route = createFileRoute("/_app/products/")({
   component: ProductsIndexPage,
@@ -165,6 +166,15 @@ function ProductsIndexPage() {
     setQ(""); setStockFilter("all"); setPriceMin(""); setPriceMax(""); setWarehouseFilter("all");
   };
   const columnCount = isAdmin ? 9 : 8;
+
+  // Client-side: the screen already holds the whole catalogue and filters it in
+  // memory, so search and filters keep running over every product — only the
+  // rendering is cut into pages.
+  const pagination = usePagination({
+    total: filtered.length,
+    resetKey: [q, stockFilter, priceMin, priceMax, warehouseFilter].join(" "),
+  });
+  const pageRows = pagination.slice(filtered);
 
   function startEdit(p: Product) {
     setEditing(p);
@@ -432,7 +442,7 @@ function ProductsIndexPage() {
                 )}
               </TableStateRow>
             )}
-            {!isLoading && !error && filtered.map((p) => {
+            {!isLoading && !error && pageRows.map((p) => {
               const margin = p.selling_price - p.purchase_price;
               const marginPct = p.purchase_price > 0 ? (margin / p.purchase_price) * 100 : 0;
               const low = p.stock_quantity <= p.min_stock;
@@ -509,6 +519,8 @@ function ProductsIndexPage() {
           </TableBody>
         </Table>
       </TableShell>
+
+      <DataPagination pagination={pagination} />
 
       {viewer && (
         <ImageViewer
