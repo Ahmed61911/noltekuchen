@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Search, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Users, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +15,13 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfirm } from "@/components/confirm-dialog";
+import { useI18n } from "@/lib/i18n";
+import { PageHeader } from "@/components/data/page-header";
+import { ResultCount, SearchField, Toolbar } from "@/components/data/toolbar";
+import { TableShell, TableStateRow } from "@/components/data/table-shell";
+import { TableSkeleton } from "@/components/data/table-skeleton";
+import { EmptyState } from "@/components/data/empty-state";
+import { ErrorState } from "@/components/data/error-state";
 
 export const Route = createFileRoute("/_app/customers")({
   component: CustomersPage,
@@ -40,12 +46,13 @@ const empty: FormState = {
 function CustomersPage() {
   const qc = useQueryClient();
   const confirm = useConfirm();
+  const { t } = useI18n();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [form, setForm] = useState<FormState>(empty);
 
-  const { data: customers = [], isLoading } = useQuery({
+  const { data: customers = [], isLoading, error, refetch } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
       const { data, error } = await supabase.from("customers").select("*").order("name");
@@ -89,16 +96,15 @@ function CustomersPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Clients</h1>
-          <p className="text-sm text-muted-foreground">Gestion du carnet d'adresses</p>
-        </div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Clients"
+        subtitle="Gestion du carnet d'adresses"
+        actions={
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm(empty); } }}>
           <DialogTrigger asChild>
-            <Button onClick={() => { setEditing(null); setForm(empty); }}>
-              <Plus className="mr-2 h-4 w-4" /> Nouveau client
+            <Button className="elev-brand" onClick={() => { setEditing(null); setForm(empty); }}>
+              <Plus className="me-2 h-4 w-4" /> Nouveau client
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
@@ -117,52 +123,93 @@ function CustomersPage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
               <Button onClick={() => upsert.mutate({ ...form, id: editing?.id })} disabled={!form.name || upsert.isPending}>
-                {upsert.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {upsert.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                 Enregistrer
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+        }
+      />
 
-      <Card className="p-4">
-        <div className="relative mb-3 max-w-sm">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-8" placeholder="Rechercher…" value={q} onChange={e => setQ(e.target.value)} />
-        </div>
-        <Table>
+      <Toolbar>
+        <SearchField value={q} onChange={setQ} placeholder="Rechercher…" />
+        {q && (
+          <Button variant="ghost" size="sm" onClick={() => setQ("")}>
+            <RotateCcw className="me-1 h-3.5 w-3.5" /> Réinitialiser
+          </Button>
+        )}
+        <ResultCount shown={filtered.length} total={customers.length} />
+      </Toolbar>
+
+      {/* No stat banner on this screen, so the table starts higher and can be
+          taller than on products or orders. */}
+      <TableShell offset="16rem">
+        <Table aria-busy={isLoading}>
+          <caption className="sr-only">Clients</caption>
           <TableHeader>
             <TableRow>
               <TableHead>Nom</TableHead><TableHead>Email</TableHead><TableHead>Téléphone</TableHead>
-              <TableHead>Ville</TableHead><TableHead className="text-right">Actions</TableHead>
+              <TableHead>Ville</TableHead><TableHead className="text-end">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Chargement…</TableCell></TableRow>
-            ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Aucun client</TableCell></TableRow>
-            ) : filtered.map(c => (
+            {isLoading && <TableSkeleton rows={8} columns={5} />}
+            {!isLoading && error && (
+              <TableStateRow colSpan={5}>
+                <ErrorState title={t("error_load_customers")} error={error} onRetry={() => refetch()} />
+              </TableStateRow>
+            )}
+            {!isLoading && !error && filtered.length === 0 && (
+              <TableStateRow colSpan={5}>
+                {customers.length === 0 ? (
+                  <EmptyState
+                    icon={Users}
+                    title={t("empty_customers")}
+                    description={t("empty_customers_desc")}
+                    action={
+                      <Button size="sm" onClick={() => { setEditing(null); setForm(empty); setOpen(true); }}>
+                        <Plus className="me-1 h-4 w-4" /> Nouveau client
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <EmptyState
+                    icon={Users}
+                    title={t("state_no_results_title")}
+                    description={t("state_no_results_desc").replace("{total}", String(customers.length))}
+                    action={
+                      <Button variant="outline" size="sm" onClick={() => setQ("")}>
+                        <RotateCcw className="me-1 h-3.5 w-3.5" /> {t("state_reset_filters")}
+                      </Button>
+                    }
+                  />
+                )}
+              </TableStateRow>
+            )}
+            {!isLoading && !error && filtered.map(c => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.name}</TableCell>
                 <TableCell>{c.email}</TableCell>
-                <TableCell>{c.phone}</TableCell>
+                <TableCell className="tabular-nums">{c.phone}</TableCell>
                 <TableCell>{c.city}</TableCell>
-                <TableCell className="text-right">
-                  <Button size="icon" variant="ghost" onClick={() => {
-                    setEditing(c);
-                    setForm({ name: c.name, email: c.email, phone: c.phone, address: c.address, city: c.city, postal_code: c.postal_code, notes: c.notes });
-                    setOpen(true);
-                  }}><Pencil className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={async () => { if (await confirm({ title: `Supprimer le client ${c.name} ?`, description: "Le client sera définitivement retiré du carnet d'adresses. Les documents déjà émis à son nom sont conservés.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(c.id); }}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <TableCell className="text-end">
+                  <div className="flex justify-end gap-1 text-muted-foreground [&_button]:h-8 [&_button]:w-8">
+                    <Button size="icon" variant="ghost" title="Modifier" onClick={() => {
+                      setEditing(c);
+                      setForm({ name: c.name, email: c.email, phone: c.phone, address: c.address, city: c.city, postal_code: c.postal_code, notes: c.notes });
+                      setOpen(true);
+                    }}><Pencil className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" title="Supprimer" onClick={async () => { if (await confirm({ title: `Supprimer le client ${c.name} ?`, description: "Le client sera définitivement retiré du carnet d'adresses. Les documents déjà émis à son nom sont conservés.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(c.id); }}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </Card>
+      </TableShell>
     </div>
   );
 }
