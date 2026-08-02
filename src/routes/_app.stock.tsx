@@ -237,7 +237,7 @@ function StockPage() {
                     {m.type === "in" ? (
                       <Badge className="bg-success/15 text-success hover:bg-success/15"><ArrowDown className="me-1 h-3 w-3" />{t("movement_in")}</Badge>
                     ) : (
-                      <Badge className="bg-warning/15 text-warning hover:bg-warning/15"><ArrowUp className="me-1 h-3 w-3" />{t("movement_out")}</Badge>
+                      <Badge className="bg-warning/20 text-warning-foreground hover:bg-warning/20 dark:bg-warning/15 dark:text-warning"><ArrowUp className="me-1 h-3 w-3" />{t("movement_out")}</Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-right font-medium">{m.quantity}</TableCell>

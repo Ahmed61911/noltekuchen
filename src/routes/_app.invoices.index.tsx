@@ -597,7 +597,7 @@ function InvoicesPage() {
                     </SelectContent>
                   </Select>
                 </TableCell>
-                <TableCell className="sticky end-0 z-10 bg-card text-end group-hover:bg-accent/40">
+                <TableCell className="sticky end-0 z-10 bg-card text-end group-hover:bg-(--row-hover)">
                   <div className="flex justify-end gap-1 text-muted-foreground [&_button]:h-8 [&_button]:w-8">
                     <Button size="icon" variant="ghost" asChild title="Voir">
                       <Link to="/invoices/$id" params={{ id: i.id }}><Eye className="h-4 w-4" /></Link>

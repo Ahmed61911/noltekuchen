@@ -636,7 +636,7 @@ function OrdersPage() {
                   <TableCell><StatusBadge tone={ps.tone} label={ps.label} /></TableCell>
                   {/* Pinned to the end edge so the row's actions stay reachable
                       while the twelve columns scroll horizontally. */}
-                  <TableCell className="sticky end-0 z-10 bg-card text-end group-hover:bg-accent/40">
+                  <TableCell className="sticky end-0 z-10 bg-card text-end group-hover:bg-(--row-hover)">
                     {/* Five hard-coded icon colours per row over forty rows left
                         the eye nowhere to rest: the icons now inherit a muted
                         colour and take the button's own hover. Only deletion

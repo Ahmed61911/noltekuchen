@@ -279,6 +279,13 @@
        An ERP is read all day: the rhythm matters more than the decoration. */
     --row-height: 3rem;
     --section-gap: 1.5rem;
+
+    /* Row hover, pre-blended against the card so it stays OPAQUE.
+       The pinned actions column cannot use a translucent hover: it is the one
+       cell the horizontally scrolled columns pass underneath, and at 40% the
+       Total / Paid / Balance figures showed through the action icons — in
+       exactly the situation the pinned column exists to serve. */
+    --row-hover: color-mix(in oklab, var(--color-accent) 40%, var(--color-card));
   }
 
   .dark {
@@ -467,6 +474,37 @@
    the micro label drops both in RTL and keeps only its size and colour. */
 [dir="rtl"] .micro-label {
   text-transform: none;
+  letter-spacing: normal;
+}
+
+/* Same reasoning, applied wherever the 1.1a redesign introduced small-caps or
+   kerning on text that gets translated. Arabic is cursive: a positive
+   letter-spacing literally breaks the joins between letters, and uppercase
+   does nothing since the script has no capitals.
+   Column headers and select group labels are the visible cases — they render
+   t() strings, and TableHead is used by every table in the app, including the
+   screens this redesign has not reached yet. */
+[dir="rtl"] table th,
+[dir="rtl"] .uppercase {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* Space Grotesk has no Arabic coverage, so .font-display falls back to a system
+   face while keeping its negative tracking — which tightens Arabic past the
+   point where the joins read. Targeted by class rather than by element:
+   CardTitle, DialogTitle and AlertDialogTitle are divs and h2s that escaped the
+   h1..h5 rule above until 1.1a put .font-display on them explicitly. */
+[dir="rtl"] h1,
+[dir="rtl"] h2,
+[dir="rtl"] h3,
+[dir="rtl"] h4,
+[dir="rtl"] h5,
+[dir="rtl"] .font-display,
+[dir="rtl"] .tracking-tight,
+[dir="rtl"] .tracking-wide,
+[dir="rtl"] .tracking-wider {
+  font-family: var(--font-sans);
   letter-spacing: normal;
 }
 

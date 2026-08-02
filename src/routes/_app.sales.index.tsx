@@ -605,7 +605,7 @@ function SalesPage() {
                   <TableCell>{METHODS[s.payment_method]}</TableCell>
                   <TableCell className="tabular-nums">{s.payment_due_date ? new Date(s.payment_due_date).toLocaleDateString("fr-FR") : "—"}</TableCell>
                   <TableCell><StatusBadge tone={st.tone} label={st.label} /></TableCell>
-                  <TableCell className="sticky end-0 z-10 bg-card text-end group-hover:bg-accent/40">
+                  <TableCell className="sticky end-0 z-10 bg-card text-end group-hover:bg-(--row-hover)">
                     <div className="flex justify-end gap-1 text-muted-foreground [&_button]:h-8 [&_button]:w-8">
                       <Button size="icon" variant="ghost" asChild title="Voir">
                         <Link to="/sales/$id" params={{ id: s.id }}><Eye className="h-4 w-4" /></Link>

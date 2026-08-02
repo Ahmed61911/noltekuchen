@@ -394,7 +394,7 @@ function ProductDetailPage() {
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Card className="shadow-card">
                 <CardContent className="p-5 flex items-start gap-4">
-                  <div className={`grid h-11 w-11 place-items-center rounded-xl shrink-0 ${out ? "bg-destructive/10 text-destructive" : low ? "bg-warning/10 text-warning" : "bg-success/10 text-success"}`}>
+                  <div className={`grid h-11 w-11 place-items-center rounded-xl shrink-0 ${out ? "bg-destructive/10 text-destructive" : low ? "bg-warning/20 text-warning-foreground dark:bg-warning/10 dark:text-warning" : "bg-success/10 text-success"}`}>
                     <Boxes className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -410,7 +410,7 @@ function ProductDetailPage() {
                       className={`mt-2 ${out
                         ? "bg-destructive/10 text-destructive border-destructive/20"
                         : low
-                          ? "bg-warning/10 text-warning border-warning/20"
+                          ? "bg-warning/20 text-warning-foreground border-warning/40 dark:bg-warning/10 dark:text-warning"
                           : "bg-success/10 text-success border-success/20"}`}
                     >
                       {out ? "Rupture de stock" : low ? "Stock faible" : "En stock"}

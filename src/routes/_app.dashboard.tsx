@@ -249,7 +249,7 @@ function Dashboard() {
         <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <AlertTriangle className="h-4 w-4 text-warning" />
+              <AlertTriangle className="h-4 w-4 text-warning-foreground dark:text-warning" />
               {t("low_stock_alerts")}
             </CardTitle>
           </CardHeader>
@@ -298,7 +298,7 @@ function Dashboard() {
               {data?.recent.map((m) => (
                 <div key={m.id} className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className={`grid h-8 w-8 place-items-center rounded-md ${m.type === "in" ? "bg-success/15 text-success" : "bg-warning/15 text-warning"}`}>
+                    <div className={`grid h-8 w-8 place-items-center rounded-md ${m.type === "in" ? "bg-success/15 text-success" : "bg-warning/20 text-warning-foreground dark:bg-warning/15 dark:text-warning"}`}>
                       {m.type === "in" ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                     </div>
                     <div className="min-w-0">
