@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   Plus, Search, Trash2, Eye, Loader2, ClipboardList, CheckCircle2,
-  Truck, XCircle, Clock, AlertTriangle, PackagePlus,
+  Truck, XCircle, Clock, AlertTriangle, PackagePlus, RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -24,22 +23,35 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { computeLine, computeTotals } from "@/lib/money";
 import { useConfirm } from "@/components/confirm-dialog";
+import { useI18n } from "@/lib/i18n";
+import { PageHeader } from "@/components/data/page-header";
+import { ResultCount, SearchField, Toolbar } from "@/components/data/toolbar";
+import { StatCard } from "@/components/data/stat-card";
+import { StatusBadge } from "@/components/data/status-badge";
+import { TableShell, TableStateRow } from "@/components/data/table-shell";
+import { TableSkeleton } from "@/components/data/table-skeleton";
+import { EmptyState } from "@/components/data/empty-state";
+import { ErrorState } from "@/components/data/error-state";
 
 export const Route = createFileRoute("/_app/orders/")({
   component: OrdersPage,
 });
 
 const CURRENCY = "DH";
+// Labels unchanged. Only the rendering moves: from hard-coded Tailwind
+// palettes to the shared tone scale, which is built from tokens and therefore
+// follows the theme. `PAY` in particular had no `dark:` variant at all, so
+// "Payée" was emerald-700 on a dark card — around 2.4:1.
 const STATUS = {
-  pending: { label: "En attente", className: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
-  validated: { label: "Validée", className: "bg-blue-500/15 text-blue-700 dark:text-blue-400" },
-  delivered: { label: "Livrée", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
-  cancelled: { label: "Annulée", className: "bg-rose-500/15 text-rose-700 dark:text-rose-400" },
+  pending: { label: "En attente", tone: "warning" },
+  validated: { label: "Validée", tone: "info" },
+  delivered: { label: "Livrée", tone: "success" },
+  cancelled: { label: "Annulée", tone: "danger" },
 } as const;
 const PAY = {
-  unpaid: { label: "Impayée", className: "bg-rose-500/15 text-rose-700" },
-  partial: { label: "Partielle", className: "bg-amber-500/15 text-amber-700" },
-  paid: { label: "Payée", className: "bg-emerald-500/15 text-emerald-700" },
+  unpaid: { label: "Impayée", tone: "danger" },
+  partial: { label: "Partielle", tone: "warning" },
+  paid: { label: "Payée", tone: "success" },
 } as const;
 type OrderStatus = keyof typeof STATUS;
 type PayStatus = keyof typeof PAY;
@@ -80,6 +92,7 @@ function daysLeft(due: string, status: OrderStatus) {
 function OrdersPage() {
   const qc = useQueryClient();
   const confirm = useConfirm();
+  const { t } = useI18n();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [payFilter, setPayFilter] = useState("all");
@@ -99,7 +112,7 @@ function OrdersPage() {
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<LineForm[]>([emptyLine()]);
 
-  const { data: orders = [] } = useQuery({
+  const { data: orders = [], isLoading, error, refetch } = useQuery({
     queryKey: ["orders"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -235,6 +248,12 @@ function OrdersPage() {
     return o.order_number.toLowerCase().includes(s) || (o.customers?.name ?? "").toLowerCase().includes(s);
   });
 
+  const hasFilters = !!(q || statusFilter !== "all" || payFilter !== "all" || customerFilter !== "all" || warehouseFilter !== "all" || dateFrom || dateTo);
+  const resetFilters = () => {
+    setQ(""); setStatusFilter("all"); setPayFilter("all"); setCustomerFilter("all");
+    setWarehouseFilter("all"); setDateFrom(""); setDateTo("");
+  };
+
   const kpis = useMemo(() => {
     let pending = 0, validated = 0, delivered = 0, cancelled = 0, late = 0;
     for (const o of filtered) {
@@ -249,15 +268,14 @@ function OrdersPage() {
   }, [filtered]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Commandes clients</h1>
-          <p className="text-sm text-muted-foreground">Cycle de vie, délais et livraison</p>
-        </div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Commandes clients"
+        subtitle="Cycle de vie, délais et livraison"
+        actions={<>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
           <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" /> Nouvelle commande</Button>
+            <Button className="elev-brand"><Plus className="me-2 h-4 w-4" /> Nouvelle commande</Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Nouvelle commande</DialogTitle></DialogHeader>
@@ -281,10 +299,10 @@ function OrdersPage() {
                 <Label>Produits</Label>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => { setPickerSel({}); setPickerQ(""); setPickerOpen(true); }}>
-                    <PackagePlus className="mr-1 h-3 w-3" /> Plusieurs produits
+                    <PackagePlus className="me-1 h-3 w-3" /> Plusieurs produits
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setLines([...lines, emptyLine()])}>
-                    <Plus className="mr-1 h-3 w-3" /> Ligne
+                    <Plus className="me-1 h-3 w-3" /> Ligne
                   </Button>
                 </div>
               </div>
@@ -400,7 +418,7 @@ function OrdersPage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
               <Button onClick={() => create.mutate()} disabled={create.isPending}>
-                {create.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {create.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                 Créer
               </Button>
             </DialogFooter>
@@ -413,8 +431,10 @@ function OrdersPage() {
               <DialogTitle>Ajouter plusieurs produits</DialogTitle>
             </DialogHeader>
             <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input className="pl-8" placeholder="Rechercher un produit…" value={pickerQ} onChange={e => setPickerQ(e.target.value)} />
+              {/* `left-2` + `pl-8` put the magnifier on top of the text being
+                  typed in Arabic. Logical properties mirror on their own. */}
+              <Search className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input className="ps-9" placeholder="Rechercher un produit…" value={pickerQ} onChange={e => setPickerQ(e.target.value)} />
             </div>
             <div className="flex-1 overflow-y-auto rounded-md border">
               <Table>
@@ -462,7 +482,7 @@ function OrdersPage() {
               </Table>
             </div>
             <DialogFooter>
-              <span className="mr-auto text-sm text-muted-foreground self-center">
+              <span className="me-auto text-sm text-muted-foreground self-center">
                 {Object.keys(pickerSel).length} sélectionné(s)
               </span>
               <Button variant="outline" onClick={() => setPickerOpen(false)}>Annuler</Button>
@@ -488,147 +508,169 @@ function OrdersPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </>}
+      />
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+        <StatCard icon={Clock} label="En attente" value={kpis.pending} tone="warning" loading={isLoading} />
+        <StatCard icon={CheckCircle2} label="Validées" value={kpis.validated} tone="info" loading={isLoading} />
+        <StatCard icon={Truck} label="Livrées" value={kpis.delivered} tone="success" loading={isLoading} />
+        <StatCard icon={XCircle} label="Annulées" value={kpis.cancelled} tone="danger" loading={isLoading} />
+        <StatCard icon={AlertTriangle} label="En retard" value={kpis.late} tone="danger" loading={isLoading} />
       </div>
 
+      <Toolbar>
+        <SearchField value={q} onChange={setQ} placeholder="Rechercher N° ou client…" />
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous statuts</SelectItem>
+            {Object.entries(STATUS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+            <SelectItem value="late">En retard</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={payFilter} onValueChange={setPayFilter}>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous paiements</SelectItem>
+            {Object.entries(PAY).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={customerFilter} onValueChange={setCustomerFilter}>
+          <SelectTrigger className="w-56"><SelectValue placeholder="Client" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous clients</SelectItem>
+            {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous dépôts</SelectItem>
+            {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Du" />
+        <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Au" />
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={resetFilters}>
+            <RotateCcw className="me-1 h-3.5 w-3.5" /> Réinitialiser
+          </Button>
+        )}
+        <ResultCount shown={filtered.length} total={orders.length} />
+      </Toolbar>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Kpi icon={Clock} label="En attente" value={kpis.pending} accent="amber" />
-        <Kpi icon={CheckCircle2} label="Validées" value={kpis.validated} accent="blue" />
-        <Kpi icon={Truck} label="Livrées" value={kpis.delivered} accent="emerald" />
-        <Kpi icon={XCircle} label="Annulées" value={kpis.cancelled} accent="rose" />
-        <Kpi icon={AlertTriangle} label="En retard" value={kpis.late} accent="rose" />
-      </div>
+      <TableShell>
+        <Table aria-busy={isLoading}>
+          <caption className="sr-only">Commandes clients</caption>
+          <TableHeader><TableRow>
+            <TableHead>N°</TableHead><TableHead>Client</TableHead>
+            <TableHead>Dépôt</TableHead>
+            <TableHead>Date</TableHead><TableHead>Dernier jour</TableHead>
+            <TableHead>Délai</TableHead>
+            <TableHead className="text-end">Total</TableHead>
+            <TableHead className="text-end">Payé</TableHead>
+            <TableHead className="text-end">Reste</TableHead>
+            <TableHead>Statut</TableHead><TableHead>Paiement</TableHead>
+            {/* Twelve columns never fit on a 1366px laptop, and Valider /
+                Livrer were the first things to scroll out of reach. */}
+            <TableHead className="sticky end-0 text-end">Actions</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {isLoading && <TableSkeleton rows={8} columns={12} />}
+            {!isLoading && error && (
+              <TableStateRow colSpan={12}>
+                <ErrorState title={t("error_load_orders")} error={error} onRetry={() => refetch()} />
+              </TableStateRow>
+            )}
+            {!isLoading && !error && filtered.length === 0 && (
+              <TableStateRow colSpan={12}>
+                {orders.length === 0 ? (
+                  <EmptyState
+                    icon={ClipboardList}
+                    title={t("empty_orders")}
+                    description={t("empty_orders_desc")}
+                    action={
+                      <Button size="sm" onClick={() => setOpen(true)}>
+                        <Plus className="me-1 h-4 w-4" /> Nouvelle commande
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <EmptyState
+                    icon={ClipboardList}
+                    title={t("state_no_results_title")}
+                    description={t("state_no_results_desc").replace("{total}", String(orders.length))}
+                    action={
+                      <Button variant="outline" size="sm" onClick={resetFilters}>
+                        <RotateCcw className="me-1 h-3.5 w-3.5" /> {t("state_reset_filters")}
+                      </Button>
+                    }
+                  />
+                )}
+              </TableStateRow>
+            )}
+            {!isLoading && !error && filtered.map(o => {
+              const ttc = Number(o.total_ttc), paid = Number(o.paid_amount);
+              const d = daysLeft(o.due_date, o.status);
+              const dTone = d === null ? "neutral" : d < 0 ? "danger" : d <= 3 ? "warning" : "neutral";
+              const dLabel = d === null ? "—" : d < 0 ? `${Math.abs(d)}j retard` : d === 0 ? "Aujourd'hui" : `${d}j`;
+              const st = STATUS[o.status]; const ps = PAY[o.payment_status];
+              return (
+                <TableRow key={o.id} className="group">
+                  <TableCell className="font-mono text-sm">
+                    <Link to="/orders/$id" params={{ id: o.id }} className="font-medium hover:underline">
+                      {o.order_number}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{o.customers?.name ?? "—"}</TableCell>
+                  <TableCell className="text-sm">{Array.from(new Set((o.order_items ?? []).map(it => it.warehouses?.name).filter(Boolean))).join(", ") || "—"}</TableCell>
+                  <TableCell className="tabular-nums">{new Date(o.order_date).toLocaleDateString("fr-FR")}</TableCell>
+                  <TableCell className="tabular-nums">{new Date(o.due_date).toLocaleDateString("fr-FR")}</TableCell>
 
-      <Card className="p-4">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <div className="relative max-w-sm flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-8" placeholder="Rechercher N° ou client…" value={q} onChange={e => setQ(e.target.value)} />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous statuts</SelectItem>
-              {Object.entries(STATUS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-              <SelectItem value="late">En retard</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={payFilter} onValueChange={setPayFilter}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous paiements</SelectItem>
-              {Object.entries(PAY).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={customerFilter} onValueChange={setCustomerFilter}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Client" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous clients</SelectItem>
-              {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous dépôts</SelectItem>
-              {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Du" />
-          <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Au" />
-          {(q || statusFilter !== "all" || payFilter !== "all" || customerFilter !== "all" || warehouseFilter !== "all" || dateFrom || dateTo) && (
-            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setStatusFilter("all"); setPayFilter("all"); setCustomerFilter("all"); setWarehouseFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
-          )}
-
-        </div>
-
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader><TableRow>
-              <TableHead>N°</TableHead><TableHead>Client</TableHead>
-              <TableHead>Dépôt</TableHead>
-              <TableHead>Date</TableHead><TableHead>Dernier jour</TableHead>
-              <TableHead>Délai</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Payé</TableHead>
-              <TableHead className="text-right">Reste</TableHead>
-              <TableHead>Statut</TableHead><TableHead>Paiement</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={12} className="h-24 text-center text-muted-foreground">Aucune commande</TableCell></TableRow>
-              ) : filtered.map(o => {
-                const ttc = Number(o.total_ttc), paid = Number(o.paid_amount);
-                const d = daysLeft(o.due_date, o.status);
-                const dColor = d === null ? "secondary" : d < 0 ? "destructive" : d <= 3 ? "default" : "outline";
-                const dLabel = d === null ? "—" : d < 0 ? `${Math.abs(d)}j retard` : d === 0 ? "Aujourd'hui" : `${d}j`;
-                const st = STATUS[o.status]; const ps = PAY[o.payment_status];
-                return (
-                  <TableRow key={o.id}>
-                    <TableCell className="font-mono text-sm">{o.order_number}</TableCell>
-                    <TableCell>{o.customers?.name ?? "—"}</TableCell>
-                    <TableCell className="text-sm">{Array.from(new Set((o.order_items ?? []).map(it => it.warehouses?.name).filter(Boolean))).join(", ") || "—"}</TableCell>
-                    <TableCell>{new Date(o.order_date).toLocaleDateString("fr-FR")}</TableCell>
-                    <TableCell>{new Date(o.due_date).toLocaleDateString("fr-FR")}</TableCell>
-
-                    <TableCell><Badge variant={dColor as any}>{dLabel}</Badge></TableCell>
-                    <TableCell className="text-right tabular-nums">{fmt(ttc)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{fmt(paid)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{fmt(Math.max(0, ttc - paid))}</TableCell>
-                    <TableCell><Badge className={st.className} variant="secondary">{st.label}</Badge></TableCell>
-                    <TableCell><Badge className={ps.className} variant="secondary">{ps.label}</Badge></TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="icon" variant="ghost" asChild title="Voir">
-                          <Link to="/orders/$id" params={{ id: o.id }}><Eye className="h-4 w-4" /></Link>
+                  <TableCell><StatusBadge tone={dTone} label={dLabel} /></TableCell>
+                  <TableCell className="text-end tabular-nums">{fmt(ttc)}</TableCell>
+                  <TableCell className="text-end tabular-nums">{fmt(paid)}</TableCell>
+                  <TableCell className="text-end tabular-nums">{fmt(Math.max(0, ttc - paid))}</TableCell>
+                  <TableCell><StatusBadge tone={st.tone} label={st.label} /></TableCell>
+                  <TableCell><StatusBadge tone={ps.tone} label={ps.label} /></TableCell>
+                  {/* Pinned to the end edge so the row's actions stay reachable
+                      while the twelve columns scroll horizontally. */}
+                  <TableCell className="sticky end-0 z-10 bg-card text-end group-hover:bg-accent/40">
+                    {/* Five hard-coded icon colours per row over forty rows left
+                        the eye nowhere to rest: the icons now inherit a muted
+                        colour and take the button's own hover. Only deletion
+                        keeps a colour, because it is the irreversible one. */}
+                    <div className="flex justify-end gap-1 text-muted-foreground [&_button]:h-8 [&_button]:w-8">
+                      <Button size="icon" variant="ghost" asChild title="Voir">
+                        <Link to="/orders/$id" params={{ id: o.id }}><Eye className="h-4 w-4" /></Link>
+                      </Button>
+                      {o.status === "pending" && (
+                        <Button size="icon" variant="ghost" title="Valider" onClick={async () => { if (await confirm({ title: `Valider la commande ${o.order_number} ?`, description: "La commande passe en préparation. Le stock n'est pas encore mouvementé — il le sera à la livraison.", confirmLabel: "Valider" })) updateStatus.mutate({ id: o.id, status: "validated" }); }}>
+                          <CheckCircle2 className="h-4 w-4" />
                         </Button>
-                        {o.status === "pending" && (
-                          <Button size="icon" variant="ghost" title="Valider" onClick={async () => { if (await confirm({ title: `Valider la commande ${o.order_number} ?`, description: "La commande passe en préparation. Le stock n'est pas encore mouvementé — il le sera à la livraison.", confirmLabel: "Valider" })) updateStatus.mutate({ id: o.id, status: "validated" }); }}>
-                            <CheckCircle2 className="h-4 w-4 text-blue-600" />
-                          </Button>
-                        )}
-                        {(o.status === "pending" || o.status === "validated") && (
-                          <Button size="icon" variant="ghost" title="Livrer" onClick={async () => { if (await confirm({ title: `Marquer la commande ${o.order_number} comme livrée ?`, description: "La marchandise sera immédiatement sortie du stock. En cas d'erreur, repasser la commande en Annulée la réintègre.", confirmLabel: "Livrer" })) updateStatus.mutate({ id: o.id, status: "delivered" }); }}>
-                            <Truck className="h-4 w-4 text-emerald-600" />
-                          </Button>
-                        )}
-                        {o.status !== "cancelled" && o.status !== "delivered" && (
-                          <Button size="icon" variant="ghost" title="Annuler" onClick={async () => { if (await confirm({ title: `Annuler la commande ${o.order_number} ?`, description: "Si elle avait déjà été livrée, la marchandise sera réintégrée au stock.", confirmLabel: "Annuler la commande", destructive: true })) updateStatus.mutate({ id: o.id, status: "cancelled" }); }}>
-                            <XCircle className="h-4 w-4 text-rose-600" />
-                          </Button>
-                        )}
-                        <Button size="icon" variant="ghost" title="Supprimer" onClick={async () => { if (await confirm({ title: `Supprimer la commande ${o.order_number} ?`, description: "Si elle était livrée, la marchandise sera automatiquement réintégrée au stock.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(o.id); }}>
-                          <Trash2 className="h-4 w-4" />
+                      )}
+                      {(o.status === "pending" || o.status === "validated") && (
+                        <Button size="icon" variant="ghost" title="Livrer" onClick={async () => { if (await confirm({ title: `Marquer la commande ${o.order_number} comme livrée ?`, description: "La marchandise sera immédiatement sortie du stock. En cas d'erreur, repasser la commande en Annulée la réintègre.", confirmLabel: "Livrer" })) updateStatus.mutate({ id: o.id, status: "delivered" }); }}>
+                          <Truck className="h-4 w-4" />
                         </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
+                      )}
+                      {o.status !== "cancelled" && o.status !== "delivered" && (
+                        <Button size="icon" variant="ghost" title="Annuler" onClick={async () => { if (await confirm({ title: `Annuler la commande ${o.order_number} ?`, description: "Si elle avait déjà été livrée, la marchandise sera réintégrée au stock.", confirmLabel: "Annuler la commande", destructive: true })) updateStatus.mutate({ id: o.id, status: "cancelled" }); }}>
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button size="icon" variant="ghost" title="Supprimer" onClick={async () => { if (await confirm({ title: `Supprimer la commande ${o.order_number} ?`, description: "Si elle était livrée, la marchandise sera automatiquement réintégrée au stock.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(o.id); }}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableShell>
     </div>
-  );
-}
-
-function Kpi({ icon: Icon, label, value, accent }: { icon: any; label: string; value: number | string; accent?: string }) {
-  const color =
-    accent === "emerald" ? "text-emerald-600" :
-    accent === "amber" ? "text-amber-600" :
-    accent === "rose" ? "text-rose-600" :
-    accent === "blue" ? "text-blue-600" : "text-primary";
-  return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-        </div>
-        <Icon className={`h-5 w-5 ${color}`} />
-      </div>
-    </Card>
   );
 }
