@@ -339,6 +339,45 @@
 
   /* Hairline separator that reads correctly in both directions. */
   .rule-start { border-inline-start: 3px solid var(--color-primary); }
+
+  /* --- List screens (1.1a §3.5) --------------------------------------
+     One shell for every list table, so the eleven list screens stop
+     drifting apart: a `surface` box, a bounded scroll area, and a column
+     header that stays put past the fifteenth row. */
+
+  /* The Table primitive renders its own `overflow-auto` wrapper. Bounding
+     THAT element is what turns it into the scrollport the sticky header
+     sticks to — a max-height on an outer div would leave the header
+     scrolling away with the page, which is the trap here. */
+  .table-scroll > div {
+    max-height: calc(100vh - var(--table-offset, 22rem));
+    overflow: auto;
+  }
+
+  /* Sticky on the cells rather than on `thead`: browser support is far
+     older and it survives the row borders. `--color-muted` is opaque, so
+     rows pass *under* the header instead of showing through it — the
+     `bg-muted/40` tint of the primitive would be translucent. */
+  .table-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background-color: var(--color-muted);
+    box-shadow:
+      inset 0 -1px 0 0 var(--color-border),
+      0 6px 10px -8px oklch(0.2 0.04 260 / 0.35);
+  }
+
+  /* Micro label — the type scale's smallest role (stat cards, rail
+     titles). Kept as one class so the eyebrow text can't drift. */
+  .micro-label {
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-muted-foreground);
+  }
 }
 
 @keyframes enter-up {
@@ -409,6 +448,26 @@
 [dir="rtl"] table th,
 [dir="rtl"] table td {
   text-align: right;
+}
+
+/* …but a cell that asks for a logical alignment must win. The rule above
+   scores (0,1,2) and the `.text-end` utility only (0,1,0), so in Arabic every
+   amount column was dragged back to the start edge and numbers stopped forming
+   a readable column — the same defect `.text-right` had, one layer deeper.
+   These rules restore the logical utilities as the authority; the physical
+   ones keep their compatibility mapping above. */
+[dir="rtl"] table th.text-end,
+[dir="rtl"] table td.text-end { text-align: end; }
+[dir="rtl"] table th.text-start,
+[dir="rtl"] table td.text-start { text-align: start; }
+[dir="rtl"] table th.text-center,
+[dir="rtl"] table td.text-center { text-align: center; }
+
+/* Arabic has no capitals, and letter-spacing pulls its joined forms apart:
+   the micro label drops both in RTL and keeps only its size and colour. */
+[dir="rtl"] .micro-label {
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 /* Sidebar border-r becomes border-l in RTL */
