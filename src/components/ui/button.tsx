@@ -5,17 +5,26 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  // Transitions now cover shadow and transform as well as colour: a button that
+  // lifts a little and deepens its shadow reads as pressable, which a pure
+  // colour swap never did. Focus is deliberately NOT handled here — the single
+  // global focus ring in styles.css owns it, so we no longer stack two rings.
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background-color,border-color,box-shadow,transform] duration-(--dur-fast) ease-(--ease-out) active:translate-y-px disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+        // The brand glow is reserved for the primary action, and only on hover,
+        // so "the main thing to do on this screen" stays legible at a glance.
+        default:
+          "bg-primary text-primary-foreground shadow-(--elev-1) hover:bg-primary/90 hover:shadow-(--elev-brand)",
+        destructive:
+          "bg-destructive text-destructive-foreground shadow-(--elev-1) hover:bg-destructive/90 hover:shadow-(--elev-2)",
         outline:
-          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "border border-input bg-background shadow-(--elev-1) hover:border-primary/40 hover:bg-accent hover:text-accent-foreground hover:shadow-(--elev-2)",
+        secondary:
+          "bg-secondary text-secondary-foreground shadow-(--elev-1) hover:bg-secondary/80 hover:shadow-(--elev-2)",
+        ghost: "hover:bg-accent hover:text-accent-foreground active:translate-y-0",
+        link: "text-primary underline-offset-4 hover:underline active:translate-y-0",
       },
       size: {
         default: "h-9 px-4 py-2",
