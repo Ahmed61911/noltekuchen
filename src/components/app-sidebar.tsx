@@ -14,6 +14,28 @@ import { useAuth } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions";
 import logoUrl from "@/assets/nolte-logo.svg";
 
+/**
+ * v1.1a — one nav-item recipe, used by every entry including Settings.
+ *
+ * The active state in v1.0 was a pale orange fill and nothing else, which in a
+ * seventeen-item navigation is easy to miss. It now carries three signals at
+ * once: a brand-coloured rail on the inline-start edge, the tint, and a heavier
+ * label — plus the icon itself turning orange. `before:start-0` (not `left-0`)
+ * keeps the rail on the correct edge in Arabic.
+ *
+ * Height goes 32px -> 36px: an ERP nav is a target you hit dozens of times a
+ * day, and the row gap tightens to compensate so the list stays the same length.
+ */
+const navItemClass =
+  "relative h-9 gap-3 rounded-md font-medium text-sidebar-foreground/80 transition-colors duration-(--dur-fast) ease-(--ease-out) hover:bg-sidebar-accent/60 hover:text-sidebar-foreground [&>svg]:text-sidebar-foreground/55 before:absolute before:inset-y-1.5 before:start-0 before:w-[3px] before:rounded-e-full before:bg-sidebar-primary before:opacity-0 before:transition-opacity before:duration-(--dur-fast) data-[active=true]:bg-sidebar-accent data-[active=true]:font-semibold data-[active=true]:text-sidebar-accent-foreground data-[active=true]:before:opacity-100 data-[active=true]:[&>svg]:text-sidebar-primary";
+
+/** Sections read as structure, not as more nav items: smaller, tracked out, quieter. */
+const groupLabelClass =
+  "h-7 px-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/45";
+
+/** A hairline + breathing room is enough to separate blocks; no boxes needed. */
+const groupDividerClass = "mt-1 border-t border-sidebar-border/60 pt-3";
+
 export function AppSidebar() {
   const { t, lang } = useI18n();
   const { isAdmin } = useAuth();
@@ -47,27 +69,32 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" side={lang === "ar" ? "right" : "left"} className="border-r">
-      <SidebarHeader className="border-b">
-        <Link to="/" className="flex items-center gap-3 px-2 py-2.5">
+      {/* h-14 matches the app header exactly, so the two border-b lines meet
+          instead of missing each other by a few pixels at the top-start corner. */}
+      <SidebarHeader className="h-14 justify-center border-b border-sidebar-border/70 p-1">
+        <Link
+          to="/"
+          className="flex items-center gap-3 rounded-md px-2 py-1 transition-colors duration-(--dur-fast) hover:bg-sidebar-accent/50 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+        >
           {collapsed ? (
             <img src={logoUrl} alt="Nolte Küchen" className="h-7 w-7 object-contain" />
           ) : (
             <div className="flex flex-col leading-tight">
               <img src={logoUrl} alt="Nolte Küchen" className="h-6 w-auto" />
-              <span className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{t("app_tagline")}</span>
+              <span className="mt-1 text-[10px] uppercase leading-none tracking-[0.12em] text-sidebar-foreground/50">{t("app_tagline")}</span>
             </div>
           )}
         </Link>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="gap-0">
         <SidebarGroup>
-          {!collapsed && <SidebarGroupLabel>Principal</SidebarGroupLabel>}
+          {!collapsed && <SidebarGroupLabel className={groupLabelClass}>Principal</SidebarGroupLabel>}
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-0.5">
               {main.map((it) => (
                 <SidebarMenuItem key={it.to}>
-                  <SidebarMenuButton asChild isActive={isActive(it.to)}>
+                  <SidebarMenuButton asChild isActive={isActive(it.to)} className={navItemClass}>
                     <Link to={it.to} className="flex items-center gap-3">
                       <it.icon className="h-4 w-4 shrink-0" />
                       {!collapsed && <span>{it.label}</span>}
@@ -79,13 +106,13 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          {!collapsed && <SidebarGroupLabel>Opérations</SidebarGroupLabel>}
+        <SidebarGroup className={groupDividerClass}>
+          {!collapsed && <SidebarGroupLabel className={groupLabelClass}>Opérations</SidebarGroupLabel>}
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-0.5">
               {ops.map((it) => (
                 <SidebarMenuItem key={it.to}>
-                  <SidebarMenuButton asChild isActive={isActive(it.to)}>
+                  <SidebarMenuButton asChild isActive={isActive(it.to)} className={navItemClass}>
                     <Link to={it.to} className="flex items-center gap-3">
                       <it.icon className="h-4 w-4 shrink-0" />
                       {!collapsed && <span>{it.label}</span>}
@@ -98,12 +125,12 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {isAdmin && (
-          <SidebarGroup>
-            {!collapsed && <SidebarGroupLabel>Administration</SidebarGroupLabel>}
+          <SidebarGroup className={groupDividerClass}>
+            {!collapsed && <SidebarGroupLabel className={groupLabelClass}>Administration</SidebarGroupLabel>}
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="gap-0.5">
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/users")}>
+                  <SidebarMenuButton asChild isActive={isActive("/users")} className={navItemClass}>
                     <Link to="/users" className="flex items-center gap-3">
                       <Users className="h-4 w-4" />
                       {!collapsed && <span>{t("users")}</span>}
@@ -111,7 +138,7 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/roles")}>
+                  <SidebarMenuButton asChild isActive={isActive("/roles")} className={navItemClass}>
                     <Link to="/roles" className="flex items-center gap-3">
                       <Shield className="h-4 w-4" />
                       {!collapsed && <span>Rôles & permissions</span>}
@@ -119,7 +146,7 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/audit")}>
+                  <SidebarMenuButton asChild isActive={isActive("/audit")} className={navItemClass}>
                     <Link to="/audit" className="flex items-center gap-3">
                       <ShieldCheck className="h-4 w-4" />
                       {!collapsed && <span>Journal d'audit</span>}
@@ -132,10 +159,10 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t">
+      <SidebarFooter className="border-t border-sidebar-border/70">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive("/settings")}>
+            <SidebarMenuButton asChild isActive={isActive("/settings")} className={navItemClass}>
               <Link to="/settings" className="flex items-center gap-3">
                 <Settings className="h-4 w-4" />
                 {!collapsed && <span>{t("settings")}</span>}

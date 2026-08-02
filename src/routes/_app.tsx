@@ -21,8 +21,8 @@ function AppLayout() {
 
   if (loading || !user) {
     return (
-      <div className="grid min-h-screen place-items-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="grid min-h-screen place-items-center bg-gradient-mesh">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
   }
@@ -34,7 +34,12 @@ function AppLayout() {
           <AppSidebar />
           <SidebarInset className="flex flex-1 flex-col">
             <AppHeader />
-            <main className="flex-1 p-4 md:p-6 lg:p-8">
+            {/* `.enter` staggers whatever the route renders, so arriving on a
+                screen is one orchestrated moment instead of a hard cut. The
+                animation replays on navigation because each route mounts its
+                own elements — no key, no remount, no refetch. Disabled
+                automatically under prefers-reduced-motion. */}
+            <main className="enter flex-1 p-4 md:p-6 lg:p-8">
               <Outlet />
             </main>
           </SidebarInset>
