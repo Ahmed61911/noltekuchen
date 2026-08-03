@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { DataPagination, usePagination } from "@/components/data/pagination";
 
 export const Route = createFileRoute("/_app/audit")({
   component: AuditPage,
@@ -22,7 +23,7 @@ function AuditPage() {
   const { data: logs = [] } = useQuery({
     queryKey: ["audit_all"],
     queryFn: async () => {
-      const { data } = await supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(500);
+      const { data } = await supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(5000);
       return data ?? [];
     },
     enabled: isAdmin,
@@ -53,6 +54,12 @@ function AuditPage() {
   }), [logs, search, module, profileMap]);
 
   const modules = useMemo(() => Array.from(new Set(logs.map((l: any) => l.module))), [logs]);
+
+  const pagination = usePagination({
+    total: filtered.length,
+    resetKey: `${search}-${module}`,
+  });
+  const paged = pagination.slice(filtered);
 
   if (!isAdmin) return null;
 
@@ -97,9 +104,9 @@ function AuditPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Aucune entrée</TableCell></TableRow>
-              ) : filtered.map((l: any) => (
+              {paged.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Aucun résultat</TableCell></TableRow>
+              ) : paged.map((l: any) => (
                 <TableRow key={l.id}>
                   <TableCell className="text-xs">{new Date(l.created_at).toLocaleString()}</TableCell>
                   <TableCell>{profileMap.get(l.user_id) || "—"}</TableCell>
@@ -114,6 +121,7 @@ function AuditPage() {
           </Table>
         </CardContent>
       </Card>
+      <DataPagination pagination={pagination} />
     </div>
   );
 }

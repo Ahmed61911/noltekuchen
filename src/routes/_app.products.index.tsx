@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { Plus, Pencil, Trash2, Upload, ImageIcon, Loader2, X, ChevronLeft, ChevronRight, Package, AlertTriangle, PackageX, RotateCcw } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -372,8 +372,8 @@ function ProductsIndexPage() {
             <SelectItem value="out">Rupture</SelectItem>
           </SelectContent>
         </Select>
-        <Input type="number" placeholder="Prix min" className="w-32" value={priceMin} onChange={e => setPriceMin(e.target.value)} />
-        <Input type="number" placeholder="Prix max" className="w-32" value={priceMax} onChange={e => setPriceMax(e.target.value)} />
+        <Input type="number" placeholder="Prix min" className="w-32" value={priceMin} onChange={e = step="any"> setPriceMin(e.target.value)} />
+        <Input type="number" placeholder="Prix max" className="w-32" value={priceMax} onChange={e = step="any"> setPriceMax(e.target.value)} />
         <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
           <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
           <SelectContent>

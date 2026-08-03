@@ -2,7 +2,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ArrowLeft, CheckCircle2, Truck, XCircle, Plus, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,14 +53,62 @@ function OrderDetail() {
 
   const updateStatus = useMutation({
     mutationFn: async (status: "pending" | "validated" | "delivered" | "cancelled") => {
+      if (status === "validated" && order.status !== "validated") {
+        const prefix = "FAC-" + new Date().getFullYear().toString().slice(-2) + (new Date().getMonth() + 1).toString().padStart(2, "0");
+        const { data: latest } = await supabase.from("invoices").select("invoice_number").like("invoice_number", `${prefix}-%`).order("invoice_number", { ascending: false }).limit(1).single();
+        let nextSeq = 1;
+        if (latest?.invoice_number) {
+          const parts = latest.invoice_number.split("-");
+          nextSeq = parseInt(parts[2], 10) + 1;
+        }
+        const invNum = `${prefix}-${nextSeq.toString().padStart(4, "0")}`;
+
+        const { data: inv, error: invErr } = await supabase.from("invoices").insert({
+          invoice_number: invNum,
+          customer_id: order.customer_id,
+          invoice_date: new Date().toISOString().split("T")[0],
+          due_date: order.due_date,
+          status: "draft",
+          source_sale_id: order.id,
+          subtotal_ht: order.subtotal_ht,
+          tax_amount: order.tax_amount,
+          total_ttc: order.total_ttc,
+          discount_amount: order.discount_amount,
+          created_by: user?.id,
+        }).select("id").single();
+        if (invErr) throw invErr;
+
+        const invItems = items.map((it: any) => ({
+          invoice_id: inv.id, product_id: it.product_id, description: it.description,
+          quantity: it.quantity, unit_price: it.unit_price, discount_rate: it.discount_rate,
+          tax_rate: it.tax_rate, line_total_ht: it.line_total_ht, line_tax: it.line_tax,
+          line_total_ttc: it.line_total_ttc,
+        }));
+        if (invItems.length > 0) {
+          const { error: iiErr } = await supabase.from("invoice_items").insert(invItems);
+          if (iiErr) throw iiErr;
+        }
+
+        const movements = items.map((it: any) => ({
+          product_id: it.product_id, type: "out" as const, quantity: it.quantity,
+          reason: `Vente - Commande #${order.order_number}`, user_id: user?.id, document_ref: order.order_number,
+        }));
+        if (movements.length > 0) {
+          const { error: smErr } = await supabase.from("stock_movements").insert(movements);
+          if (smErr) throw smErr;
+        }
+      }
+
       const { error } = await supabase.from("orders").update({ status }).eq("id", id);
       if (error) throw error;
+      return status;
     },
-    onSuccess: () => {
-      toast.success("Statut mis à jour");
+    onSuccess: (s) => {
+      toast.success(s === "validated" ? "Commande validée, facture créée et stock réduit !" : "Statut mis à jour");
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["invoices"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -72,6 +120,19 @@ function OrderDetail() {
         order_id: id, amount, method: method as "cash" | "card" | "transfer" | "check" | "credit", created_by: user?.id ?? null,
       });
       if (error) throw error;
+
+      // Recalculate paid_amount
+      const { data: paymentsData, error: pErr } = await supabase.from("order_payments").select("amount").eq("order_id", id);
+      if (pErr) throw pErr;
+      
+      const newPaidAmount = paymentsData.reduce((acc, p) => acc + Number(p.amount), 0);
+      const newStatus = newPaidAmount >= order.total_ttc ? "paid" : (newPaidAmount > 0 ? "partial" : "unpaid");
+      
+      const { error: oErr } = await supabase.from("orders").update({
+        paid_amount: newPaidAmount,
+        payment_status: newStatus
+      }).eq("id", id);
+      if (oErr) throw oErr;
     },
     onSuccess: () => {
       toast.success("Paiement enregistré");

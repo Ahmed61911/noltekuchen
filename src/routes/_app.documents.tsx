@@ -5,7 +5,7 @@ import {
   Upload, Search, Trash2, Download, FileText, FileSpreadsheet, FileImage,
   File as FileIcon, History, Loader2,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

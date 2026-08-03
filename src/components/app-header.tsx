@@ -71,7 +71,7 @@ function useNotifications(enabled: boolean) {
 
 export function AppHeader() {
   const { theme, toggle } = useTheme();
-  const { lang, setLang, t } = useI18n();
+  const { lang, t } = useI18n();
   const { user, signOut, isAdmin } = useAuth();
   const nav = useNavigate();
   const { data: notifs = [] } = useNotifications(!!user);
@@ -99,12 +99,6 @@ export function AppHeader() {
       </div>
 
       <div className="ms-auto flex items-center gap-1">
-        {/* size="icon" is kept for the 36px target, but the box widens so the
-            icon and the language code stop crowding each other. */}
-        <Button variant="ghost" size="icon" className="w-auto gap-1 px-2" onClick={() => setLang(lang === "fr" ? "ar" : "fr")} title="Langue">
-          <Languages className="h-4 w-4" />
-          <span className="text-xs font-semibold uppercase">{lang}</span>
-        </Button>
         <Button variant="ghost" size="icon" onClick={toggle} title="Thème">
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>

@@ -1,15 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, Loader2, CheckCircle2, Circle, Upload, FileText, ImageIcon } from "lucide-react";
-import { toast } from "sonner";
+import { ArrowLeft, Loader2, CheckCircle2, Circle, Upload, FileText, ImageIcon, Pencil } from "lucide-react";
+import { toast } from "@/lib/notify";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 
@@ -29,6 +32,14 @@ const STAGE_LABELS: Record<string, string> = {
   completed: "Projet terminé",
 };
 
+const STATUS = {
+  active: { label: "En cours", className: "bg-blue-500/15 text-blue-700 dark:text-blue-400" },
+  on_hold: { label: "En pause", className: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+  completed: { label: "Terminé", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
+  cancelled: { label: "Annulé", className: "bg-rose-500/15 text-rose-700 dark:text-rose-400" },
+} as const;
+type Status = keyof typeof STATUS;
+
 type Stage = {
   id: string; stage_key: string; order_index: number;
   planned_date: string | null; actual_date: string | null;
@@ -46,6 +57,19 @@ function ProjectDetail() {
   const { id } = Route.useParams();
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
+  const [form, setForm] = useState({
+    name: "", customer_id: "", start_date: "", expected_end_date: "", budget: 0, install_address: "", notes: "",
+  });
+
+  const { data: customers = [] } = useQuery({
+    queryKey: ["customers-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("customers").select("id,name").order("name");
+      if (error) throw error;
+      return data as { id: string; name: string }[];
+    },
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["project", id],
@@ -71,6 +95,37 @@ function ProjectDetail() {
       });
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["project", id] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateProject = useMutation({
+    mutationFn: async (patch: Partial<typeof form>) => {
+      const { error } = await supabase.from("projects").update(patch).eq("id", id);
+      if (error) throw error;
+      await supabase.from("project_activity").insert({
+        project_id: id, user_id: user?.id ?? null,
+        action: "project_updated",
+        details: { patch } as any,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Projet mis à jour");
+      qc.invalidateQueries({ queryKey: ["project", id] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      setEditOpen(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateStatus = useMutation({
+    mutationFn: async (status: Status) => {
+      const { error } = await supabase.from("projects").update({ status }).eq("id", id);
+      if (error) throw error;
+      await supabase.from("project_activity").insert({
+        project_id: id, user_id: user?.id ?? null, action: "status_changed", details: { status } as any,
+      });
+    },
+    onSuccess: () => { toast.success("Statut mis à jour"); qc.invalidateQueries({ queryKey: ["project", id] }); qc.invalidateQueries({ queryKey: ["projects"] }); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -107,6 +162,52 @@ function ProjectDetail() {
             <h1 className="font-display text-2xl font-semibold tracking-tight">{proj.name}</h1>
             <p className="text-sm text-muted-foreground">{proj.customers?.name ?? "—"} · {proj.install_address ?? "Adresse non renseignée"}</p>
           </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Select value={proj.status} onValueChange={(v) => updateStatus.mutate(v as Status)}>
+            <SelectTrigger className={`w-36 h-9 font-medium ${STATUS[proj.status as Status]?.className || ""}`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(STATUS) as Status[]).map(k => (
+                <SelectItem key={k} value={k}>{STATUS[k].label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Dialog open={editOpen} onOpenChange={setEditOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" onClick={() => setForm({
+                name: proj.name, customer_id: proj.customer_id || "", start_date: proj.start_date || "",
+                expected_end_date: proj.expected_end_date || "", budget: proj.budget, install_address: proj.install_address || "", notes: proj.notes || "",
+              })}>
+                <Pencil className="me-2 h-4 w-4" /> Éditer
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader><DialogTitle>Éditer le projet</DialogTitle></DialogHeader>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2"><Label>Nom du projet *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+                <div><Label>Client</Label>
+                  <Select value={form.customer_id} onValueChange={v => setForm({ ...form, customer_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
+                    <SelectContent>{customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Budget (DH)</Label><Input type="number" value={form.budget} onChange={e = step="any"> setForm({ ...form, budget: Number(e.target.value) })} /></div>
+                <div><Label>Date de début</Label><Input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} /></div>
+                <div><Label>Date de fin prévue</Label><Input type="date" value={form.expected_end_date} onChange={e => setForm({ ...form, expected_end_date: e.target.value })} /></div>
+                <div className="col-span-2"><Label>Adresse d'installation</Label><Input value={form.install_address} onChange={e => setForm({ ...form, install_address: e.target.value })} /></div>
+                <div className="col-span-2"><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditOpen(false)}>Annuler</Button>
+                <Button onClick={() => updateProject.mutate(form)} disabled={updateProject.isPending}>
+                  {updateProject.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />} Enregistrer
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

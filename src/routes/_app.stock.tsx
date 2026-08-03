@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Plus, ArrowDown, ArrowUp } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
+import { DataPagination, usePagination } from "@/components/data/pagination";
 
 export const Route = createFileRoute("/_app/stock")({
   component: StockPage,
@@ -60,7 +61,7 @@ function StockPage() {
         .from("stock_movements")
         .select("id,type,quantity,reason,created_at,product_id,warehouse_id,products(name,reference),warehouses(name)")
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(2000);
       if (error) throw error;
       return data;
     },
@@ -103,6 +104,11 @@ function StockPage() {
     return true;
   });
 
+  const pagination = usePagination({
+    total: filteredMovements.length,
+    resetKey: `${typeFilter}-${productFilter}-${warehouseFilter}-${dateFrom}-${dateTo}-${q}`,
+  });
+  const pagedMovements = pagination.slice(filteredMovements);
 
   return (
     <div className="space-y-6">
@@ -144,7 +150,7 @@ function StockPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">{t("quantity")}</Label>
-                  <Input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
+                  <Input type="number" min={1} value={quantity} onChange={(e) = step="any"> setQuantity(Number(e.target.value))} />
                 </div>
               </div>
               <div className="space-y-1.5">
@@ -219,10 +225,10 @@ function StockPage() {
           </TableHeader>
           <TableBody>
             {isLoading && <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("loading")}</TableCell></TableRow>}
-            {!isLoading && filteredMovements.length === 0 && (
+            {!isLoading && pagedMovements.length === 0 && (
               <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("no_data")}</TableCell></TableRow>
             )}
-            {filteredMovements.map((m) => {
+            {pagedMovements.map((m) => {
               const prod = m.products as { name?: string; reference?: string } | null;
               const wh = m.warehouses as { name?: string } | null;
               return (
@@ -248,6 +254,7 @@ function StockPage() {
           </TableBody>
         </Table>
       </Card>
+      <DataPagination pagination={pagination} />
     </div>
 
   );

@@ -22,7 +22,9 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   LineChart, Line, PieChart, Pie, Cell, Legend,
 } from "recharts";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
+import { DataPagination, usePagination } from "@/components/data/pagination";
 
 export const Route = createFileRoute("/_app/logs")({
   component: LogsPage,
@@ -58,7 +60,7 @@ function LogsPage() {
   const { data: logs = [] } = useQuery({
     queryKey: ["logs_all"],
     queryFn: async () => {
-      const { data } = await supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(1000);
+      const { data } = await supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(5000);
       return (data ?? []) as Log[];
     },
   });
@@ -139,6 +141,31 @@ function LogsPage() {
     return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
   }, [logs]);
 
+  const pagination = usePagination({
+    total: filtered.length,
+    resetKey: `${search}-${userF}-${moduleF}-${actionF}-${periodF}`,
+  });
+  const paged = pagination.slice(filtered);
+
+  const exportToExcel = () => {
+    const data = filtered.map(l => {
+      const meta = ACTION_META[l.action] ?? ACTION_META.view;
+      const desc = String((l.new_value as { description?: string } | null)?.description ?? "");
+      return {
+        "Date": new Date(l.created_at).toLocaleString("fr-FR"),
+        "Utilisateur": profileMap.get(l.user_id ?? "") || "Inconnu",
+        "Module": l.module,
+        "Action": meta.label,
+        "Entité ID": l.entity_id ?? "",
+        "Description": desc,
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Journal");
+    XLSX.writeFile(wb, `journal_actions_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -149,6 +176,12 @@ function LogsPage() {
           <h1 className="font-display text-2xl font-semibold tracking-tight">Journal d'actions</h1>
           <p className="text-sm text-muted-foreground">Historique complet de toutes les actions effectuées dans l'ERP</p>
         </div>
+      </div>
+      
+      <div className="flex justify-end">
+        <Button variant="outline" onClick={exportToExcel} className="gap-2">
+          <Download className="h-4 w-4" /> Exporter en Excel
+        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -260,9 +293,9 @@ function LogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 ? (
+              {paged.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">Aucune action enregistrée</TableCell></TableRow>
-              ) : filtered.map((l) => {
+              ) : paged.map((l) => {
                 const meta = ACTION_META[l.action] ?? ACTION_META.view;
                 const Icon = meta.icon;
                 const desc = (l.new_value as { description?: string } | null)?.description ?? "—";
@@ -290,6 +323,7 @@ function LogsPage() {
           </Table>
         </CardContent>
       </Card>
+      <DataPagination pagination={pagination} />
 
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -308,24 +342,61 @@ function LogsPage() {
                 <p className="text-xs font-medium text-muted-foreground mb-1">User Agent</p>
                 <p className="text-xs font-mono bg-muted/40 rounded p-2 break-all">{detail.user_agent ?? "—"}</p>
               </div>
-              {detail.old_value && (
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Ancienne valeur</p>
-                  <pre className="text-xs font-mono bg-red-50 border border-red-200 rounded p-2 overflow-auto max-h-[200px]">{JSON.stringify(detail.old_value, null, 2)}</pre>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Changements</p>
+                <div className="bg-muted/30 border rounded-md p-3">
+                  <FormattedDiff oldVal={detail.old_value} newVal={detail.new_value} />
                 </div>
-              )}
-              {detail.new_value && (
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Nouvelle valeur</p>
-                  <pre className="text-xs font-mono bg-emerald-50 border border-emerald-200 rounded p-2 overflow-auto max-h-[200px]">{JSON.stringify(detail.new_value, null, 2)}</pre>
-                </div>
-              )}
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
     </div>
   );
+}
+
+function formatValue(val: any): string {
+  if (val === null || val === undefined) return "—";
+  if (typeof val === "boolean") return val ? "Oui" : "Non";
+  if (typeof val === "object") return JSON.stringify(val);
+  return String(val);
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  name: "Nom", reference: "Référence", price: "Prix", quantity: "Quantité",
+  status: "Statut", budget: "Budget", start_date: "Date de début", expected_end_date: "Date de fin",
+  customer_id: "Client (ID)", warehouse_id: "Dépôt (ID)", product_id: "Produit (ID)",
+  type: "Type", reason: "Raison", description: "Description",
+  notes: "Notes", role: "Rôle", active: "Actif", email: "Email",
+  total_ht: "Total HT", total_ttc: "Total TTC",
+};
+
+function FormattedDiff({ oldVal, newVal }: { oldVal: any; newVal: any }) {
+  if (!oldVal && !newVal) return <p className="text-xs text-muted-foreground">Aucun détail</p>;
+  
+  const keys = new Set([...Object.keys(oldVal || {}), ...Object.keys(newVal || {})]);
+  const elements = Array.from(keys).map(k => {
+    if (k === "updated_at" || k === "created_at" || k === "id") return null;
+    const o = oldVal?.[k];
+    const n = newVal?.[k];
+    if (JSON.stringify(o) === JSON.stringify(n)) return null;
+    return (
+      <div key={k} className="text-sm grid grid-cols-[140px_1fr] gap-2 border-b last:border-0 pb-1 mb-1">
+        <span className="font-medium text-muted-foreground">{FIELD_LABELS[k] || k}</span>
+        {o !== undefined && n !== undefined ? (
+          <span><span className="line-through text-red-500/70 mr-2">{formatValue(o)}</span> ➔ <span className="text-emerald-600 font-medium ml-2">{formatValue(n)}</span></span>
+        ) : o !== undefined ? (
+          <span className="text-red-500/70">- {formatValue(o)}</span>
+        ) : (
+          <span className="text-emerald-600">+ {formatValue(n)}</span>
+        )}
+      </div>
+    );
+  }).filter(Boolean);
+
+  if (elements.length === 0) return <p className="text-xs text-muted-foreground">Aucune modification visible</p>;
+  return <div className="space-y-1">{elements}</div>;
 }
 
 function StatCard({ icon: Icon, label, value, color, bg }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number; color: string; bg: string }) {

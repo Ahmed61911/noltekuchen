@@ -5,7 +5,7 @@ import {
   Plus, Pencil, Trash2, Search, Loader2, Calendar as CalendarIcon,
   ChevronLeft, ChevronRight, Clock, MapPin, User, CheckCircle2, AlertCircle, PlayCircle, XCircle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { DataPagination, usePagination } from "@/components/data/pagination";
 
 export const Route = createFileRoute("/_app/appointments")({
   component: AppointmentsPage,
@@ -187,6 +188,12 @@ function AppointmentsPage() {
       );
     });
   }, [appointments, q, statusFilter, customerFilter, customers]);
+
+  const pagination = usePagination({
+    total: filtered.length,
+    resetKey: `${q}-${statusFilter}-${customerFilter}`,
+  });
+  const paged = pagination.slice(filtered);
 
   // KPIs
   const stats = useMemo(() => {
@@ -355,9 +362,9 @@ function AppointmentsPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Chargement…</TableCell></TableRow>
-                ) : filtered.length === 0 ? (
+                ) : paged.length === 0 ? (
                   <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Aucun rendez-vous</TableCell></TableRow>
-                ) : filtered.map(a => {
+                ) : paged.map(a => {
                   const m = statusMeta(a.status);
                   return (
                     <TableRow key={a.id}>
@@ -393,6 +400,7 @@ function AppointmentsPage() {
               </TableBody>
             </Table>
           </Card>
+          <DataPagination pagination={pagination} />
         </TabsContent>
       </Tabs>
 
@@ -532,7 +540,7 @@ function AppointmentDialog({
         <div className="col-span-2"><Label>Notes / Commentaires</Label><Textarea value={form.notes ?? ""} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
 
         <div><Label>Rappel (minutes avant)</Label>
-          <Input type="number" min={0} value={form.reminder_minutes ?? 0} onChange={e => setForm({ ...form, reminder_minutes: Number(e.target.value) })} />
+          <Input type="number" min={0} value={form.reminder_minutes ?? 0} onChange={e = step="any"> setForm({ ...form, reminder_minutes: Number(e.target.value) })} />
         </div>
       </div>
       <DialogFooter>

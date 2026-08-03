@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   Search, Pencil, Trash2, Plus, RotateCcw, Eye, EyeOff, Lock, Unlock, KeyRound, Copy, Loader2, Shield,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ import {
 } from "@/lib/users.functions";
 import { listRoles } from "@/lib/roles.functions";
 import { useConfirm } from "@/components/confirm-dialog";
+import { DataPagination, usePagination } from "@/components/data/pagination";
 
 export const Route = createFileRoute("/_app/users/")({
   component: UsersPage,
@@ -148,6 +149,12 @@ function UsersPage() {
     }
     return true;
   }), [users, search, roleFilter, statusFilter]);
+
+  const pagination = usePagination({
+    total: filtered.length,
+    resetKey: `${search}-${roleFilter}-${statusFilter}`,
+  });
+  const paged = pagination.slice(filtered);
 
   // Create / Edit dialog
   const [open, setOpen] = useState(false);
@@ -277,9 +284,9 @@ function UsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
+                {paged.length === 0 ? (
                   <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">Aucun utilisateur</TableCell></TableRow>
-                ) : filtered.map((u: any) => {
+                ) : paged.map((u: any) => {
                   const status = STATUS_BADGE[u.status] ?? STATUS_BADGE.active;
                   const role = roleByKey.get(u.role);
                   return (
@@ -316,9 +323,7 @@ function UsersPage() {
               </TableBody>
             </Table>
           )}
-          <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-muted-foreground">
-            <span>Affichage de {filtered.length} sur {users.length} utilisateurs</span>
-          </div>
+          <DataPagination pagination={pagination} />
         </CardContent>
       </Card>
 

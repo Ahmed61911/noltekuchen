@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
@@ -22,7 +22,7 @@ const NOTIF_KEY = "notif_prefs";
 const defaultNotif: NotifPrefs = { stock: true, projects: true, appointments: true, orders: true };
 
 function SettingsPage() {
-  const { lang, setLang, t } = useI18n();
+  const { t } = useI18n();
   const { theme, toggle } = useTheme();
 
   const [notif, setNotif] = useState<NotifPrefs>(() => {
@@ -137,17 +137,6 @@ function SettingsPage() {
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Languages className="h-4 w-4" /> Langue</CardTitle>
-          <CardDescription>Choisir la langue de l'interface</CardDescription>
-        </CardHeader>
-        <CardContent className="flex gap-2">
-          <Button variant={lang === "fr" ? "default" : "outline"} onClick={() => setLang("fr")}>Français</Button>
-          <Button variant={lang === "ar" ? "default" : "outline"} onClick={() => setLang("ar")}>العربية</Button>
         </CardContent>
       </Card>
 

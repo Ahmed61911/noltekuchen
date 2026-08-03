@@ -129,144 +129,23 @@ const fr: Dict = {
   pagination_last: "Dernière page",
 };
 
-const ar: Dict = {
-  app_name: "نولتي كوشن",
-  app_tagline: "نظام إدارة داخلي",
-  dashboard: "لوحة التحكم",
-  products: "المنتجات",
-  stock: "المخزون",
-  sales: "المبيعات والطلبات",
-  appointments: "المواعيد",
-  suppliers: "الموردون",
-  customers: "طلبات العملاء",
-  documents: "الوثائق",
-  reports: "التقارير",
-  logs: "سجل العمليات",
-  users: "المستخدمون",
-  settings: "الإعدادات",
-  logout: "تسجيل الخروج",
-  login: "تسجيل الدخول",
-  signup: "إنشاء حساب",
-  email: "البريد الإلكتروني",
-  password: "كلمة المرور",
-  full_name: "الاسم الكامل",
-  sign_in: "دخول",
-  sign_up: "تسجيل",
-  no_account: "ليس لديك حساب؟",
-  has_account: "لديك حساب بالفعل؟",
-  welcome_back: "مرحباً بعودتك",
-  create_account_title: "أنشئ حسابك",
-  total_stock: "إجمالي المخزون",
-  stock_in: "الإدخالات",
-  stock_out: "الإخراجات",
-  revenue: "المبيعات",
-  top_products: "أكثر المنتجات حركة",
-  low_stock_alerts: "تنبيهات المخزون المنخفض",
-  recent_activity: "النشاط الأخير",
-  movements_30d: "الحركات (آخر ٣٠ يوماً)",
-  period: "الفترة",
-  period_month: "شهر",
-  period_quarter: "ربع سنة",
-  period_semester: "٦ أشهر",
-  period_year: "سنة",
-  period_all: "الإجمالي",
-  movements: "الحركات",
-  stock_total_hint: "المخزون الحالي (خارج الفترة)",
-  add_product: "إضافة منتج",
-  edit_product: "تعديل منتج",
-  product_name: "اسم المنتج",
-  reference: "المرجع",
-  name: "الاسم",
-  sku: "رمز المنتج / SKU",
-  brand: "العلامة التجارية",
-  category: "التصنيف",
-  supplier: "المورد",
-  warehouse: "المستودع",
-  select_warehouse: "اختر مستودعاً",
-  purchase_price: "سعر الشراء",
-  selling_price: "سعر البيع",
-  margin: "الهامش",
-  quantity: "الكمية",
-  min_stock: "الحد الأدنى",
-  dimensions: "الأبعاد",
-  description: "الوصف",
-  images: "الصور",
-  image_url: "رابط الصورة",
-  actions: "إجراءات",
-  save: "حفظ",
-  cancel: "إلغاء",
-  delete: "حذف",
-  search: "بحث",
-  no_data: "لا توجد بيانات",
-  new_movement: "حركة جديدة",
-  movement_in: "إدخال",
-  movement_out: "إخراج",
-  type: "النوع",
-  reason: "السبب",
-  date: "التاريخ",
-  product: "المنتج",
-  by: "بواسطة",
-  loading: "جاري التحميل…",
-  saved: "تم الحفظ",
-  deleted: "تم الحذف",
-  error: "خطأ",
-  confirm_delete: "تأكيد الحذف؟",
-  units: "وحدة",
-  state_no_results_title: "لا توجد نتائج لهذه الفلاتر",
-  state_no_results_desc: "يوجد {total} عنصر، لكن لا شيء يطابق بحثك.",
-  state_reset_filters: "إعادة تعيين الفلاتر",
-  state_error_title: "تعذّر تحميل البيانات",
-  state_error_desc: "فشل الاتصال بالخادم. تحقّق من اتصالك بالشبكة.",
-  state_error_retry: "إعادة المحاولة",
-  state_error_details: "تفاصيل تقنية",
-  error_load_products: "تعذّر تحميل المنتجات",
-  error_load_orders: "تعذّر تحميل الطلبات",
-  error_load_sales: "تعذّر تحميل المبيعات",
-  error_load_invoices: "تعذّر تحميل الفواتير",
-  error_load_customers: "تعذّر تحميل العملاء",
-  error_load_suppliers: "تعذّر تحميل الموردين",
-  empty_products: "لا توجد منتجات في الكتالوج",
-  empty_products_desc: "أضف أول منتج لتبدأ في تتبّع مخزونك.",
-  empty_orders: "لا توجد طلبات بعد",
-  empty_orders_desc: "أنشئ أول طلب ليظهر هنا.",
-  empty_sales: "لا توجد مبيعات مسجّلة",
-  empty_sales_desc: "سجّل أول عملية بيع لتظهر هنا.",
-  empty_invoices: "لا توجد فواتير صادرة",
-  empty_invoices_desc: "أنشئ أول فاتورة لتظهر هنا.",
-  empty_customers: "لا يوجد عملاء مسجّلون",
-  empty_customers_desc: "أضف أول عميل إلى دفتر العناوين.",
-  empty_suppliers: "لا يوجد موردون مسجّلون",
-  empty_suppliers_desc: "أضف أول مورّد إلى دفتر جهات الاتصال.",
-  pagination_label: "ترقيم الصفحات",
-  pagination_range: "{from}–{to} من {total}",
-  pagination_page_of: "الصفحة {page} من {pageCount}",
-  pagination_rows_per_page: "عدد الصفوف في الصفحة",
-  pagination_first: "الصفحة الأولى",
-  pagination_previous: "الصفحة السابقة",
-  pagination_next: "الصفحة التالية",
-  pagination_last: "الصفحة الأخيرة",
-};
-
-const dicts = { fr, ar };
+const dicts = { fr };
 
 type Ctx = { lang: Lang; t: (k: keyof typeof fr) => string; setLang: (l: Lang) => void };
 const I18nContext = createContext<Ctx | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(() => {
-    if (typeof window === "undefined") return "fr";
-    return (localStorage.getItem("lang") as Lang) || "fr";
-  });
+  const [lang, setLangState] = useState<Lang>("fr");
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    document.documentElement.lang = lang;
-    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
-    localStorage.setItem("lang", lang);
-  }, [lang]);
+    document.documentElement.lang = "fr";
+    document.documentElement.dir = "ltr";
+    localStorage.setItem("lang", "fr");
+  }, []);
 
-  const t = (k: keyof typeof fr) => dicts[lang][k] ?? String(k);
-  return <I18nContext.Provider value={{ lang, setLang: setLangState, t }}>{children}</I18nContext.Provider>;
+  const t = (k: keyof typeof fr) => dicts["fr"][k] ?? String(k);
+  return <I18nContext.Provider value={{ lang: "fr", setLang: setLangState, t }}>{children}</I18nContext.Provider>;
 }
 
 export function useI18n() {

@@ -51,11 +51,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Nolte Küchen — ERP Interne" },
+      { title: "Nolte Küchen" },
       { name: "description", content: "Plateforme de gestion interne Nolte Küchen : produits, stock, ventes, rendez-vous." },
-      { property: "og:title", content: "Nolte Küchen — ERP Interne" },
+      { property: "og:title", content: "Nolte Küchen" },
       { property: "og:description", content: "Plateforme de gestion interne Nolte Küchen : produits, stock, ventes, rendez-vous." },
-      { name: "twitter:title", content: "Nolte Küchen — ERP Interne" },
+      { name: "twitter:title", content: "Nolte Küchen" },
       { name: "twitter:description", content: "Plateforme de gestion interne Nolte Küchen : produits, stock, ventes, rendez-vous." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/633394db-e415-418b-9eea-4bd0870fd2c6/id-preview-05cd54cc--0ec2a2ec-b678-4ce3-821b-3c2f531991ae.lovable.app-1778440364550.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/633394db-e415-418b-9eea-4bd0870fd2c6/id-preview-05cd54cc--0ec2a2ec-b678-4ce3-821b-3c2f531991ae.lovable.app-1778440364550.png" },
@@ -68,7 +68,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap",
       },
     ],
   }),

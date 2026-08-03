@@ -5,7 +5,7 @@ import {
   ArrowLeft, Pencil, Trash2, Save, Loader2, ImageIcon, ChevronLeft, ChevronRight, X,
   Package, Tag, DollarSign, Boxes, Ruler, Warehouse, FileText, Barcode,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

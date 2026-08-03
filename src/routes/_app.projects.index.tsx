@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Plus, Search, Eye, Trash2, Loader2, Kanban, Activity, CheckCircle2, Clock } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useConfirm } from "@/components/confirm-dialog";
+import { DataPagination, usePagination } from "@/components/data/pagination";
 
 export const Route = createFileRoute("/_app/projects/")({
   component: ProjectsPage,
@@ -107,12 +108,32 @@ function ProjectsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const updateStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string, status: Status }) => {
+      const { error } = await supabase.from("projects").update({ status }).eq("id", id);
+      if (error) throw error;
+      await supabase.from("project_activity").insert({
+        project_id: id, user_id: user?.id ?? null,
+        action: "status_changed",
+        details: { status } as any,
+      });
+    },
+    onSuccess: () => { toast.success("Statut mis à jour"); qc.invalidateQueries({ queryKey: ["projects"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const filtered = projects.filter(p => {
     if (statusFilter !== "all" && p.status !== statusFilter) return false;
     if (!q) return true;
     const s = q.toLowerCase();
     return p.name.toLowerCase().includes(s) || (p.customers?.name ?? "").toLowerCase().includes(s);
   });
+
+  const pagination = usePagination({
+    total: filtered.length,
+    resetKey: `${q}-${statusFilter}`,
+  });
+  const paged = pagination.slice(filtered);
 
   const kpis = {
     total: projects.length,
@@ -142,7 +163,7 @@ function ProjectsPage() {
                   <SelectContent>{customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Budget (DH)</Label><Input type="number" value={form.budget} onChange={e => setForm({ ...form, budget: Number(e.target.value) })} /></div>
+              <div><Label>Budget (DH)</Label><Input type="number" value={form.budget} onChange={e = step="any"> setForm({ ...form, budget: Number(e.target.value) })} /></div>
               <div><Label>Date de début</Label><Input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} /></div>
               <div><Label>Date de fin prévue</Label><Input type="date" value={form.expected_end_date} onChange={e => setForm({ ...form, expected_end_date: e.target.value })} /></div>
               <div className="col-span-2"><Label>Adresse d'installation</Label><Input value={form.install_address} onChange={e => setForm({ ...form, install_address: e.target.value })} /></div>
@@ -195,9 +216,9 @@ function ProjectsPage() {
           <TableBody>
             {isLoading ? (
               <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Chargement…</TableCell></TableRow>
-            ) : filtered.length === 0 ? (
+            ) : paged.length === 0 ? (
               <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Aucun projet</TableCell></TableRow>
-            ) : filtered.map(p => (
+            ) : paged.map(p => (
               <TableRow key={p.id}>
                 <TableCell className="font-medium">{p.name}</TableCell>
                 <TableCell>{p.customers?.name ?? "—"}</TableCell>
@@ -210,7 +231,18 @@ function ProjectsPage() {
                     <span className="text-xs text-muted-foreground tabular-nums w-8">{p.progress}%</span>
                   </div>
                 </TableCell>
-                <TableCell><Badge className={STATUS[p.status].className}>{STATUS[p.status].label}</Badge></TableCell>
+                <TableCell>
+                  <Select value={p.status} onValueChange={(v) => updateStatus.mutate({ id: p.id, status: v as Status })}>
+                    <SelectTrigger className={`h-8 border-0 shadow-none font-medium ${STATUS[p.status].className}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(STATUS) as Status[]).map(k => (
+                        <SelectItem key={k} value={k}>{STATUS[k].label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
                 <TableCell className="text-right">
                   <Button size="icon" variant="ghost" asChild>
                     <Link to="/projects/$id" params={{ id: p.id }}><Eye className="h-4 w-4" /></Link>
@@ -224,6 +256,7 @@ function ProjectsPage() {
           </TableBody>
         </Table>
       </Card>
+      <DataPagination pagination={pagination} />
     </div>
   );
 }

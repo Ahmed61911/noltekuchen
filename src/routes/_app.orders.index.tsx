@@ -5,7 +5,7 @@ import {
   Plus, Search, Trash2, Eye, Loader2, ClipboardList, CheckCircle2,
   Truck, XCircle, Clock, AlertTriangle, PackagePlus, RotateCcw,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -481,7 +481,7 @@ function OrdersPage() {
                               min={1}
                               disabled={!checked}
                               value={checked ? pickerSel[p.id] : 1}
-                              onChange={(e) => setPickerSel({ ...pickerSel, [p.id]: Math.max(1, Number(e.target.value)) })}
+                              onChange={(e) = step="any"> setPickerSel({ ...pickerSel, [p.id]: Math.max(1, Number(e.target.value)) })}
                             />
                           </TableCell>
                         </TableRow>

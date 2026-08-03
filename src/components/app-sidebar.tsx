@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Package, Boxes, ShoppingCart, Calendar,
   Truck, FileText, BarChart3, History, Users, Settings, Receipt, UserSquare, ClipboardList, ShieldCheck, Warehouse, Shield,
-  Kanban, PackageCheck,
+  Kanban, PackageCheck, FileSignature,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -13,6 +13,7 @@ import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions";
 import logoUrl from "@/assets/nolte-logo.svg";
+import logoDarkUrl from "@/assets/nolte-logo-dark.svg";
 
 /**
  * v1.1a — one nav-item recipe, used by every entry including Settings.
@@ -49,6 +50,7 @@ export function AppSidebar() {
     { to: "/products", icon: Package, label: t("products"), module: "products" },
     { to: "/stock", icon: Boxes, label: t("stock"), module: "stock" },
     
+    { to: "/quotes", icon: FileSignature, label: "Devis", module: "sales" },
     { to: "/orders", icon: ClipboardList, label: "Commandes", module: "orders" },
     { to: "/sales", icon: ShoppingCart, label: t("sales"), module: "sales" },
     { to: "/invoices", icon: Receipt, label: "Facturation", module: "sales" },
@@ -71,17 +73,20 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" side={lang === "ar" ? "right" : "left"} className="border-r">
       {/* h-14 matches the app header exactly, so the two border-b lines meet
           instead of missing each other by a few pixels at the top-start corner. */}
-      <SidebarHeader className="h-14 justify-center border-b border-sidebar-border/70 p-1">
+      <SidebarHeader className="h-16 justify-center border-b border-sidebar-border/70 p-2">
         <Link
           to="/"
           className="flex items-center gap-3 rounded-md px-2 py-1 transition-colors duration-(--dur-fast) hover:bg-sidebar-accent/50 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
         >
           {collapsed ? (
-            <img src={logoUrl} alt="Nolte Küchen" className="h-7 w-7 object-contain" />
+            <>
+              <img src={logoUrl} alt="Nolte Küchen" className="h-8 w-8 object-contain dark:hidden" />
+              <img src={logoDarkUrl} alt="Nolte Küchen" className="h-8 w-8 object-contain hidden dark:block" />
+            </>
           ) : (
             <div className="flex flex-col leading-tight">
-              <img src={logoUrl} alt="Nolte Küchen" className="h-6 w-auto" />
-              <span className="mt-1 text-[10px] uppercase leading-none tracking-[0.12em] text-sidebar-foreground/50">{t("app_tagline")}</span>
+              <img src={logoUrl} alt="Nolte Küchen" className="h-10 w-auto dark:hidden" />
+              <img src={logoDarkUrl} alt="Nolte Küchen" className="h-10 w-auto hidden dark:block" />
             </div>
           )}
         </Link>
