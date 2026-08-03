@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, CheckCircle2, XCircle, Plus, Loader2, Send, Save, Trash2, Edit2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Plus, Loader2, Send, Save, Trash2, Edit2, FileDown } from "lucide-react";
 import { toast } from "@/lib/notify";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useConfirm } from "@/components/confirm-dialog";
+import { generateQuotePdf, type PdfQuote } from "@/lib/quote-pdf";
 
 export const Route = createFileRoute("/_app/quotes/$id")({
   component: QuoteDetail,
@@ -33,7 +34,7 @@ const STATUS_META: Record<string, { label: string; className: string }> = {
 function QuoteDetail() {
   const { id } = useParams({ from: "/_app/quotes/$id" });
   const qc = useQueryClient();
-  const { confirm } = useConfirm();
+  const confirm = useConfirm();
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -160,6 +161,13 @@ function QuoteDetail() {
               </Button>
             </>
           )}
+          <Button variant="outline" onClick={() => generateQuotePdf({
+            ...quote,
+            customer: quote.customers,
+            items: items.map((it: any) => ({ ...it, code: it.products?.reference }))
+          } as PdfQuote)}>
+            <FileDown className="mr-2 h-4 w-4" /> Télécharger PDF
+          </Button>
         </div>
       </div>
 

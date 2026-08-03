@@ -32,7 +32,7 @@ function QuotesPage() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { confirm } = useConfirm();
+  const confirm = useConfirm();
 
   const [search, setSearch] = useState("");
   const [statusF, setStatusF] = useState("all");
