@@ -97,6 +97,36 @@ function OrderDetail() {
           const { error: smErr } = await supabase.from("stock_movements").insert(movements);
           if (smErr) throw smErr;
         }
+
+        // ── Create sale record (Vente) ──
+        const { data: sale, error: saleErr } = await supabase.from("sales").insert({
+          customer_id: order.customer_id,
+          order_id: order.id,
+          invoice_id: inv.id,
+          sale_date: new Date().toISOString().split("T")[0],
+          payment_due_date: order.due_date,
+          payment_method: "cash",
+          payment_status: "unpaid",
+          subtotal_ht: order.subtotal_ht,
+          tax_amount: order.tax_amount,
+          total_ttc: order.total_ttc,
+          paid_amount: 0,
+          stock_applied: true,
+          notes: `Vente générée automatiquement depuis la commande ${order.order_number}`,
+          created_by: user?.id,
+        }).select("id").single();
+        if (saleErr) throw saleErr;
+
+        const saleItems = items.map((it: any) => ({
+          sale_id: sale.id, product_id: it.product_id, description: it.description,
+          quantity: it.quantity, unit_price: it.unit_price, discount_rate: it.discount_rate,
+          tax_rate: it.tax_rate, line_total_ht: it.line_total_ht, line_tax: it.line_tax,
+          line_total_ttc: it.line_total_ttc,
+        }));
+        if (saleItems.length > 0) {
+          const { error: siErr } = await supabase.from("sale_items").insert(saleItems);
+          if (siErr) throw siErr;
+        }
       }
 
       const { error } = await supabase.from("orders").update({ status }).eq("id", id);
@@ -104,11 +134,12 @@ function OrderDetail() {
       return status;
     },
     onSuccess: (s) => {
-      toast.success(s === "validated" ? "Commande validée, facture créée et stock réduit !" : "Statut mis à jour");
+      toast.success(s === "validated" ? "Commande validée — facture et vente créées, stock réduit !" : "Statut mis à jour");
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["invoices"] });
+      qc.invalidateQueries({ queryKey: ["sales"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
