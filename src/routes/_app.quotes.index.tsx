@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Plus, Search, Eye, FileText, Loader2, Trash2 } from "lucide-react";
+import { Plus, Search, Eye, FileText, Loader2, Trash2, FileDown } from "lucide-react";
 import { toast } from "@/lib/notify";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useConfirm } from "@/components/confirm-dialog";
 import { DataPagination, usePagination } from "@/components/data/pagination";
+import { generateQuotePdf, type PdfQuote } from "@/lib/quote-pdf";
 
 export const Route = createFileRoute("/_app/quotes/")({
   component: QuotesPage,
@@ -96,6 +97,21 @@ function QuotesPage() {
     onSuccess: () => { toast.success("Devis supprimé"); qc.invalidateQueries({ queryKey: ["quotes"] }); },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const downloadPdf = async (id: string) => {
+    const { data: quote, error: e1 } = await supabase
+      .from("quotes").select("*, customers(*)").eq("id", id).single();
+    if (e1 || !quote) { toast.error("Devis introuvable"); return; }
+    const { data: items, error: e2 } = await supabase
+      .from("quote_items").select("*, products(name, reference)").eq("quote_id", id).order("created_at");
+    if (e2) { toast.error(e2.message); return; }
+    
+    generateQuotePdf({
+      ...quote,
+      customer: quote.customers,
+      items: items.map((it: any) => ({ ...it, code: it.products?.reference }))
+    } as PdfQuote);
+  };
 
   const filtered = useMemo(() => {
     return quotes.filter((q: any) => {
@@ -200,6 +216,9 @@ function QuotesPage() {
                       <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="icon" asChild>
                           <Link to="/quotes/$id" params={{ id: q.id }}><Eye className="h-4 w-4" /></Link>
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => downloadPdf(q.id)}>
+                          <FileDown className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" className="text-rose-600 hover:text-rose-700 hover:bg-rose-50" onClick={async () => {
                           if (await confirm({ title: "Supprimer", message: "Voulez-vous vraiment supprimer ce devis ?" })) removeQuote.mutate(q.id);
