@@ -173,7 +173,6 @@ function QuotesPage() {
                 <TableHead>Numéro</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Client</TableHead>
-                <TableHead>Commercial</TableHead>
                 <TableHead className="text-right">Total TTC</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -181,9 +180,9 @@ function QuotesPage() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">Chargement...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">Chargement...</TableCell></TableRow>
               ) : paged.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">Aucun devis trouvé</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">Aucun devis trouvé</TableCell></TableRow>
               ) : paged.map(q => {
                 const meta = STATUS_META[q.status] ?? STATUS_META.draft;
                 return (
@@ -194,8 +193,7 @@ function QuotesPage() {
                       </Link>
                     </TableCell>
                     <TableCell>{new Date(q.quote_date).toLocaleDateString("fr-FR")}</TableCell>
-                    <TableCell>{q.customers?.name ?? "—"}</TableCell>
-                    <TableCell>{q.profiles?.full_name ?? "—"}</TableCell>
+                    <TableCell>{q.customers?.name ?? <span className="italic text-muted-foreground">Prospect</span>}</TableCell>
                     <TableCell className="text-right font-mono font-medium">{Number(q.total_ttc).toLocaleString("fr-FR")} DH</TableCell>
                     <TableCell><Badge variant="outline" className={meta.className}>{meta.label}</Badge></TableCell>
                     <TableCell className="text-right">

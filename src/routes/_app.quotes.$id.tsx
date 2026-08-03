@@ -55,7 +55,7 @@ function QuoteDetail() {
   const { data: products = [] } = useQuery({
     queryKey: ["products-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("id, name, reference, price, tax_rate");
+      const { data } = await supabase.from("products").select("id, name, reference, selling_price").order("name");
       return data ?? [];
     },
   });
@@ -77,12 +77,13 @@ function QuoteDetail() {
     mutationFn: async () => {
       const p = products.find(x => x.id === selectedProduct);
       if (!p) throw new Error("Produit invalide");
-      const subtotal = Number(p.price) * qty;
+      const unitPrice = Number(p.selling_price) || 0;
+      const subtotal = unitPrice * qty;
       const dVal = (subtotal * discount) / 100;
       const total = subtotal - dVal;
       const { error } = await supabase.from("quote_items").insert({
         quote_id: id, product_id: p.id, quantity: qty,
-        unit_price: p.price, tax_rate: p.tax_rate ?? 20, discount, total, description: p.name
+        unit_price: unitPrice, tax_rate: 20, discount, total, description: p.name
       });
       if (error) throw error;
       await recomputeTotals();
@@ -139,7 +140,7 @@ function QuoteDetail() {
               <Badge variant="outline" className={meta.className}>{meta.label}</Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              Créé le {new Date(quote.quote_date).toLocaleDateString("fr-FR")} · {quote.customers?.name ?? "Client inconnu"}
+              Créé le {new Date(quote.quote_date).toLocaleDateString("fr-FR")} · {quote.customers?.name ?? "Prospect"}
             </p>
           </div>
         </div>
@@ -245,13 +246,17 @@ function QuoteDetail() {
 
           <Card className="p-6 space-y-4">
             <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Client</h3>
-            <div className="text-sm">
-              <p className="font-medium text-base mb-1">{quote.customers?.name}</p>
-              <p className="text-muted-foreground">{quote.customers?.email}</p>
-              <p className="text-muted-foreground">{quote.customers?.phone}</p>
-              <p className="text-muted-foreground mt-2">{quote.customers?.address}</p>
-              <p className="text-muted-foreground">{quote.customers?.city}</p>
-            </div>
+            {quote.customers ? (
+              <div className="text-sm">
+                <p className="font-medium text-base mb-1">{quote.customers.name}</p>
+                {quote.customers.email && <p className="text-muted-foreground">{quote.customers.email}</p>}
+                {quote.customers.phone && <p className="text-muted-foreground">{quote.customers.phone}</p>}
+                {quote.customers.address && <p className="text-muted-foreground mt-2">{quote.customers.address}</p>}
+                {quote.customers.city && <p className="text-muted-foreground">{quote.customers.city}</p>}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">Prospect — aucun client associé</p>
+            )}
           </Card>
         </div>
       </div>
