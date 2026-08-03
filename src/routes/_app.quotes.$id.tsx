@@ -184,8 +184,8 @@ function QuoteDetail() {
                       </Select>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div><Label>Quantité</Label><Input type="number" min={1} value={qty} onChange={e = step="any"> setQty(Number(e.target.value))} /></div>
-                      <div><Label>Remise (%)</Label><Input type="number" min={0} max={100} value={discount} onChange={e = step="any"> setDiscount(Number(e.target.value))} /></div>
+                      <div><Label>Quantité</Label><Input type="number" min={1} value={qty} step="any" onChange={e => setQty(Number(e.target.value))} /></div>
+                      <div><Label>Remise (%)</Label><Input type="number" min={0} max={100} value={discount} step="any" onChange={e => setDiscount(Number(e.target.value))} /></div>
                     </div>
                   </div>
                   <DialogFooter>

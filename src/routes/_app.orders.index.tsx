@@ -481,7 +481,7 @@ function OrdersPage() {
                               min={1}
                               disabled={!checked}
                               value={checked ? pickerSel[p.id] : 1}
-                              onChange={(e) = step="any"> setPickerSel({ ...pickerSel, [p.id]: Math.max(1, Number(e.target.value)) })}
+                              step="any" onChange={(e) => setPickerSel({ ...pickerSel, [p.id]: Math.max(1, Number(e.target.value)) })}
                             />
                           </TableCell>
                         </TableRow>

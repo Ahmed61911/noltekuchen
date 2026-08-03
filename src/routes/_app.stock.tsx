@@ -150,7 +150,7 @@ function StockPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">{t("quantity")}</Label>
-                  <Input type="number" min={1} value={quantity} onChange={(e) = step="any"> setQuantity(Number(e.target.value))} />
+                  <Input type="number" min={1} value={quantity} step="any" onChange={(e) => setQuantity(Number(e.target.value))} />
                 </div>
               </div>
               <div className="space-y-1.5">

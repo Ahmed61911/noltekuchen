@@ -372,8 +372,8 @@ function ProductsIndexPage() {
             <SelectItem value="out">Rupture</SelectItem>
           </SelectContent>
         </Select>
-        <Input type="number" placeholder="Prix min" className="w-32" value={priceMin} onChange={e = step="any"> setPriceMin(e.target.value)} />
-        <Input type="number" placeholder="Prix max" className="w-32" value={priceMax} onChange={e = step="any"> setPriceMax(e.target.value)} />
+        <Input type="number" placeholder="Prix min" className="w-32" value={priceMin} step="any" onChange={e => setPriceMin(e.target.value)} />
+        <Input type="number" placeholder="Prix max" className="w-32" value={priceMax} step="any" onChange={e => setPriceMax(e.target.value)} />
         <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
           <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
           <SelectContent>

@@ -540,7 +540,7 @@ function AppointmentDialog({
         <div className="col-span-2"><Label>Notes / Commentaires</Label><Textarea value={form.notes ?? ""} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
 
         <div><Label>Rappel (minutes avant)</Label>
-          <Input type="number" min={0} value={form.reminder_minutes ?? 0} onChange={e = step="any"> setForm({ ...form, reminder_minutes: Number(e.target.value) })} />
+          <Input type="number" min={0} value={form.reminder_minutes ?? 0} step="any" onChange={e => setForm({ ...form, reminder_minutes: Number(e.target.value) })} />
         </div>
       </div>
       <DialogFooter>

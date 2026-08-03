@@ -194,7 +194,7 @@ function ProjectDetail() {
                     <SelectContent>{customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div><Label>Budget (DH)</Label><Input type="number" value={form.budget} onChange={e = step="any"> setForm({ ...form, budget: Number(e.target.value) })} /></div>
+                <div><Label>Budget (DH)</Label><Input type="number" value={form.budget} step="any" onChange={e => setForm({ ...form, budget: Number(e.target.value) })} /></div>
                 <div><Label>Date de début</Label><Input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} /></div>
                 <div><Label>Date de fin prévue</Label><Input type="date" value={form.expected_end_date} onChange={e => setForm({ ...form, expected_end_date: e.target.value })} /></div>
                 <div className="col-span-2"><Label>Adresse d'installation</Label><Input value={form.install_address} onChange={e => setForm({ ...form, install_address: e.target.value })} /></div>
