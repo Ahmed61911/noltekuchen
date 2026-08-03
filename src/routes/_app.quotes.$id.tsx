@@ -45,7 +45,7 @@ function QuoteDetail() {
   const { data, isLoading } = useQuery({
     queryKey: ["quote", id],
     queryFn: async () => {
-      const { data: quote, error: qErr } = await supabase.from("quotes").select("*, customers(*), profiles(full_name)").eq("id", id).single();
+      const { data: quote, error: qErr } = await supabase.from("quotes").select("*, customers(*)").eq("id", id).single();
       if (qErr) throw qErr;
       const { data: items } = await supabase.from("quote_items").select("*, products(name, reference)").eq("quote_id", id).order("created_at");
       return { quote, items: items || [] };

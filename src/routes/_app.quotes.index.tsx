@@ -44,7 +44,7 @@ function QuotesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("quotes")
-        .select("*, customers(name), profiles(full_name)")
+        .select("*, customers(name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -72,7 +72,7 @@ function QuotesPage() {
 
       const { data, error } = await supabase.from("quotes").insert({
         quote_number: num,
-        customer_id: customerId,
+        customer_id: customerId === "none" ? null : customerId,
         commercial_id: user?.id,
         status: "draft",
         quote_date: new Date().toISOString().split("T")[0],
@@ -131,6 +131,7 @@ function QuotesPage() {
                 <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Choisir..." /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Prospect (Aucun client)</SelectItem>
                     {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -138,7 +139,7 @@ function QuotesPage() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreateOpen(false)}>Annuler</Button>
-              <Button onClick={() => createQuote.mutate(selectedCustomerId)} disabled={!selectedCustomerId || createQuote.isPending}>
+              <Button onClick={() => createQuote.mutate(selectedCustomerId || "none")} disabled={createQuote.isPending}>
                 {createQuote.isPending ? <Loader2 className="h-4 w-4 animate-spin me-2" /> : null} Créer
               </Button>
             </DialogFooter>
