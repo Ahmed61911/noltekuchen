@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { pdfMoney, pdfNumber, pdfText } from "@/lib/pdf-safe";
-import { drawNolteLogo } from "@/lib/nolte-logo-pdf";
+import { drawNadoCuisineHeader, NADO_LEGAL_LINES } from "@/lib/nado-logo-pdf";
 
 export type PdfInvoice = {
   invoice_number: string;
@@ -66,10 +66,7 @@ const PAYMENT_TERMS = [
   "RIB : 007 780 0001234567890123 45 — Attijariwafa Bank — SWIFT : BCMAMAMC",
 ];
 
-const LEGAL_LINES = [
-  "NOLTE KÜCHEN — Société à responsabilité limitée au capital de 500.000 DHS — Siège social : Boulevard Zerktouni, Casablanca, Maroc",
-  "IF : 40422840   —   RC : 106030   —   ICE : 002597960000073   —   contact@nolte-kuchen.ma   —   +212 5 22 00 00 00",
-];
+const LEGAL_LINES = NADO_LEGAL_LINES;
 
 /** Montant : deux décimales, séparateur de milliers en espace ordinaire. */
 const money = (n: unknown) => pdfMoney(Number(n) || 0, "DH", 2);
@@ -157,7 +154,7 @@ export function generateInvoicePdf(inv: PdfInvoice) {
 
   // ------------------------------------------------- éléments répétés
   const drawRunningHeader = () => {
-    drawNolteLogo(doc, M, 11, 28);
+    drawNadoCuisineHeader(doc, M, 8);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(...INK);
@@ -194,7 +191,7 @@ export function generateInvoicePdf(inv: PdfInvoice) {
   };
 
   // ==================================================== en-tête (page 1)
-  drawNolteLogo(doc, M, 12, 42);
+  drawNadoCuisineHeader(doc, M, 10);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(19);
