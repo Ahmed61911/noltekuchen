@@ -288,98 +288,9 @@ export function generateQuotePdf(inv: PdfQuote) {
   const totalText = money(finalTotal);
   fitFontSize(doc, totalText, amountW - 12, 15, 9);
   doc.text(totalText, amountX + amountW - 6, blockY + 17.5, { align: "right" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...MUTED);
-  doc.text(pdfText(`Dont TVA : ${money(inv.tax)}`), amountX + 6, blockY + 24);
-
-  // ============================================== tableau des lignes
-  // Les colonnes optionnelles disparaissent quand elles n'apportent rien : les
-  // ventes comptoir n'ont pas de référence article, et la plupart des devis
-  // n'ont aucune remise ligne à ligne.
-  const hasCode = inv.items.some((it) => String(it.code ?? "").trim() !== "");
-  const hasDiscount = inv.items.some((it) => Number(it.discount) > 0);
-
-  type Col = { key: string; title: string; width?: number; align: "left" | "right" };
-  const cols: Col[] = [{ key: "desc", title: "Description", align: "left" }];
-  if (hasCode) cols.push({ key: "code", title: "Référence", width: 26, align: "left" });
-  cols.push({ key: "qty", title: "Qté", width: 14, align: "right" });
-  cols.push({ key: "pu", title: "P.U. HT", width: 30, align: "right" });
-  if (hasDiscount) cols.push({ key: "rem", title: "Remise", width: 18, align: "right" });
-  cols.push({ key: "tot", title: "Total HT", width: 32, align: "right" });
-
-  const cell = (col: Col, it: PdfQuote["items"][number]) => {
-    switch (col.key) {
-      case "desc":
-        return safeMultiline(it.description);
-      case "code":
-        return pdfText(it.code ?? "");
-      case "qty":
-        return quantity(it.quantity);
-      case "pu":
-        return money(it.unit_price);
-      case "rem": {
-        const rate = Number(it.discount) || 0;
-        return rate > 0 ? `${pdfNumber(rate, Number.isInteger(rate) ? 0 : 2)} %` : "";
-      }
-      default:
-        return money(it.total);
-    }
-  };
-
-  const body = inv.items.length
-    ? inv.items.map((it) => cols.map((col) => cell(col, it)))
-    : [cols.map((_col, i) => (i === 0 ? pdfText("Aucune ligne") : ""))];
-
-  const columnStyles: Record<string, { halign: "left" | "right"; cellWidth?: number }> = {};
-  cols.forEach((col, i) => {
-    columnStyles[i] = { halign: col.align };
-    if (col.width) columnStyles[i].cellWidth = col.width;
-  });
-
-  autoTable(doc, {
-    startY: blockY + blockH + 10,
-    head: [cols.map((col) => pdfText(col.title))],
-    body,
-    theme: "striped",
-    styles: {
-      font: "helvetica",
-      fontSize: 9,
-      textColor: INK,
-      lineWidth: 0,
-      overflow: "linebreak",
-      valign: "middle",
-      cellPadding: { top: 3.2, bottom: 3.2, left: 3, right: 3 },
-    },
-    headStyles: {
-      fillColor: INK,
-      textColor: WHITE,
-      fontStyle: "bold",
-      fontSize: 8.5,
-      cellPadding: { top: 3.4, bottom: 3.4, left: 3, right: 3 },
-    },
-    bodyStyles: { minCellHeight: 8 },
-    alternateRowStyles: { fillColor: SURFACE },
-    columnStyles,
-    margin: { top: RUNNING_TOP, left: M, right: M, bottom: FOOTER_RESERVE },
-    // L'en-tête se répète sur chaque page, et les pages 2+ reçoivent un
-    // bandeau d'identification avant que le tableau ne reprenne.
-    showHead: "everyPage",
-    rowPageBreak: "avoid",
-    didDrawPage: (data) => {
-      if (data.pageNumber > 1) drawRunningHeader();
-    },
-  });
-
-  const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
-  doc.setDrawColor(...LINE);
-  doc.setLineWidth(0.4);
-  doc.line(M, finalY + 0.5, pageW - M, finalY + 0.5);
-
   // ========================================================== totaux
   const totalRows: Array<{ label: string; value: string; muted?: boolean }> = [
-    { label: "Sous-total HT", value: money(inv.subtotal_ht) },
-    { label: "TVA", value: money(inv.tax) },
+    { label: "Total", value: money(finalTotal) },
   ];
   if (Number(inv.discount) > 0) {
     totalRows.push({ label: "Remise", value: `-${money(inv.discount)}` });

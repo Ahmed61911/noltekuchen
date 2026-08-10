@@ -97,7 +97,7 @@ function SalesPage() {
   const [dateTo, setDateTo] = useState("");
   const [open, setOpen] = useState(false);
 
-  const [customerId, setCustomerId] = useState<string>("");
+  const [clientName, setClientName] = useState<string>("");
   
   const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState("");
@@ -143,7 +143,7 @@ function SalesPage() {
   const totals = useMemo(() => computeTotals(lines), [lines]);
 
   const resetForm = () => {
-    setCustomerId(""); setSaleDate(new Date().toISOString().slice(0, 10));
+    setClientName(""); setSaleDate(new Date().toISOString().slice(0, 10));
     setDueDate(""); setMethod("cash"); setPaidAmount(0); setNotes("");
     setLines([emptyLine()]);
   };
@@ -175,24 +175,24 @@ function SalesPage() {
       const ttc = totals.ttc;
       const paid = Math.min(paidAmount || 0, ttc);
       const ps: PayStatus = paid <= 0 ? "unpaid" : paid >= ttc ? "paid" : "partial";
+      let resolvedCustId: string | null = null;
+      if (clientName.trim()) {
+        const { data: newC } = await supabase.from("customers").insert({ name: clientName.trim() }).select("id").single();
+        if (newC) resolvedCustId = newC.id;
+      }
 
-      // One transaction server-side. Previously this was four sequential
-      // requests: a failure between them left a sale with no lines (having
-      // consumed a sale number), or lines inserted — so stock already
-      // deducted — without stock_applied set, which let the same goods be
-      // deducted again later and blocked the delete trigger from returning
-      // them.
       const { error } = await supabase.rpc("create_sale", {
         _sale: {
-          customer_id: customerId || null,
+          customer_id: resolvedCustId,
           sale_date: saleDate,
           payment_due_date: dueDate || null,
           payment_method: method,
-          payment_status: ps,
+          payment_status: paidAmount >= totals.ttc ? "paid" : (paidAmount > 0 ? "partial" : "unpaid"),
           subtotal_ht: totals.ht,
           tax_amount: totals.tva,
-          total_ttc: ttc,
-          paid_amount: paid,
+          total_ttc: totals.ttc,
+          paid_amount: paidAmount || 0,
+          stock_applied: true,
           notes: notes || null,
           warehouse_id: null,
         },
@@ -330,14 +330,8 @@ function SalesPage() {
             <DialogHeader><DialogTitle>Nouvelle vente</DialogTitle></DialogHeader>
             <div className="grid grid-cols-5 gap-3">
               <div className="col-span-2">
-                <Label>Client</Label>
-                <Select value={customerId || "_none"} onValueChange={(v) => setCustomerId(v === "_none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Comptoir" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">— Comptoir —</SelectItem>
-                    {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label>Nom du client (optionnel)</Label>
+                <Input placeholder="Ex: Mme Aicha" value={clientName} onChange={e => setClientName(e.target.value)} />
               </div>
               <div><Label>Date</Label><Input type="date" value={saleDate} onChange={e => setSaleDate(e.target.value)} /></div>
               <div>
@@ -365,11 +359,11 @@ function SalesPage() {
               <div className="rounded-md border">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead className="w-[28%]">Produit / Description</TableHead>
-                    <TableHead className="w-[15%]">Dépôt</TableHead>
+                    <TableHead className="w-[35%]">Produit / Description</TableHead>
+                    <TableHead className="w-[18%]">Dépôt</TableHead>
                     <TableHead>Qté</TableHead><TableHead>PU</TableHead>
-                    <TableHead>TVA %</TableHead><TableHead>Rem %</TableHead>
-                    <TableHead className="text-right">Total HT</TableHead><TableHead></TableHead>
+                    <TableHead>Rem %</TableHead>
+                    <TableHead className="text-right">Total</TableHead><TableHead></TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {lines.map((l, idx) => {
@@ -445,9 +439,8 @@ function SalesPage() {
                           </TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.quantity} onChange={e => upd({ quantity: Number(e.target.value) })} /></TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.unit_price} onChange={e => upd({ unit_price: Number(e.target.value) })} /></TableCell>
-                          <TableCell><Input className="h-8" type="number" min={0} max={100} step="0.1" value={l.tax_rate} onChange={e => upd({ tax_rate: Number(e.target.value) })} /></TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} max={100} step="0.1" value={l.discount_rate} onChange={e => upd({ discount_rate: Number(e.target.value) })} /></TableCell>
-                          <TableCell className="text-right text-sm tabular-nums">{fmt(c.ht)}</TableCell>
+                          <TableCell className="text-right text-sm tabular-nums font-medium">{fmt(c.ttc || c.ht)}</TableCell>
                           <TableCell>
                             <Button size="icon" variant="ghost" onClick={() => setLines(lines.filter((_, i) => i !== idx))}>
                               <Trash2 className="h-4 w-4" />
@@ -479,10 +472,8 @@ function SalesPage() {
                 </div>
               </div>
               <Card className="p-4 space-y-2 self-start">
-                <div className="flex justify-between"><span>Sous-total HT</span><span className="tabular-nums">{fmt(totals.ht)}</span></div>
-                <div className="flex justify-between"><span>TVA</span><span className="tabular-nums">{fmt(totals.tva)}</span></div>
-                <div className="flex justify-between border-t pt-2 font-semibold text-lg"><span>Total TTC</span><span className="tabular-nums">{fmt(totals.ttc)}</span></div>
-                <div className="flex justify-between text-sm text-muted-foreground"><span>Reste à payer</span><span className="tabular-nums">{fmt(Math.max(0, totals.ttc - (paidAmount || 0)))}</span></div>
+                <div className="flex justify-between font-semibold text-lg"><span>Total</span><span className="tabular-nums">{fmt(totals.ttc || totals.ht)}</span></div>
+                <div className="flex justify-between text-sm text-muted-foreground"><span>Reste à payer</span><span className="tabular-nums">{fmt(Math.max(0, (totals.ttc || totals.ht) - (paidAmount || 0)))}</span></div>
               </Card>
             </div>
 

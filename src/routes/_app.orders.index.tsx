@@ -106,7 +106,7 @@ function OrdersPage() {
   const [pickerQ, setPickerQ] = useState("");
   const [pickerSel, setPickerSel] = useState<Record<string, number>>({});
 
-  const [customerId, setCustomerId] = useState<string>("");
+  const [clientName, setClientName] = useState<string>("");
   
   const [orderDate, setOrderDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
@@ -151,7 +151,7 @@ function OrdersPage() {
   const totals = useMemo(() => computeTotals(lines), [lines]);
 
   const reset = () => {
-    setCustomerId(""); setOrderDate(new Date().toISOString().slice(0, 10));
+    setClientName(""); setOrderDate(new Date().toISOString().slice(0, 10));
     setDueDate(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
     setNotes(""); setLines([emptyLine()]);
   };
@@ -160,32 +160,18 @@ function OrdersPage() {
     mutationFn: async () => {
       const validLines = lines.filter(l => l.description && l.quantity > 0);
       if (validLines.length === 0) throw new Error("Ajoutez au moins une ligne");
-      if (!customerId) throw new Error("Sélectionnez un client");
 
-      // Validate depot & stock per line
-      for (const [i, l] of validLines.entries()) {
-        if (l.product_key && !l.product_id) {
-          throw new Error(`Ligne ${i + 1}: sélectionnez le dépôt du produit`);
-        }
-        if (l.product_id) {
-          if (!l.warehouse_id) throw new Error(`Ligne ${i + 1}: dépôt requis`);
-          const p = products.find(x => x.id === l.product_id);
-          if (!p) throw new Error(`Ligne ${i + 1}: produit introuvable`);
-          if (p.warehouse_id !== l.warehouse_id) {
-            const wname = warehouses.find(w => w.id === l.warehouse_id)?.name ?? "";
-            throw new Error(`Ligne ${i + 1}: "${p.name}" n'existe pas dans le dépôt ${wname}`);
-          }
-          if (Number(p.stock_quantity ?? 0) < l.quantity) {
-            throw new Error(`Ligne ${i + 1}: stock insuffisant pour "${p.name}" (disponible: ${p.stock_quantity ?? 0})`);
-          }
-        }
+      let resolvedCustId: string | null = null;
+      if (clientName.trim()) {
+        const { data: newC } = await supabase.from("customers").insert({ name: clientName.trim() }).select("id").single();
+        if (newC) resolvedCustId = newC.id;
       }
 
       // One transaction server-side, so a failure can't leave an order with no
       // lines that has already consumed an order number.
       const { error } = await supabase.rpc("create_order", {
         _order: {
-          customer_id: customerId, order_date: orderDate, due_date: dueDate,
+          customer_id: resolvedCustId, order_date: orderDate, due_date: dueDate,
           status: "pending", subtotal_ht: totals.ht, tax_amount: totals.tva,
           total_ttc: totals.ttc, notes: notes || null, warehouse_id: null,
         },
@@ -290,13 +276,8 @@ function OrdersPage() {
             <DialogHeader><DialogTitle>Nouvelle commande</DialogTitle></DialogHeader>
             <div className="grid grid-cols-4 gap-3">
               <div className="col-span-2">
-                <Label>Client *</Label>
-                <Select value={customerId} onValueChange={setCustomerId}>
-                  <SelectTrigger><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
-                  <SelectContent>
-                    {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label>Nom du client (optionnel)</Label>
+                <Input placeholder="Ex: Mme Aicha" value={clientName} onChange={e => setClientName(e.target.value)} />
               </div>
               <div><Label>Date commande</Label><Input type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)} /></div>
               <div><Label>Dernier jour</Label><Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
@@ -318,11 +299,11 @@ function OrdersPage() {
               <div className="rounded-md border">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead className="w-[28%]">Produit / Description</TableHead>
-                    <TableHead className="w-[15%]">Dépôt</TableHead>
+                    <TableHead className="w-[35%]">Produit / Description</TableHead>
+                    <TableHead className="w-[18%]">Dépôt</TableHead>
                     <TableHead>Qté</TableHead><TableHead>PU</TableHead>
-                    <TableHead>TVA %</TableHead><TableHead>Rem %</TableHead>
-                    <TableHead className="text-right">Total HT</TableHead><TableHead></TableHead>
+                    <TableHead>Rem %</TableHead>
+                    <TableHead className="text-right">Total</TableHead><TableHead></TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {lines.map((l, idx) => {
@@ -418,9 +399,7 @@ function OrdersPage() {
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Notes</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} /></div>
               <Card className="p-4 space-y-2 self-start">
-                <div className="flex justify-between"><span>Sous-total HT</span><span className="tabular-nums">{fmt(totals.ht)}</span></div>
-                <div className="flex justify-between"><span>TVA</span><span className="tabular-nums">{fmt(totals.tva)}</span></div>
-                <div className="flex justify-between border-t pt-2 font-semibold text-lg"><span>Total TTC</span><span className="tabular-nums">{fmt(totals.ttc)}</span></div>
+                <div className="flex justify-between font-semibold text-lg"><span>Total</span><span className="tabular-nums">{fmt(totals.ttc || totals.ht)}</span></div>
               </Card>
             </div>
 

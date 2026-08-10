@@ -261,7 +261,7 @@ function QuoteDetail() {
                 <TableHead className="text-right">PU</TableHead>
                 <TableHead className="text-center">Qté</TableHead>
                 <TableHead className="text-center">Remise</TableHead>
-                <TableHead className="text-right">Total HT</TableHead>
+                <TableHead className="text-right">Total</TableHead>
                 {isDraft && <TableHead className="w-10"></TableHead>}
               </TableRow>
             </TableHeader>
@@ -295,9 +295,7 @@ function QuoteDetail() {
           <Card className="p-6 space-y-4">
             <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Résumé financier</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-muted-foreground"><span>Total HT</span><span>{fmt(quote.subtotal_ht)}</span></div>
-              <div className="flex justify-between text-muted-foreground"><span>TVA</span><span>{fmt(quote.tax)}</span></div>
-              <div className="flex justify-between font-semibold text-lg pt-3 border-t"><span>Total TTC</span><span>{fmt(quote.total_ttc)}</span></div>
+              <div className="flex justify-between font-semibold text-lg"><span>Total</span><span>{fmt(quote.total_ttc || quote.subtotal_ht)}</span></div>
             </div>
           </Card>
 

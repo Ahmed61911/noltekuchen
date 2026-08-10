@@ -247,7 +247,7 @@ function OrderDetail() {
           </div>
         </Card>
         <Card className="p-4 space-y-1">
-          <div className="flex justify-between"><span className="text-sm">Total TTC</span><span className="font-semibold tabular-nums">{fmt(order.total_ttc)}</span></div>
+          <div className="flex justify-between"><span className="text-sm">Total</span><span className="font-semibold tabular-nums">{fmt(order.total_ttc || order.subtotal_ht)}</span></div>
           <div className="flex justify-between text-sm"><span>Payé</span><span className="tabular-nums">{fmt(order.paid_amount)}</span></div>
           <div className="flex justify-between text-sm"><span>Reste</span><span className="tabular-nums">{fmt(reste)}</span></div>
         </Card>
@@ -258,8 +258,8 @@ function OrderDetail() {
         <Table>
           <TableHeader><TableRow>
             <TableHead>Description</TableHead><TableHead className="text-right">Qté</TableHead>
-            <TableHead className="text-right">PU</TableHead><TableHead className="text-right">TVA</TableHead>
-            <TableHead className="text-right">Total TTC</TableHead>
+            <TableHead className="text-right">PU</TableHead>
+            <TableHead className="text-right">Total</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {items.map((it: any) => (
@@ -267,8 +267,7 @@ function OrderDetail() {
                 <TableCell>{it.description}</TableCell>
                 <TableCell className="text-right tabular-nums">{Number(it.quantity)}</TableCell>
                 <TableCell className="text-right tabular-nums">{fmt(it.unit_price)}</TableCell>
-                <TableCell className="text-right tabular-nums">{Number(it.tax_rate)}%</TableCell>
-                <TableCell className="text-right tabular-nums">{fmt(it.line_total_ttc)}</TableCell>
+                <TableCell className="text-right tabular-nums font-medium">{fmt(it.line_total_ttc || it.line_total_ht)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

@@ -54,7 +54,7 @@ function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
-    name: "", customer_id: "", start_date: new Date().toISOString().slice(0, 10),
+    name: "", client_name: "", start_date: new Date().toISOString().slice(0, 10),
     expected_end_date: "", budget: 0, install_address: "", notes: "",
   });
 
@@ -79,9 +79,14 @@ function ProjectsPage() {
   const create = useMutation({
     mutationFn: async () => {
       if (!form.name) throw new Error("Nom du projet requis");
+      let resolvedCustId: string | null = null;
+      if (form.client_name.trim()) {
+        const { data: newC } = await supabase.from("customers").insert({ name: form.client_name.trim() }).select("id").single();
+        if (newC) resolvedCustId = newC.id;
+      }
       const { error } = await supabase.from("projects").insert({
         name: form.name,
-        customer_id: form.customer_id || null,
+        customer_id: resolvedCustId,
         commercial_id: user?.id ?? null,
         start_date: form.start_date || null,
         expected_end_date: form.expected_end_date || null,
@@ -157,11 +162,8 @@ function ProjectsPage() {
             <DialogHeader><DialogTitle>Nouveau projet</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2"><Label>Nom du projet *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
-              <div><Label>Client</Label>
-                <Select value={form.customer_id} onValueChange={v => setForm({ ...form, customer_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
-                  <SelectContent>{customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                </Select>
+              <div><Label>Client (optionnel)</Label>
+                <Input placeholder="Ex: Mme Aicha" value={form.client_name} onChange={e => setForm({ ...form, client_name: e.target.value })} />
               </div>
               <div><Label>Budget (DH)</Label><Input type="number" value={form.budget} step="any" onChange={e => setForm({ ...form, budget: Number(e.target.value) })} /></div>
               <div><Label>Date de début</Label><Input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} /></div>

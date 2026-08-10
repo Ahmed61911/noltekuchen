@@ -288,10 +288,6 @@ export function generateOrderPdf(inv: PdfOrder) {
   const totalText = money(finalTotal);
   fitFontSize(doc, totalText, amountW - 12, 15, 9);
   doc.text(totalText, amountX + amountW - 6, blockY + 17.5, { align: "right" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...MUTED);
-  doc.text(pdfText(`Dont TVA : ${money(inv.tax)}`), amountX + 6, blockY + 24);
 
   // ============================================== tableau des lignes
   // Les colonnes optionnelles disparaissent quand elles n'apportent rien : les
@@ -304,9 +300,9 @@ export function generateOrderPdf(inv: PdfOrder) {
   const cols: Col[] = [{ key: "desc", title: "Description", align: "left" }];
   if (hasCode) cols.push({ key: "code", title: "Référence", width: 26, align: "left" });
   cols.push({ key: "qty", title: "Qté", width: 14, align: "right" });
-  cols.push({ key: "pu", title: "P.U. HT", width: 30, align: "right" });
+  cols.push({ key: "pu", title: "P.U.", width: 30, align: "right" });
   if (hasDiscount) cols.push({ key: "rem", title: "Remise", width: 18, align: "right" });
-  cols.push({ key: "tot", title: "Total HT", width: 32, align: "right" });
+  cols.push({ key: "tot", title: "Total", width: 32, align: "right" });
 
   const cell = (col: Col, it: PdfOrder["items"][number]) => {
     switch (col.key) {
@@ -378,8 +374,7 @@ export function generateOrderPdf(inv: PdfOrder) {
 
   // ========================================================== totaux
   const totalRows: Array<{ label: string; value: string; muted?: boolean }> = [
-    { label: "Sous-total HT", value: money(inv.subtotal_ht) },
-    { label: "TVA", value: money(inv.tax) },
+    { label: "Total", value: money(finalTotal) },
   ];
   if (Number(inv.discount) > 0) {
     totalRows.push({ label: "Remise", value: `-${money(inv.discount)}` });

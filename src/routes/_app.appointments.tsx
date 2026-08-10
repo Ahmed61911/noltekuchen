@@ -126,11 +126,16 @@ function AppointmentsPage() {
   });
 
   const upsert = useMutation({
-    mutationFn: async (p: FormState & { id?: string }) => {
-      const { id, ...payload } = p;
+    mutationFn: async (p: FormState & { id?: string; client_name?: string }) => {
+      const { id, client_name, ...payload } = p;
+      let custId = payload.customer_id || null;
+      if (client_name && client_name.trim()) {
+        const { data: newC } = await supabase.from("customers").insert({ name: client_name.trim() }).select("id").single();
+        if (newC) custId = newC.id;
+      }
       const clean = {
         ...payload,
-        customer_id: payload.customer_id || null,
+        customer_id: custId,
         assigned_to: payload.assigned_to || null,
         description: payload.description || null,
         location: payload.location || null,
@@ -498,14 +503,12 @@ function AppointmentDialog({
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2"><Label>Titre *</Label><Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
 
-        <div><Label>Client</Label>
-          <Select value={form.customer_id ?? "none"} onValueChange={(v) => setForm({ ...form, customer_id: v === "none" ? null : v })}>
-            <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">— Aucun —</SelectItem>
-              {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+        <div><Label>Client (optionnel)</Label>
+          <Input
+            placeholder="Ex: Mme Aicha"
+            value={form.client_name || ""}
+            onChange={e => setForm({ ...form, client_name: e.target.value })}
+          />
         </div>
 
         <div><Label>Commercial assigné</Label>

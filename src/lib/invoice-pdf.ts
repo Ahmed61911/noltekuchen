@@ -290,10 +290,6 @@ export function generateInvoicePdf(inv: PdfInvoice) {
   const totalText = money(finalTotal);
   fitFontSize(doc, totalText, amountW - 12, 15, 9);
   doc.text(totalText, amountX + amountW - 6, blockY + 17.5, { align: "right" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...MUTED);
-  doc.text(pdfText(`Dont TVA : ${money(inv.tax_amount)}`), amountX + 6, blockY + 24);
 
   // ============================================== tableau des lignes
   // Les colonnes optionnelles disparaissent quand elles n'apportent rien : les
@@ -306,9 +302,9 @@ export function generateInvoicePdf(inv: PdfInvoice) {
   const cols: Col[] = [{ key: "desc", title: "Description", align: "left" }];
   if (hasCode) cols.push({ key: "code", title: "Référence", width: 26, align: "left" });
   cols.push({ key: "qty", title: "Qté", width: 14, align: "right" });
-  cols.push({ key: "pu", title: "P.U. HT", width: 30, align: "right" });
+  cols.push({ key: "pu", title: "P.U.", width: 30, align: "right" });
   if (hasDiscount) cols.push({ key: "rem", title: "Remise", width: 18, align: "right" });
-  cols.push({ key: "tot", title: "Total HT", width: 32, align: "right" });
+  cols.push({ key: "tot", title: "Total", width: 32, align: "right" });
 
   const cell = (col: Col, it: PdfInvoice["items"][number]) => {
     switch (col.key) {
@@ -380,8 +376,7 @@ export function generateInvoicePdf(inv: PdfInvoice) {
 
   // ========================================================== totaux
   const totalRows: Array<{ label: string; value: string; muted?: boolean }> = [
-    { label: "Sous-total HT", value: money(inv.subtotal_ht) },
-    { label: "TVA", value: money(inv.tax_amount) },
+    { label: "Total", value: money(finalTotal) },
   ];
   if (Number(inv.discount_amount) > 0) {
     totalRows.push({ label: "Remise", value: `-${money(inv.discount_amount)}` });

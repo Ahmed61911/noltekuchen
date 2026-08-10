@@ -238,7 +238,7 @@ function QuotesPage() {
                 <TableHead>Numéro</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Client</TableHead>
-                <TableHead className="text-right">Total TTC</TableHead>
+                <TableHead className="text-right">Total</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
