@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, CheckCircle2, Truck, XCircle, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Truck, XCircle, Plus, Loader2, FileDown } from "lucide-react";
 import { toast } from "@/lib/notify";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useConfirm } from "@/components/confirm-dialog";
+import { generateOrderPdf, type PdfOrder } from "@/lib/order-pdf";
 
 export const Route = createFileRoute("/_app/orders/$id")({
   component: OrderDetail,
@@ -53,6 +54,7 @@ function OrderDetail() {
 
   const updateStatus = useMutation({
     mutationFn: async (status: "pending" | "validated" | "delivered" | "cancelled") => {
+      // ── VALIDATED: create invoice + sale (NO stock deduction) ──
       if (status === "validated" && order.status !== "validated") {
         const prefix = "FAC-" + new Date().getFullYear().toString().slice(-2) + (new Date().getMonth() + 1).toString().padStart(2, "0");
         const { data: latest } = await supabase.from("invoices").select("invoice_number").like("invoice_number", `${prefix}-%`).order("invoice_number", { ascending: false }).limit(1).single();
@@ -89,16 +91,7 @@ function OrderDetail() {
           if (iiErr) throw iiErr;
         }
 
-        const movements = items.map((it: any) => ({
-          product_id: it.product_id, type: "out" as const, quantity: it.quantity,
-          reason: `Vente - Commande #${order.order_number}`, user_id: user?.id, document_ref: order.order_number,
-        }));
-        if (movements.length > 0) {
-          const { error: smErr } = await supabase.from("stock_movements").insert(movements);
-          if (smErr) throw smErr;
-        }
-
-        // ── Create sale record (Vente) ──
+        // Create sale record
         const { data: sale, error: saleErr } = await supabase.from("sales").insert({
           customer_id: order.customer_id,
           order_id: order.id,
@@ -111,8 +104,8 @@ function OrderDetail() {
           tax_amount: order.tax_amount,
           total_ttc: order.total_ttc,
           paid_amount: 0,
-          stock_applied: true,
-          notes: `Vente générée automatiquement depuis la commande ${order.order_number}`,
+          stock_applied: false,
+          notes: `Vente générée depuis la commande ${order.order_number}`,
           created_by: user?.id,
         }).select("id").single();
         if (saleErr) throw saleErr;
@@ -129,12 +122,30 @@ function OrderDetail() {
         }
       }
 
+      // ── DELIVERED: deduct stock ──
+      if (status === "delivered" && order.status !== "delivered") {
+        const movements = items.map((it: any) => ({
+          product_id: it.product_id, type: "out" as const, quantity: it.quantity,
+          reason: `Livraison - Commande #${order.order_number}`, user_id: user?.id, document_ref: order.order_number,
+        }));
+        if (movements.length > 0) {
+          const { error: smErr } = await supabase.from("stock_movements").insert(movements);
+          if (smErr) throw smErr;
+        }
+        // Mark stock as applied
+        await supabase.from("orders").update({ stock_applied: true }).eq("id", id);
+      }
+
       const { error } = await supabase.from("orders").update({ status }).eq("id", id);
       if (error) throw error;
       return status;
     },
     onSuccess: (s) => {
-      toast.success(s === "validated" ? "Commande validée — facture et vente créées, stock réduit !" : "Statut mis à jour");
+      const msgs: Record<string, string> = {
+        validated: "Commande validée — facture et vente créées !",
+        delivered: "Commande livrée — stock déduit !",
+      };
+      toast.success(msgs[s] || "Statut mis à jour");
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["products"] });
@@ -198,6 +209,23 @@ function OrderDetail() {
           {order.status !== "cancelled" && order.status !== "delivered" && (
             <Button variant="outline" onClick={async () => { if (await confirm({ title: "Annuler cette commande ?", description: "Si elle avait déjà été livrée, la marchandise sera réintégrée au stock.", confirmLabel: "Annuler la commande", destructive: true })) updateStatus.mutate("cancelled"); }}><XCircle className="mr-2 h-4 w-4" />Annuler</Button>
           )}
+          <Button variant="outline" onClick={() => generateOrderPdf({
+            ...order,
+            tax: order.tax_amount,
+            discount: order.discount_amount || 0,
+            customer: order.customers,
+            items: items.map((it: any) => ({
+              description: it.description,
+              quantity: it.quantity,
+              unit_price: it.unit_price,
+              tax_rate: it.tax_rate,
+              discount: it.discount_rate,
+              total: it.line_total_ht,
+              code: it.products?.reference,
+            })),
+          } as PdfOrder)}>
+            <FileDown className="mr-2 h-4 w-4" /> Bon de commande
+          </Button>
         </div>
       </div>
 

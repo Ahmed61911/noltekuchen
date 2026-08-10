@@ -45,7 +45,6 @@ type Product = {
   reference: string;
   name: string;
   brand: string | null;
-  sku: string | null;
   description: string | null;
   purchase_price: number;
   selling_price: number;
@@ -59,7 +58,7 @@ type Product = {
 
 type Warehouse = { id: string; name: string; description: string | null; is_active: boolean };
 
-type FormState = Omit<Product, "id" | "image_url" | "images"> & { gallery: string[] };
+type FormState = Omit<Product, "id" | "image_url" | "images"> & { gallery: string[]; sku: string | null };
 
 const empty: FormState = {
   name: "", reference: "", brand: "", sku: "", description: "",
@@ -165,7 +164,7 @@ function ProductsIndexPage() {
   const resetFilters = () => {
     setQ(""); setStockFilter("all"); setPriceMin(""); setPriceMax(""); setWarehouseFilter("all");
   };
-  const columnCount = isAdmin ? 9 : 8;
+  const columnCount = isAdmin ? 7 : 6;
 
   // Client-side: the screen already holds the whole catalogue and filters it in
   // memory, so search and filters keep running over every product — only the
@@ -181,7 +180,7 @@ function ProductsIndexPage() {
     const gallery = [p.image_url, ...(p.images ?? [])].filter((x): x is string => !!x);
     setForm({
       name: p.name, reference: p.reference,
-      brand: p.brand ?? "", sku: p.sku ?? "",
+      brand: p.brand ?? "", sku: "",
       description: p.description ?? "",
       purchase_price: p.purchase_price, selling_price: p.selling_price,
       stock_quantity: p.stock_quantity, min_stock: p.min_stock,
@@ -224,13 +223,6 @@ function ProductsIndexPage() {
                   </Field>
 
                   {/* Row 2 — SKU & Warehouse */}
-                  <Field label={t("sku") + " *"}>
-                    <Input
-                      value={form.sku ?? ""}
-                      onChange={(e) => setForm({ ...form, sku: e.target.value })}
-                      placeholder="SKU unique"
-                    />
-                  </Field>
                   <Field label={t("warehouse") + " *"}>
                     <Select value={form.warehouse_id ?? ""} onValueChange={(v) => setForm({ ...form, warehouse_id: v })}>
                       <SelectTrigger><SelectValue placeholder={t("select_warehouse")} /></SelectTrigger>
@@ -250,13 +242,6 @@ function ProductsIndexPage() {
                       type="number" min="0" step="0.01"
                       value={form.purchase_price}
                       onChange={(e) => setForm({ ...form, purchase_price: Math.max(0, Number(e.target.value)) })}
-                    />
-                  </Field>
-                  <Field label={t("selling_price") + " (DH) *"}>
-                    <Input
-                      type="number" min="0" step="0.01"
-                      value={form.selling_price}
-                      onChange={(e) => setForm({ ...form, selling_price: Math.max(0, Number(e.target.value)) })}
                     />
                   </Field>
 
@@ -313,7 +298,6 @@ function ProductsIndexPage() {
                       const errs: string[] = [];
                       if (!form.name.trim()) errs.push(t("product_name"));
                       if (!form.reference.trim()) errs.push(t("reference"));
-                      if (!form.sku?.trim()) errs.push(t("sku"));
                       if (!form.warehouse_id) errs.push(t("warehouse"));
                       if (form.purchase_price < 0 || form.selling_price < 0) errs.push("Prix négatif interdit");
                       if (form.stock_quantity < 0 || form.min_stock < 0) errs.push("Quantité négative interdite");
@@ -401,9 +385,7 @@ function ProductsIndexPage() {
               <TableHead>{t("reference")}</TableHead>
               <TableHead>{t("name")}</TableHead>
               <TableHead>Dépôt</TableHead>
-              <TableHead className="text-end">{t("purchase_price")}</TableHead>
-              <TableHead className="text-end">{t("selling_price")}</TableHead>
-              <TableHead className="text-end">{t("margin")}</TableHead>
+              <TableHead className="text-end">Prix d'achat (TTC)</TableHead>
               <TableHead className="text-end">{t("quantity")}</TableHead>
               {isAdmin && <TableHead className="text-end">{t("actions")}</TableHead>}
             </TableRow>
@@ -481,12 +463,6 @@ function ProductsIndexPage() {
                     ) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell className="text-end tabular-nums">{p.purchase_price.toFixed(2)} {CURRENCY}</TableCell>
-                  <TableCell className="text-end tabular-nums">{p.selling_price.toFixed(2)} {CURRENCY}</TableCell>
-                  <TableCell className="text-end tabular-nums">
-                    <span className={margin >= 0 ? "text-success" : "text-destructive"}>
-                      {margin.toFixed(2)} {CURRENCY} ({marginPct.toFixed(0)}%)
-                    </span>
-                  </TableCell>
                   <TableCell className="text-end tabular-nums">
                     {p.stock_quantity === 0 ? (
                       <StatusBadge tone="danger" label={p.stock_quantity} />

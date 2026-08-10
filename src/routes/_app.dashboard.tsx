@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar,
+  BarChart, Bar, PieChart, Pie, Cell, LineChart, Line
 } from "recharts";
 import { Boxes, TrendingUp, TrendingDown, DollarSign, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +52,91 @@ function bucketKey(iso: string, g: "day" | "week" | "month"): string {
   const dow = (d.getDay() + 6) % 7;
   d.setDate(d.getDate() - dow);
   return d.toISOString().slice(0, 10);
+}
+
+function useDashboardCharts() {
+  return useQuery({
+    queryKey: ["dashboard-charts"],
+    queryFn: async () => {
+      // 1. CA Mensuel
+      const d12 = new Date();
+      d12.setMonth(d12.getMonth() - 11);
+      d12.setDate(1);
+      d12.setHours(0,0,0,0);
+      const { data: salesData } = await supabase.from("sales").select("sale_date, total_ttc").gte("sale_date", d12.toISOString());
+      const monthlyRev = new Map<string, number>();
+      (salesData || []).forEach(s => {
+        if (!s.sale_date) return;
+        const m = s.sale_date.slice(0, 7);
+        monthlyRev.set(m, (monthlyRev.get(m) || 0) + Number(s.total_ttc || 0));
+      });
+      const revenueChart = Array.from(monthlyRev.entries()).sort((a,b) => a[0].localeCompare(b[0])).map(([month, total]) => ({ month, total }));
+
+      // 2. Devis par statut
+      const { data: quotesData } = await supabase.from("quotes").select("status");
+      const qStats = new Map<string, number>();
+      (quotesData || []).forEach(q => {
+        const st = q.status || "draft";
+        qStats.set(st, (qStats.get(st) || 0) + 1);
+      });
+      const quotesChart = Array.from(qStats.entries()).map(([name, value]) => ({ name, value }));
+
+      // 3. Commandes en cours
+      const { data: ordersData } = await supabase.from("orders").select("status");
+      const oStats = new Map<string, number>();
+      (ordersData || []).forEach(o => {
+        const st = o.status || "pending";
+        oStats.set(st, (oStats.get(st) || 0) + 1);
+      });
+      const ordersChart = Array.from(oStats.entries()).map(([name, value]) => ({ name, value }));
+
+      // 4. Évolution du stock
+      const d6 = new Date();
+      d6.setMonth(d6.getMonth() - 5);
+      d6.setDate(1);
+      d6.setHours(0,0,0,0);
+      const { data: products } = await supabase.from("products").select("id, purchase_price, stock_quantity");
+      const { data: movements } = await supabase.from("stock_movements").select("created_at, type, quantity, product_id").gte("created_at", d6.toISOString());
+      
+      const currentStock = new Map<string, number>();
+      const prices = new Map<string, number>();
+      (products || []).forEach(p => {
+        currentStock.set(p.id, Number(p.stock_quantity) || 0);
+        prices.set(p.id, Number(p.purchase_price) || 0);
+      });
+      let currentVal = 0;
+      currentStock.forEach((qty, id) => { currentVal += qty * (prices.get(id) || 0); });
+
+      const valMovs = new Map<string, number>();
+      (movements || []).forEach(m => {
+        if (!m.created_at) return;
+        const mth = m.created_at.slice(0, 7);
+        const p = prices.get(m.product_id) || 0;
+        const q = Number(m.quantity) || 0;
+        const isOut = ["out", "sale", "supplier_return"].includes(m.type);
+        const delta = isOut ? -q : q;
+        valMovs.set(mth, (valMovs.get(mth) || 0) + delta * p);
+      });
+
+      const months = [];
+      for (let i = 0; i < 6; i++) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        months.push(d.toISOString().slice(0, 7));
+      }
+      months.sort();
+
+      const stockChart = [];
+      let runningVal = currentVal;
+      for (let i = 5; i >= 0; i--) {
+        const m = months[i];
+        stockChart.unshift({ month: m, value: runningVal });
+        runningVal -= (valMovs.get(m) || 0);
+      }
+
+      return { revenueChart, quotesChart, ordersChart, stockChart };
+    }
+  });
 }
 
 function useDashboardData(period: Period) {
@@ -163,10 +248,19 @@ function Stat({ icon: Icon, label, value, tone, delta }: { icon: typeof Boxes; l
   );
 }
 
+const QUOTE_COLORS: Record<string, string> = {
+  draft: "var(--color-slate-500, #64748b)",
+  sent: "var(--color-blue-500, #3b82f6)",
+  accepted: "var(--color-emerald-500, #10b981)",
+  refused: "var(--color-rose-500, #f43f5e)",
+  expired: "var(--color-amber-500, #f59e0b)",
+};
+
 function Dashboard() {
   const { t } = useI18n();
   const [period, setPeriod] = useState<Period>("month");
   const { data, isLoading } = useDashboardData(period);
+  const { data: chartsData, isLoading: isLoadingCharts } = useDashboardCharts();
 
   const periodLabels: Record<Period, string> = {
     month: t("period_month"),
@@ -316,6 +410,89 @@ function Dashboard() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2 mt-6">
+        {/* 1. CA Mensuel */}
+        <Card className="shadow-card">
+          <CardHeader><CardTitle className="text-base">CA Mensuel</CardTitle></CardHeader>
+          <CardContent className="h-72">
+            {isLoadingCharts ? (
+              <div className="h-full animate-pulse rounded-lg bg-muted/40" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartsData?.revenueChart ?? []}>
+                  <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `${(val/1000).toFixed(0)}k`} />
+                  <Tooltip contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }} formatter={(val: number) => fmtMoney(val)} />
+                  <Bar dataKey="total" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 2. Devis par statut */}
+        <Card className="shadow-card">
+          <CardHeader><CardTitle className="text-base">Devis par statut</CardTitle></CardHeader>
+          <CardContent className="h-72">
+            {isLoadingCharts ? (
+              <div className="h-full animate-pulse rounded-lg bg-muted/40" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Tooltip contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }} />
+                  <Pie data={chartsData?.quotesChart ?? []} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={2}>
+                    {(chartsData?.quotesChart ?? []).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={QUOTE_COLORS[entry.name] || "var(--color-primary)"} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 3. Commandes en cours */}
+        <Card className="shadow-card">
+          <CardHeader><CardTitle className="text-base">Pipeline commandes</CardTitle></CardHeader>
+          <CardContent className="h-72">
+            {isLoadingCharts ? (
+              <div className="h-full animate-pulse rounded-lg bg-muted/40" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartsData?.ordersChart ?? []} layout="vertical" margin={{ left: 12 }}>
+                  <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis type="category" dataKey="name" stroke="var(--color-muted-foreground)" fontSize={11} width={80} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }} />
+                  <Bar dataKey="value" fill="var(--color-primary)" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 4. Évolution du stock total */}
+        <Card className="shadow-card">
+          <CardHeader><CardTitle className="text-base">Valeur du stock</CardTitle></CardHeader>
+          <CardContent className="h-72">
+            {isLoadingCharts ? (
+              <div className="h-full animate-pulse rounded-lg bg-muted/40" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartsData?.stockChart ?? []}>
+                  <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `${(val/1000).toFixed(0)}k`} />
+                  <Tooltip contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }} formatter={(val: number) => fmtMoney(val)} />
+                  <Line type="monotone" dataKey="value" stroke="var(--color-primary)" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>

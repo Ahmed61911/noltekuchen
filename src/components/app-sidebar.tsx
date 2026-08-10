@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Package, Boxes, ShoppingCart, Calendar,
-  Truck, FileText, BarChart3, History, Users, Settings, Receipt, UserSquare, ClipboardList, ShieldCheck, Warehouse, Shield,
+  Truck, FileText, BarChart3, History, Users, Settings, ClipboardList, ShieldCheck, Warehouse, Shield,
   Kanban, PackageCheck, FileSignature,
 } from "lucide-react";
 import {
@@ -53,14 +53,12 @@ export function AppSidebar() {
     { to: "/quotes", icon: FileSignature, label: "Devis", module: "sales" },
     { to: "/orders", icon: ClipboardList, label: "Commandes", module: "orders" },
     { to: "/sales", icon: ShoppingCart, label: t("sales"), module: "sales" },
-    { to: "/invoices", icon: Receipt, label: "Facturation", module: "sales" },
     { to: "/appointments", icon: Calendar, label: t("appointments"), module: null },
   ].filter((it) => !it.module || can(it.module, "view"));
   const ops = [
     { to: "/projects", icon: Kanban, label: "Projets", module: "projects" },
     
     { to: "/suppliers", icon: Truck, label: t("suppliers"), module: "suppliers" },
-    { to: "/customers", icon: UserSquare, label: "Clients", module: "customers" },
     { to: "/warehouses", icon: Warehouse, label: "Dépôts", module: "stock" },
     { to: "/documents", icon: FileText, label: t("documents"), module: null },
     { to: "/reports", icon: BarChart3, label: t("reports"), module: "reports" },

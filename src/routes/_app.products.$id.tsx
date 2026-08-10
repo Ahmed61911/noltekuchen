@@ -36,7 +36,6 @@ type Product = {
   reference: string;
   name: string;
   brand: string | null;
-  sku: string | null;
   description: string | null;
   purchase_price: number;
   selling_price: number;
@@ -105,7 +104,7 @@ function ProductDetailPage() {
     [product]
   );
 
-  const [form, setForm] = useState<Partial<Product> & { gallery: string[] }>({
+  const [form, setForm] = useState<Partial<Product> & { gallery: string[]; sku?: string | null }>({
     name: "", reference: "", brand: "", sku: "", description: "",
     purchase_price: 0, selling_price: 0, stock_quantity: 0, min_stock: 5,
     dimensions: "", warehouse_id: null, gallery: [],
@@ -164,7 +163,7 @@ function ProductDetailPage() {
       name: product.name,
       reference: product.reference,
       brand: product.brand ?? "",
-      sku: product.sku ?? "",
+      sku: "",
       description: product.description ?? "",
       purchase_price: product.purchase_price,
       selling_price: product.selling_price,
@@ -213,11 +212,6 @@ function ProductDetailPage() {
                 <Barcode className="h-3.5 w-3.5" />
                 {product.reference}
               </span>
-              {product.sku && (
-                <Badge variant="secondary" className="text-[10px] font-medium">
-                  SKU: {product.sku}
-                </Badge>
-              )}
             </div>
           </div>
         </div>
@@ -250,9 +244,6 @@ function ProductDetailPage() {
             </Field>
 
             {/* Row 2 — SKU & Warehouse */}
-            <Field label={t("sku") + " *"}>
-              <Input value={form.sku ?? ""} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="SKU unique" />
-            </Field>
             <Field label={t("warehouse") + " *"}>
               <Select value={form.warehouse_id ?? ""} onValueChange={(v) => setForm({ ...form, warehouse_id: v })}>
                 <SelectTrigger><SelectValue placeholder={t("select_warehouse")} /></SelectTrigger>
@@ -267,9 +258,6 @@ function ProductDetailPage() {
             {/* Row 3 — Pricing */}
             <Field label={t("purchase_price") + " (DH) *"}>
               <Input type="number" min="0" step="0.01" value={form.purchase_price} onChange={(e) => setForm({ ...form, purchase_price: Math.max(0, Number(e.target.value)) })} />
-            </Field>
-            <Field label={t("selling_price") + " (DH) *"}>
-              <Input type="number" min="0" step="0.01" value={form.selling_price} onChange={(e) => setForm({ ...form, selling_price: Math.max(0, Number(e.target.value)) })} />
             </Field>
 
             {/* Row 4 — Stock */}
@@ -303,7 +291,6 @@ function ProductDetailPage() {
                   const errs: string[] = [];
                   if (!form.name?.trim()) errs.push(t("product_name"));
                   if (!form.reference?.trim()) errs.push(t("reference"));
-                  if (!form.sku?.trim()) errs.push(t("sku"));
                   if (!form.warehouse_id) errs.push(t("warehouse"));
                   if ((form.purchase_price ?? 0) < 0 || (form.selling_price ?? 0) < 0) errs.push("Prix négatif interdit");
                   if ((form.stock_quantity ?? 0) < 0 || (form.min_stock ?? 0) < 0) errs.push("Quantité négative interdite");
@@ -375,17 +362,7 @@ function ProductDetailPage() {
             <Card className="shadow-card bg-gradient-subtle">
               <CardContent className="p-5">
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-                  <PriceBlock label="Prix d'achat" value={product.purchase_price} />
-                  <PriceBlock label="Prix de vente" value={product.selling_price} />
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Marge</p>
-                    <p className={`text-2xl font-display font-semibold tracking-tight ${margin >= 0 ? "text-success" : "text-destructive"}`}>
-                      {margin.toFixed(2)} {CURRENCY}
-                    </p>
-                    <Badge variant="outline" className={margin >= 0 ? "text-success border-success/30" : "text-destructive border-destructive/30"}>
-                      {marginPct.toFixed(0)} %
-                    </Badge>
-                  </div>
+                  <PriceBlock label="Prix d'achat (TTC)" value={product.purchase_price} />
                 </div>
               </CardContent>
             </Card>
@@ -441,7 +418,6 @@ function ProductDetailPage() {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <SpecTile icon={Tag} label="Marque" value={product.brand || "—"} />
               <SpecTile icon={Barcode} label="Référence" value={product.reference} />
-              <SpecTile icon={Package} label="SKU" value={product.sku || "—"} />
               <SpecTile icon={Ruler} label="Dimensions" value={product.dimensions || "—"} />
             </div>
 

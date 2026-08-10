@@ -42,6 +42,7 @@ function QuoteDetail() {
   const [selectedProduct, setSelectedProduct] = useState("");
   const [qty, setQty] = useState(1);
   const [discount, setDiscount] = useState(0);
+  const [unitPrice, setUnitPrice] = useState(0);
 
   const { data, isLoading } = useQuery({
     queryKey: ["quote", id],
@@ -63,13 +64,61 @@ function QuoteDetail() {
 
   const updateStatus = useMutation({
     mutationFn: async (status: string) => {
+      // ── When accepting a quote, create an order ──
+      if (status === "accepted" && data?.quote.status !== "accepted") {
+        const quote = data!.quote;
+        const qItems = data!.items;
+
+        // Create the order
+        const { data: order, error: orderErr } = await supabase.from("orders").insert({
+          customer_id: quote.customer_id,
+          order_date: new Date().toISOString().split("T")[0],
+          due_date: quote.expiry_date || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+          status: "pending",
+          payment_status: "unpaid",
+          subtotal_ht: quote.subtotal_ht,
+          tax_amount: quote.tax,
+          total_ttc: quote.total_ttc,
+          discount_amount: quote.discount || 0,
+          paid_amount: 0,
+          stock_applied: false,
+          notes: `Commande générée depuis le devis ${quote.quote_number}`,
+          created_by: user?.id,
+        }).select("id, order_number").single();
+        if (orderErr) throw orderErr;
+
+        // Map quote_items → order_items
+        const orderItems = qItems.map((it: any) => {
+          const lineHt = Number(it.total) || 0;
+          const lineTax = (lineHt * (Number(it.tax_rate) || 20)) / 100;
+          return {
+            order_id: order.id,
+            product_id: it.product_id,
+            description: it.description || "",
+            quantity: it.quantity,
+            unit_price: it.unit_price,
+            tax_rate: it.tax_rate || 20,
+            discount_rate: it.discount || 0,
+            line_total_ht: lineHt,
+            line_tax: lineTax,
+            line_total_ttc: lineHt + lineTax,
+          };
+        });
+        if (orderItems.length > 0) {
+          const { error: oiErr } = await supabase.from("order_items").insert(orderItems);
+          if (oiErr) throw oiErr;
+        }
+
+        toast.success(`Devis accepté — Commande ${order.order_number} créée !`);
+      }
+
       const { error } = await supabase.from("quotes").update({ status }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Statut mis à jour");
       qc.invalidateQueries({ queryKey: ["quote", id] });
       qc.invalidateQueries({ queryKey: ["quotes"] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -78,13 +127,13 @@ function QuoteDetail() {
     mutationFn: async () => {
       const p = products.find(x => x.id === selectedProduct);
       if (!p) throw new Error("Produit invalide");
-      const unitPrice = Number(p.selling_price) || 0;
-      const subtotal = unitPrice * qty;
+      const price = Number(unitPrice) || 0;
+      const subtotal = price * qty;
       const dVal = (subtotal * discount) / 100;
       const total = subtotal - dVal;
       const { error } = await supabase.from("quote_items").insert({
         quote_id: id, product_id: p.id, quantity: qty,
-        unit_price: unitPrice, tax_rate: 20, discount, total, description: p.name
+        unit_price: price, tax_rate: 20, discount, total, description: p.name
       });
       if (error) throw error;
       await recomputeTotals();
@@ -92,7 +141,7 @@ function QuoteDetail() {
     onSuccess: () => {
       toast.success("Ligne ajoutée");
       setAddOpen(false);
-      setSelectedProduct(""); setQty(1); setDiscount(0);
+      setSelectedProduct(""); setQty(1); setDiscount(0); setUnitPrice(0);
       qc.invalidateQueries({ queryKey: ["quote", id] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -192,7 +241,8 @@ function QuoteDetail() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div><Label>Prix unitaire (DH)</Label><Input type="number" min={0} value={unitPrice} step="any" onChange={e => setUnitPrice(Number(e.target.value))} /></div>
                       <div><Label>Quantité</Label><Input type="number" min={1} value={qty} step="any" onChange={e => setQty(Number(e.target.value))} /></div>
                       <div><Label>Remise (%)</Label><Input type="number" min={0} max={100} value={discount} step="any" onChange={e => setDiscount(Number(e.target.value))} /></div>
                     </div>

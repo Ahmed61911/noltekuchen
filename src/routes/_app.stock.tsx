@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, ArrowDown, ArrowUp } from "lucide-react";
+import { Plus, ArrowDown, ArrowUp, Printer, AlertTriangle, Download } from "lucide-react";
 import { toast } from "@/lib/notify";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { DataPagination, usePagination } from "@/components/data/pagination";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { pdfText } from "@/lib/pdf-safe";
 
 export const Route = createFileRoute("/_app/stock")({
   component: StockPage,
@@ -30,18 +33,24 @@ function StockPage() {
   const { t } = useI18n();
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [activeTab, setActiveTab] = useState<"movements" | "inventory">("movements");
   const [open, setOpen] = useState(false);
   const [productId, setProductId] = useState("");
   const [warehouseId, setWarehouseId] = useState<string>("");
-  const [type, setType] = useState<"in" | "out">("in");
+  const [type, setType] = useState<"in" | "out" | "damaged">("in");
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState("");
+  
+  // Mouvements filters
   const [productFilter, setProductFilter] = useState("all");
   const [warehouseFilter, setWarehouseFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState<"all" | "in" | "out">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "in" | "out" | "damaged">("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [q, setQ] = useState("");
+
+  // Inventory filters
+  const [inventoryWarehouseFilter, setInventoryWarehouseFilter] = useState("all");
 
   const { data: products = [] } = useQuery({
     queryKey: ["products-min"],
@@ -53,7 +62,6 @@ function StockPage() {
     queryFn: async () => (await supabase.from("warehouses").select("id,name").eq("is_active", true).order("name")).data ?? [],
   });
 
-
   const { data: movements = [], isLoading } = useQuery({
     queryKey: ["movements"],
     queryFn: async () => {
@@ -62,6 +70,18 @@ function StockPage() {
         .select("id,type,quantity,reason,created_at,product_id,warehouse_id,products(name,reference),warehouses(name)")
         .order("created_at", { ascending: false })
         .limit(2000);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: inventory = [], isLoading: isLoadingInventory } = useQuery({
+    queryKey: ["inventory"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, reference, name, stock_quantity, purchase_price, warehouse_id, warehouses(name)")
+        .order("name");
       if (error) throw error;
       return data;
     },
@@ -81,6 +101,7 @@ function StockPage() {
       toast.success(t("saved"));
       qc.invalidateQueries({ queryKey: ["movements"] });
       qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["inventory"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       setOpen(false);
       setProductId(""); setWarehouseId(""); setType("in"); setQuantity(1); setReason("");
@@ -98,164 +119,365 @@ function StockPage() {
       const s = q.toLowerCase();
       const name = (m.products?.name ?? "").toLowerCase();
       const ref = (m.products?.reference ?? "").toLowerCase();
-      const reason = (m.reason ?? "").toLowerCase();
-      if (!name.includes(s) && !ref.includes(s) && !reason.includes(s)) return false;
+      const rsn = (m.reason ?? "").toLowerCase();
+      if (!name.includes(s) && !ref.includes(s) && !rsn.includes(s)) return false;
     }
     return true;
   });
 
-  const pagination = usePagination({
-    total: filteredMovements.length,
-    resetKey: `${typeFilter}-${productFilter}-${warehouseFilter}-${dateFrom}-${dateTo}-${q}`,
+  const filteredInventory = (inventory as any[]).filter((p) => {
+    if (inventoryWarehouseFilter !== "all" && p.warehouse_id !== inventoryWarehouseFilter) return false;
+    return true;
   });
+
+  const totalInventoryQty = filteredInventory.reduce((acc, p) => acc + (Number(p.stock_quantity) || 0), 0);
+  const totalInventoryValue = filteredInventory.reduce((acc, p) => acc + ((Number(p.stock_quantity) || 0) * (Number(p.purchase_price) || 0)), 0);
+
+  const pagination = usePagination({
+    total: activeTab === "movements" ? filteredMovements.length : filteredInventory.length,
+    resetKey: activeTab === "movements" 
+      ? `${typeFilter}-${productFilter}-${warehouseFilter}-${dateFrom}-${dateTo}-${q}`
+      : `${inventoryWarehouseFilter}`,
+  });
+
   const pagedMovements = pagination.slice(filteredMovements);
+  const pagedInventory = pagination.slice(filteredInventory);
+
+  const handlePrintMovements = () => {
+    const doc = new jsPDF();
+    let title = "Mouvements de stock";
+    if (dateFrom && dateTo) {
+      title += ` du ${new Date(dateFrom).toLocaleDateString("fr-FR")} au ${new Date(dateTo).toLocaleDateString("fr-FR")}`;
+    }
+    doc.text(pdfText(title), 14, 15);
+    
+    const tableData = filteredMovements.map(m => {
+      const prod = m.products as any;
+      const wh = m.warehouses as any;
+      let typeStr = "";
+      if (m.type === "in") typeStr = "Entrée";
+      else if (m.type === "out") typeStr = "Sortie";
+      else if (m.type === "damaged") typeStr = "Endommagé";
+
+      return [
+        new Date(m.created_at).toLocaleString("fr-FR"),
+        pdfText(`${prod?.reference || ""} - ${prod?.name || ""}`),
+        pdfText(wh?.name || "—"),
+        pdfText(typeStr),
+        m.quantity.toString(),
+        pdfText(m.reason || "—")
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 25,
+      head: [["Date", "Produit", "Dépôt", "Type", "Quantité", "Motif"]],
+      body: tableData,
+    });
+    doc.save("mouvements-stock.pdf");
+  };
+
+  const handleExportCSV = () => {
+    const headers = ["Référence", "Nom du produit", "Dépôt", "Quantité en stock", "Prix d'achat (TTC)", "Valeur totale"];
+    const rows = filteredInventory.map(p => {
+      const val = (Number(p.stock_quantity) || 0) * (Number(p.purchase_price) || 0);
+      return [
+        p.reference || "",
+        p.name || "",
+        p.warehouses?.name || "",
+        p.stock_quantity || 0,
+        p.purchase_price || 0,
+        val
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
+    });
+    
+    // Add total row
+    rows.push([
+      "Total",
+      "",
+      "",
+      totalInventoryQty,
+      "",
+      totalInventoryValue
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\n"); // UTF-8 BOM
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "inventaire.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrintInventory = () => {
+    const doc = new jsPDF();
+    doc.text(pdfText("Inventaire"), 14, 15);
+    
+    const tableData = filteredInventory.map(p => {
+      const val = (Number(p.stock_quantity) || 0) * (Number(p.purchase_price) || 0);
+      return [
+        pdfText(p.reference || ""),
+        pdfText(p.name || ""),
+        pdfText(p.warehouses?.name || "—"),
+        (p.stock_quantity || 0).toString(),
+        (p.purchase_price || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" }),
+        val.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })
+      ];
+    });
+
+    tableData.push([
+      "Total",
+      "",
+      "",
+      totalInventoryQty.toString(),
+      "",
+      totalInventoryValue.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })
+    ]);
+
+    autoTable(doc, {
+      startY: 25,
+      head: [["Référence", "Nom du produit", "Dépôt", "Quantité", "Prix d'achat", "Valeur totale"]],
+      body: tableData,
+    });
+    doc.save("inventaire.pdf");
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">{t("stock")}</h1>
-          <p className="text-sm text-muted-foreground">Mouvements et historique</p>
+          <p className="text-sm text-muted-foreground">Gestion du stock et inventaire</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-primary text-primary-foreground shadow-elegant">
-              <Plus className="me-1 h-4 w-4" /> {t("new_movement")}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>{t("new_movement")}</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t("product")}</Label>
-                <Select value={productId} onValueChange={setProductId}>
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                  <SelectContent>
-                    {products.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.reference} — {p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">{t("type")}</Label>
-                  <Select value={type} onValueChange={(v) => setType(v as "in" | "out")}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="in">{t("movement_in")}</SelectItem>
-                      <SelectItem value="out">{t("movement_out")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">{t("quantity")}</Label>
-                  <Input type="number" min={1} value={quantity} step="any" onChange={(e) => setQuantity(Number(e.target.value))} />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Dépôt</Label>
-                <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">— Aucun —</SelectItem>
-                    {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t("reason")}</Label>
-                <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Vente, livraison, retour…" />
-              </div>
-            </div>
+        <div className="flex items-center gap-2">
+          {activeTab === "movements" ? (
+            <>
+              <Button variant="outline" onClick={handlePrintMovements}>
+                <Printer className="me-2 h-4 w-4" /> Imprimer
+              </Button>
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-gradient-primary text-primary-foreground shadow-elegant">
+                    <Plus className="me-1 h-4 w-4" /> {t("new_movement")}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>{t("new_movement")}</DialogTitle></DialogHeader>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">{t("product")}</Label>
+                      <Select value={productId} onValueChange={setProductId}>
+                        <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                        <SelectContent>
+                          {products.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>{p.reference} — {p.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">{t("type")}</Label>
+                        <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="in">{t("movement_in")}</SelectItem>
+                            <SelectItem value="out">{t("movement_out")}</SelectItem>
+                            <SelectItem value="damaged">Endommagé</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">{t("quantity")}</Label>
+                        <Input type="number" min={1} value={quantity} step="any" onChange={(e) => setQuantity(Number(e.target.value))} />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Dépôt</Label>
+                      <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
+                        <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_none">— Aucun —</SelectItem>
+                          {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">{t("reason")}</Label>
+                      <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Vente, livraison, retour…" />
+                    </div>
+                  </div>
 
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-              <Button onClick={() => create.mutate()} disabled={create.isPending}>{t("save")}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
+                    <Button onClick={() => create.mutate()} disabled={create.isPending}>{t("save")}</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={handleExportCSV}>
+                <Download className="me-2 h-4 w-4" /> Exporter CSV
+              </Button>
+              <Button variant="outline" onClick={handlePrintInventory}>
+                <Printer className="me-2 h-4 w-4" /> Imprimer PDF
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="flex gap-2 border-b pb-2">
+        <Button variant={activeTab === "movements" ? "default" : "ghost"} onClick={() => { setActiveTab("movements"); pagination.setPage(1); }}>
+          Mouvements
+        </Button>
+        <Button variant={activeTab === "inventory" ? "default" : "ghost"} onClick={() => { setActiveTab("inventory"); pagination.setPage(1); }}>
+          Inventaire
+        </Button>
       </div>
 
       <Card className="p-3 shadow-card">
-        <div className="flex flex-wrap items-center gap-2">
-          <Input className="w-64" placeholder={t("search")} value={q} onChange={e => setQ(e.target.value)} />
-          <Select value={productFilter} onValueChange={setProductFilter}>
-            <SelectTrigger className="w-56"><SelectValue placeholder={t("product")} /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous produits</SelectItem>
-              {products.map(p => <SelectItem key={p.id} value={p.id}>{p.reference} — {p.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous dépôts</SelectItem>
-              {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous types</SelectItem>
-              <SelectItem value="in">{t("movement_in")}</SelectItem>
-              <SelectItem value="out">{t("movement_out")}</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-          <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} />
-          {(q || productFilter !== "all" || warehouseFilter !== "all" || typeFilter !== "all" || dateFrom || dateTo) && (
-            <Button variant="ghost" size="sm" onClick={() => { setQ(""); setProductFilter("all"); setWarehouseFilter("all"); setTypeFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
-          )}
-
-        </div>
+        {activeTab === "movements" ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Input className="w-64" placeholder={t("search")} value={q} onChange={e => setQ(e.target.value)} />
+            <Select value={productFilter} onValueChange={setProductFilter}>
+              <SelectTrigger className="w-56"><SelectValue placeholder={t("product")} /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous produits</SelectItem>
+                {products.map(p => <SelectItem key={p.id} value={p.id}>{p.reference} — {p.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+              <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous dépôts</SelectItem>
+                {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous types</SelectItem>
+                <SelectItem value="in">{t("movement_in")}</SelectItem>
+                <SelectItem value="out">{t("movement_out")}</SelectItem>
+                <SelectItem value="damaged">Endommagé</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+            <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+            {(q || productFilter !== "all" || warehouseFilter !== "all" || typeFilter !== "all" || dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" onClick={() => { setQ(""); setProductFilter("all"); setWarehouseFilter("all"); setTypeFilter("all"); setDateFrom(""); setDateTo(""); }}>Réinitialiser</Button>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={inventoryWarehouseFilter} onValueChange={setInventoryWarehouseFilter}>
+              <SelectTrigger className="w-44"><SelectValue placeholder="Dépôt" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous dépôts</SelectItem>
+                {warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {inventoryWarehouseFilter !== "all" && (
+              <Button variant="ghost" size="sm" onClick={() => setInventoryWarehouseFilter("all")}>Réinitialiser</Button>
+            )}
+          </div>
+        )}
       </Card>
 
       <Card className="overflow-hidden shadow-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("date")}</TableHead>
-              <TableHead>{t("product")}</TableHead>
-              <TableHead>Dépôt</TableHead>
-              <TableHead>{t("type")}</TableHead>
-              <TableHead className="text-right">{t("quantity")}</TableHead>
-              <TableHead>{t("reason")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading && <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("loading")}</TableCell></TableRow>}
-            {!isLoading && pagedMovements.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("no_data")}</TableCell></TableRow>
-            )}
-            {pagedMovements.map((m) => {
-              const prod = m.products as { name?: string; reference?: string } | null;
-              const wh = m.warehouses as { name?: string } | null;
-              return (
-                <TableRow key={m.id}>
-                  <TableCell className="text-xs text-muted-foreground">{new Date(m.created_at).toLocaleString("fr-FR")}</TableCell>
-                  <TableCell>
-                    <div className="font-medium">{prod?.name}</div>
-                    <div className="font-mono text-xs text-muted-foreground">{prod?.reference}</div>
-                  </TableCell>
-                  <TableCell className="text-sm">{wh?.name ?? "—"}</TableCell>
-                  <TableCell>
-                    {m.type === "in" ? (
-                      <Badge className="bg-success/15 text-success hover:bg-success/15"><ArrowDown className="me-1 h-3 w-3" />{t("movement_in")}</Badge>
-                    ) : (
-                      <Badge className="bg-warning/20 text-warning-foreground hover:bg-warning/20 dark:bg-warning/15 dark:text-warning"><ArrowUp className="me-1 h-3 w-3" />{t("movement_out")}</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">{m.quantity}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{m.reason || "—"}</TableCell>
+        {activeTab === "movements" ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("date")}</TableHead>
+                <TableHead>{t("product")}</TableHead>
+                <TableHead>Dépôt</TableHead>
+                <TableHead>{t("type")}</TableHead>
+                <TableHead className="text-right">{t("quantity")}</TableHead>
+                <TableHead>{t("reason")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading && <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("loading")}</TableCell></TableRow>}
+              {!isLoading && pagedMovements.length === 0 && (
+                <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("no_data")}</TableCell></TableRow>
+              )}
+              {pagedMovements.map((m) => {
+                const prod = m.products as { name?: string; reference?: string } | null;
+                const wh = m.warehouses as { name?: string } | null;
+                return (
+                  <TableRow key={m.id}>
+                    <TableCell className="text-xs text-muted-foreground">{new Date(m.created_at).toLocaleString("fr-FR")}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">{prod?.name}</div>
+                      <div className="font-mono text-xs text-muted-foreground">{prod?.reference}</div>
+                    </TableCell>
+                    <TableCell className="text-sm">{wh?.name ?? "—"}</TableCell>
+                    <TableCell>
+                      {m.type === "in" ? (
+                        <Badge className="bg-success/15 text-success hover:bg-success/15"><ArrowDown className="me-1 h-3 w-3" />{t("movement_in")}</Badge>
+                      ) : m.type === "damaged" ? (
+                        <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/15"><AlertTriangle className="me-1 h-3 w-3" />Endommagé</Badge>
+                      ) : (
+                        <Badge className="bg-warning/20 text-warning-foreground hover:bg-warning/20 dark:bg-warning/15 dark:text-warning"><ArrowUp className="me-1 h-3 w-3" />{t("movement_out")}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">{m.quantity}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{m.reason || "—"}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Référence</TableHead>
+                <TableHead>Nom du produit</TableHead>
+                <TableHead>Dépôt</TableHead>
+                <TableHead className="text-right">Quantité en stock</TableHead>
+                <TableHead className="text-right">Prix d'achat (TTC)</TableHead>
+                <TableHead className="text-right">Valeur totale</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoadingInventory && <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("loading")}</TableCell></TableRow>}
+              {!isLoadingInventory && pagedInventory.length === 0 && (
+                <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("no_data")}</TableCell></TableRow>
+              )}
+              {pagedInventory.map((p) => {
+                const wh = p.warehouses as { name?: string } | null;
+                const val = (Number(p.stock_quantity) || 0) * (Number(p.purchase_price) || 0);
+                return (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{p.reference}</TableCell>
+                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell className="text-sm">{wh?.name ?? "—"}</TableCell>
+                    <TableCell className="text-right font-medium">{p.stock_quantity || 0}</TableCell>
+                    <TableCell className="text-right text-sm">{(p.purchase_price || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}</TableCell>
+                    <TableCell className="text-right font-medium">{val.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}</TableCell>
+                  </TableRow>
+                );
+              })}
+              {!isLoadingInventory && pagedInventory.length > 0 && (
+                <TableRow className="bg-muted/50 font-bold">
+                  <TableCell colSpan={3} className="text-right">Total</TableCell>
+                  <TableCell className="text-right">{totalInventoryQty}</TableCell>
+                  <TableCell></TableCell>
+                  <TableCell className="text-right">{totalInventoryValue.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}</TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+              )}
+            </TableBody>
+          </Table>
+        )}
       </Card>
       <DataPagination pagination={pagination} />
     </div>
-
   );
 }
