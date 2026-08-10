@@ -54,48 +54,12 @@ function OrderDetail() {
 
   const updateStatus = useMutation({
     mutationFn: async (status: "pending" | "validated" | "delivered" | "cancelled") => {
-      // ── VALIDATED: create invoice + sale (NO stock deduction) ──
+      // ── VALIDATED: create sale + invoice (NO stock deduction) ──
       if (status === "validated" && order.status !== "validated") {
-        const prefix = "FAC-" + new Date().getFullYear().toString().slice(-2) + (new Date().getMonth() + 1).toString().padStart(2, "0");
-        const { data: latest } = await supabase.from("invoices").select("invoice_number").like("invoice_number", `${prefix}-%`).order("invoice_number", { ascending: false }).limit(1).single();
-        let nextSeq = 1;
-        if (latest?.invoice_number) {
-          const parts = latest.invoice_number.split("-");
-          nextSeq = parseInt(parts[2], 10) + 1;
-        }
-        const invNum = `${prefix}-${nextSeq.toString().padStart(4, "0")}`;
-
-        const { data: inv, error: invErr } = await supabase.from("invoices").insert({
-          invoice_number: invNum,
-          customer_id: order.customer_id,
-          invoice_date: new Date().toISOString().split("T")[0],
-          due_date: order.due_date,
-          status: "draft",
-          source_sale_id: order.id,
-          subtotal_ht: order.subtotal_ht,
-          tax_amount: order.tax_amount,
-          total_ttc: order.total_ttc,
-          discount_amount: 0,
-          created_by: user?.id,
-        }).select("id").single();
-        if (invErr) throw invErr;
-
-        const invItems = items.map((it: any) => ({
-          invoice_id: inv.id, product_id: it.product_id, description: it.description,
-          quantity: it.quantity, unit_price: it.unit_price, discount_rate: it.discount_rate,
-          tax_rate: it.tax_rate, line_total_ht: it.line_total_ht, line_tax: it.line_tax,
-          line_total_ttc: it.line_total_ttc,
-        }));
-        if (invItems.length > 0) {
-          const { error: iiErr } = await supabase.from("invoice_items").insert(invItems);
-          if (iiErr) throw iiErr;
-        }
-
-        // Create sale record
+        // 1. Create sale record
         const { data: sale, error: saleErr } = await supabase.from("sales").insert({
           customer_id: order.customer_id,
           order_id: order.id,
-          invoice_id: inv.id,
           sale_date: new Date().toISOString().split("T")[0],
           payment_due_date: order.due_date,
           payment_method: "cash",
@@ -120,6 +84,45 @@ function OrderDetail() {
           const { error: siErr } = await supabase.from("sale_items").insert(saleItems);
           if (siErr) throw siErr;
         }
+
+        // 2. Create invoice linked to source_sale_id = sale.id
+        const prefix = "FAC-" + new Date().getFullYear().toString().slice(-2) + (new Date().getMonth() + 1).toString().padStart(2, "0");
+        const { data: latest } = await supabase.from("invoices").select("invoice_number").like("invoice_number", `${prefix}-%`).order("invoice_number", { ascending: false }).limit(1).single();
+        let nextSeq = 1;
+        if (latest?.invoice_number) {
+          const parts = latest.invoice_number.split("-");
+          nextSeq = parseInt(parts[2], 10) + 1;
+        }
+        const invNum = `${prefix}-${nextSeq.toString().padStart(4, "0")}`;
+
+        const { data: inv, error: invErr } = await supabase.from("invoices").insert({
+          invoice_number: invNum,
+          customer_id: order.customer_id,
+          invoice_date: new Date().toISOString().split("T")[0],
+          due_date: order.due_date,
+          status: "draft",
+          source_sale_id: sale.id,
+          subtotal_ht: order.subtotal_ht,
+          tax_amount: order.tax_amount,
+          total_ttc: order.total_ttc,
+          discount_amount: 0,
+          created_by: user?.id,
+        }).select("id").single();
+        if (invErr) throw invErr;
+
+        const invItems = items.map((it: any) => ({
+          invoice_id: inv.id, product_id: it.product_id, description: it.description,
+          quantity: it.quantity, unit_price: it.unit_price, discount_rate: it.discount_rate,
+          tax_rate: it.tax_rate, line_total_ht: it.line_total_ht, line_tax: it.line_tax,
+          line_total_ttc: it.line_total_ttc,
+        }));
+        if (invItems.length > 0) {
+          const { error: iiErr } = await supabase.from("invoice_items").insert(invItems);
+          if (iiErr) throw iiErr;
+        }
+
+        // 3. Link sale to invoice
+        await supabase.from("sales").update({ invoice_id: inv.id }).eq("id", sale.id);
       }
 
       // ── DELIVERED: deduct stock ──
