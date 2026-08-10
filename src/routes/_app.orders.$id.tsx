@@ -75,7 +75,7 @@ function OrderDetail() {
           subtotal_ht: order.subtotal_ht,
           tax_amount: order.tax_amount,
           total_ttc: order.total_ttc,
-          discount_amount: order.discount_amount,
+          discount_amount: 0,
           created_by: user?.id,
         }).select("id").single();
         if (invErr) throw invErr;

@@ -79,7 +79,6 @@ function QuoteDetail() {
           subtotal_ht: quote.subtotal_ht,
           tax_amount: quote.tax,
           total_ttc: quote.total_ttc,
-          discount_amount: quote.discount || 0,
           paid_amount: 0,
           stock_applied: false,
           notes: `Commande générée depuis le devis ${quote.quote_number}`,

@@ -38,7 +38,10 @@ function QuotesPage() {
   const [search, setSearch] = useState("");
   const [statusF, setStatusF] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
-  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [clientAddress, setClientAddress] = useState("");
 
   const { data: quotes = [], isLoading } = useQuery({
     queryKey: ["quotes"],
@@ -61,7 +64,24 @@ function QuotesPage() {
   });
 
   const createQuote = useMutation({
-    mutationFn: async (customerId: string) => {
+    mutationFn: async () => {
+      let customerId: string | null = null;
+      if (clientName.trim()) {
+        const { data: newCust, error: cErr } = await supabase
+          .from("customers")
+          .insert({
+            name: clientName.trim(),
+            phone: clientPhone.trim() || null,
+            email: clientEmail.trim() || null,
+            address: clientAddress.trim() || null,
+          })
+          .select("id")
+          .single();
+        if (!cErr && newCust) {
+          customerId = newCust.id;
+        }
+      }
+
       const prefix = "DEV-" + new Date().getFullYear().toString().slice(-2) + (new Date().getMonth() + 1).toString().padStart(2, "0");
       const { data: latest } = await supabase.from("quotes").select("quote_number").like("quote_number", `${prefix}-%`).order("quote_number", { ascending: false }).limit(1).single();
       let nextSeq = 1;
@@ -73,7 +93,7 @@ function QuotesPage() {
 
       const { data, error } = await supabase.from("quotes").insert({
         quote_number: num,
-        customer_id: customerId === "none" ? null : customerId,
+        customer_id: customerId,
         commercial_id: user?.id,
         status: "draft",
         quote_date: new Date().toISOString().split("T")[0],
@@ -84,6 +104,7 @@ function QuotesPage() {
     },
     onSuccess: (data) => {
       setCreateOpen(false);
+      setClientName(""); setClientPhone(""); setClientEmail(""); setClientAddress("");
       navigate({ to: "/quotes/$id", params: { id: data.id } });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -141,21 +162,49 @@ function QuotesPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Créer un devis</DialogTitle></DialogHeader>
-            <div className="py-4 space-y-4">
+            <div className="py-4 space-y-3">
               <div>
-                <Label>Sélectionner un client</Label>
-                <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Prospect (Aucun client)</SelectItem>
-                    {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label>Nom du client (optionnel)</Label>
+                <Input
+                  className="mt-1"
+                  placeholder="Ex: Mme Aicha"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Téléphone (optionnel)</Label>
+                  <Input
+                    className="mt-1"
+                    placeholder="Ex: 0612345678"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>Email (optionnel)</Label>
+                  <Input
+                    className="mt-1"
+                    placeholder="Ex: client@email.com"
+                    value={clientEmail}
+                    onChange={(e) => setClientEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Adresse (optionnel)</Label>
+                <Input
+                  className="mt-1"
+                  placeholder="Ex: Boulevard Al Massira, Nador"
+                  value={clientAddress}
+                  onChange={(e) => setClientAddress(e.target.value)}
+                />
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreateOpen(false)}>Annuler</Button>
-              <Button onClick={() => createQuote.mutate(selectedCustomerId || "none")} disabled={createQuote.isPending}>
+              <Button onClick={() => createQuote.mutate()} disabled={createQuote.isPending}>
                 {createQuote.isPending ? <Loader2 className="h-4 w-4 animate-spin me-2" /> : null} Créer
               </Button>
             </DialogFooter>
