@@ -246,13 +246,6 @@ function ProductsIndexPage() {
                   </Field>
 
                   {/* Row 4 — Stock */}
-                  <Field label={t("quantity") + " *"}>
-                    <Input
-                      type="number" min="0" step="1"
-                      value={form.stock_quantity}
-                      onChange={(e) => setForm({ ...form, stock_quantity: Math.max(0, Math.floor(Number(e.target.value))) })}
-                    />
-                  </Field>
                   <Field label={t("min_stock") + " *"}>
                     <Input
                       type="number" min="0" step="1"

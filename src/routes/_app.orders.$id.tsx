@@ -54,8 +54,11 @@ function OrderDetail() {
 
   const updateStatus = useMutation({
     mutationFn: async (status: "pending" | "validated" | "delivered" | "cancelled") => {
-      // ── VALIDATED: create sale + invoice (NO stock deduction) ──
-      if (status === "validated" && order.status !== "validated") {
+      // ── VALIDATED: just update status (no sale, no invoice) ──
+      // Sale creation is deferred to the delivery step.
+
+      // ── DELIVERED: create sale + deduct stock ──
+      if (status === "delivered" && order.status !== "delivered") {
         // 1. Create sale record
         const { data: sale, error: saleErr } = await supabase.from("sales").insert({
           customer_id: order.customer_id,
@@ -71,72 +74,45 @@ function OrderDetail() {
           stock_applied: false,
           notes: `Vente générée depuis la commande ${order.order_number}`,
           created_by: user?.id,
-        }).select("id").single();
+        }).select("id, sale_number").single();
         if (saleErr) throw saleErr;
 
+        // 2. Copy order items to sale items
         const saleItems = items.map((it: any) => ({
-          sale_id: sale.id, product_id: it.product_id, description: it.description,
-          quantity: it.quantity, unit_price: it.unit_price, discount_rate: it.discount_rate,
-          tax_rate: it.tax_rate, line_total_ht: it.line_total_ht, line_tax: it.line_tax,
-          line_total_ttc: it.line_total_ttc,
+          sale_id: sale.id,
+          product_id: it.product_id,
+          description: it.description,
+          quantity: it.quantity,
+          unit_price: it.unit_price,
+          tax_rate: it.tax_rate ?? 20,
+          discount_rate: it.discount_rate ?? 0,
+          warehouse_id: it.warehouse_id,
         }));
         if (saleItems.length > 0) {
           const { error: siErr } = await supabase.from("sale_items").insert(saleItems);
           if (siErr) throw siErr;
         }
 
-        // 2. Create invoice linked to source_sale_id = sale.id
-        const prefix = "FAC-" + new Date().getFullYear().toString().slice(-2) + (new Date().getMonth() + 1).toString().padStart(2, "0");
-        const { data: latest } = await supabase.from("invoices").select("invoice_number").like("invoice_number", `${prefix}-%`).order("invoice_number", { ascending: false }).limit(1).single();
-        let nextSeq = 1;
-        if (latest?.invoice_number) {
-          const parts = latest.invoice_number.split("-");
-          nextSeq = parseInt(parts[2], 10) + 1;
-        }
-        const invNum = `${prefix}-${nextSeq.toString().padStart(4, "0")}`;
+        // 3. Fetch product prices for unit_cost tracking
+        const productIds = items.map((it: any) => it.product_id).filter(Boolean);
+        const { data: prods } = await supabase.from("products").select("id, purchase_price").in("id", productIds);
+        const priceMap = new Map((prods || []).map((p: any) => [p.id, p.purchase_price]));
 
-        const { data: inv, error: invErr } = await supabase.from("invoices").insert({
-          invoice_number: invNum,
-          customer_id: order.customer_id,
-          invoice_date: new Date().toISOString().split("T")[0],
-          due_date: order.due_date,
-          status: "draft",
-          source_sale_id: sale.id,
-          subtotal_ht: order.subtotal_ht,
-          tax_amount: order.tax_amount,
-          total_ttc: order.total_ttc,
-          discount_amount: 0,
-          created_by: user?.id,
-        }).select("id").single();
-        if (invErr) throw invErr;
-
-        const invItems = items.map((it: any) => ({
-          invoice_id: inv.id, product_id: it.product_id, description: it.description,
-          quantity: it.quantity, unit_price: it.unit_price, discount_rate: it.discount_rate,
-          tax_rate: it.tax_rate, line_total_ht: it.line_total_ht, line_tax: it.line_tax,
-          line_total_ttc: it.line_total_ttc,
-        }));
-        if (invItems.length > 0) {
-          const { error: iiErr } = await supabase.from("invoice_items").insert(invItems);
-          if (iiErr) throw iiErr;
-        }
-
-        // 3. Link sale to invoice
-        await supabase.from("sales").update({ invoice_id: inv.id }).eq("id", sale.id);
-      }
-
-      // ── DELIVERED: deduct stock ──
-      if (status === "delivered" && order.status !== "delivered") {
+        // 4. Create stock movements
         const movements = items.map((it: any) => ({
           product_id: it.product_id, type: "out" as const, quantity: it.quantity,
+          unit_cost: priceMap.get(it.product_id) ?? 0,
           reason: `Livraison - Commande #${order.order_number}`, user_id: user?.id, document_ref: order.order_number,
         }));
         if (movements.length > 0) {
           const { error: smErr } = await supabase.from("stock_movements").insert(movements);
           if (smErr) throw smErr;
         }
-        // Mark stock as applied
+
+        // 5. Mark stock as applied
         await supabase.from("orders").update({ stock_applied: true }).eq("id", id);
+
+        toast.success(`Commande livrée — Vente ${sale.sale_number} créée`);
       }
 
       const { error } = await supabase.from("orders").update({ status }).eq("id", id);
@@ -145,10 +121,11 @@ function OrderDetail() {
     },
     onSuccess: (s) => {
       const msgs: Record<string, string> = {
-        validated: "Commande validée — facture et vente créées !",
-        delivered: "Commande livrée — stock déduit !",
+        validated: "Commande validée",
       };
-      toast.success(msgs[s] || "Statut mis à jour");
+      // "delivered" toast is shown inside the mutationFn after sale creation
+      if (msgs[s]) toast.success(msgs[s]);
+      else if (s !== "delivered") toast.success("Statut mis à jour");
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["products"] });

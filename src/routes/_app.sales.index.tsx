@@ -613,14 +613,7 @@ function SalesPage() {
                       <Button size="icon" variant="ghost" title="Imprimer" onClick={() => printSale(s)}>
                         <Printer className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" title="Générer facture"
-                        disabled={!!s.invoice_id || generateInvoice.isPending}
-                        onClick={() => generateInvoice.mutate(s)}>
-                        <Receipt className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" title="PDF" onClick={() => printSale(s)}>
-                        <FileDown className="h-4 w-4" />
-                      </Button>
+
                       <Button size="icon" variant="ghost" title="Supprimer" onClick={async () => { if (await confirm({ title: `Supprimer la vente ${s.sale_number} ?`, description: "La marchandise vendue sera automatiquement réintégrée au stock.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(s.id); }}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

@@ -37,6 +37,7 @@ function StockPage() {
   const [open, setOpen] = useState(false);
   const [productId, setProductId] = useState("");
   const [warehouseId, setWarehouseId] = useState<string>("");
+  const [unitCost, setUnitCost] = useState<number>(0);
   const [type, setType] = useState<"in" | "out" | "damaged">("in");
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState("");
@@ -67,7 +68,7 @@ function StockPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stock_movements")
-        .select("id,type,quantity,reason,created_at,product_id,warehouse_id,products(name,reference),warehouses(name)")
+        .select("id,type,quantity,unit_cost,reason,created_at,product_id,warehouse_id,products(name,reference),warehouses(name)")
         .order("created_at", { ascending: false })
         .limit(2000);
       if (error) throw error;
@@ -92,7 +93,7 @@ function StockPage() {
       if (!user) throw new Error("Non authentifié");
       if (!productId) throw new Error("Sélectionnez un produit");
       const { error } = await supabase.from("stock_movements").insert({
-        product_id: productId, type, quantity, reason, user_id: user.id,
+        product_id: productId, type, quantity, unit_cost: unitCost, reason, user_id: user.id,
         warehouse_id: warehouseId || null,
       });
       if (error) throw error;
@@ -104,7 +105,7 @@ function StockPage() {
       qc.invalidateQueries({ queryKey: ["inventory"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       setOpen(false);
-      setProductId(""); setWarehouseId(""); setType("in"); setQuantity(1); setReason("");
+      setProductId(""); setWarehouseId(""); setType("in"); setQuantity(1); setUnitCost(0); setReason("");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -165,13 +166,14 @@ function StockPage() {
         pdfText(wh?.name || "—"),
         pdfText(typeStr),
         m.quantity.toString(),
+        m.unit_cost ? Number(m.unit_cost).toFixed(2) : "—",
         pdfText(m.reason || "—")
       ];
     });
 
     autoTable(doc, {
       startY: 25,
-      head: [["Date", "Produit", "Dépôt", "Type", "Quantité", "Motif"]],
+      head: [["Date", "Produit", "Dépôt", "Type", "Quantité", "Coût", "Motif"]],
       body: tableData,
     });
     doc.save("mouvements-stock.pdf");
@@ -223,8 +225,8 @@ function StockPage() {
         pdfText(p.name || ""),
         pdfText(p.warehouses?.name || "—"),
         (p.stock_quantity || 0).toString(),
-        (p.purchase_price || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" }),
-        val.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })
+        (p.purchase_price || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " DH",
+        val.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " DH"
       ];
     });
 
@@ -234,7 +236,7 @@ function StockPage() {
       "",
       totalInventoryQty.toString(),
       "",
-      totalInventoryValue.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })
+      totalInventoryValue.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " DH"
     ]);
 
     autoTable(doc, {
@@ -295,15 +297,21 @@ function StockPage() {
                         <Input type="number" min={1} value={quantity} step="any" onChange={(e) => setQuantity(Number(e.target.value))} />
                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Dépôt</Label>
-                      <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
-                        <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="_none">— Aucun —</SelectItem>
-                          {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Coût unitaire</Label>
+                        <Input type="number" min={0} value={unitCost} step="any" onChange={(e) => setUnitCost(Number(e.target.value))} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Dépôt</Label>
+                        <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
+                          <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_none">— Aucun —</SelectItem>
+                            {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">{t("reason")}</Label>
@@ -399,13 +407,14 @@ function StockPage() {
                 <TableHead>Dépôt</TableHead>
                 <TableHead>{t("type")}</TableHead>
                 <TableHead className="text-right">{t("quantity")}</TableHead>
+                <TableHead className="text-right">Coût Unitaire</TableHead>
                 <TableHead>{t("reason")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("loading")}</TableCell></TableRow>}
+              {isLoading && <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">{t("loading")}</TableCell></TableRow>}
               {!isLoading && pagedMovements.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("no_data")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">{t("no_data")}</TableCell></TableRow>
               )}
               {pagedMovements.map((m) => {
                 const prod = m.products as { name?: string; reference?: string } | null;
@@ -428,6 +437,9 @@ function StockPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right font-medium">{m.quantity}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      {m.unit_cost ? Number(m.unit_cost).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " DH" : "—"}
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{m.reason || "—"}</TableCell>
                   </TableRow>
                 );
@@ -460,8 +472,8 @@ function StockPage() {
                     <TableCell className="font-medium">{p.name}</TableCell>
                     <TableCell className="text-sm">{wh?.name ?? "—"}</TableCell>
                     <TableCell className="text-right font-medium">{p.stock_quantity || 0}</TableCell>
-                    <TableCell className="text-right text-sm">{(p.purchase_price || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}</TableCell>
-                    <TableCell className="text-right font-medium">{val.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}</TableCell>
+                    <TableCell className="text-right text-sm">{(p.purchase_price || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " DH"}</TableCell>
+                    <TableCell className="text-right font-medium">{val.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " DH"}</TableCell>
                   </TableRow>
                 );
               })}
@@ -470,7 +482,7 @@ function StockPage() {
                   <TableCell colSpan={3} className="text-right">Total</TableCell>
                   <TableCell className="text-right">{totalInventoryQty}</TableCell>
                   <TableCell></TableCell>
-                  <TableCell className="text-right">{totalInventoryValue.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}</TableCell>
+                  <TableCell className="text-right">{totalInventoryValue.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " DH"}</TableCell>
                 </TableRow>
               )}
             </TableBody>

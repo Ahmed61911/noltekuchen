@@ -9,45 +9,40 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppRouteImport } from './routes/_app'
-import { Route as FontsPreviewRouteImport } from './routes/fonts-preview'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
-import { Route as AppAuditRouteImport } from './routes/_app.audit'
-import { Route as AppCustomersRouteImport } from './routes/_app.customers'
-import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
-import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
-import { Route as AppLogsRouteImport } from './routes/_app.logs'
-import { Route as AppProductsRouteImport } from './routes/_app.products'
-import { Route as AppReportsRouteImport } from './routes/_app.reports'
-import { Route as AppRolesRouteImport } from './routes/_app.roles'
-import { Route as AppSettingsRouteImport } from './routes/_app.settings'
-import { Route as AppStockRouteImport } from './routes/_app.stock'
-import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
+import { Route as FontsPreviewRouteImport } from './routes/fonts-preview'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppWarehousesRouteImport } from './routes/_app.warehouses'
-import { Route as AppInvoicesIndexRouteImport } from './routes/_app.invoices.index'
-import { Route as AppInvoicesIdRouteImport } from './routes/_app.invoices.$id'
-import { Route as AppOrdersIndexRouteImport } from './routes/_app.orders.index'
-import { Route as AppOrdersIdRouteImport } from './routes/_app.orders.$id'
-import { Route as AppProductsIndexRouteImport } from './routes/_app.products.index'
-import { Route as AppProductsIdRouteImport } from './routes/_app.products.$id'
-import { Route as AppProjectsIndexRouteImport } from './routes/_app.projects.index'
-import { Route as AppProjectsIdRouteImport } from './routes/_app.projects.$id'
-import { Route as AppQuotesIndexRouteImport } from './routes/_app.quotes.index'
-import { Route as AppQuotesIdRouteImport } from './routes/_app.quotes.$id'
-import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
-import { Route as AppSalesIdRouteImport } from './routes/_app.sales.$id'
+import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
+import { Route as AppStockRouteImport } from './routes/_app.stock'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as AppRolesRouteImport } from './routes/_app.roles'
+import { Route as AppReportsRouteImport } from './routes/_app.reports'
+import { Route as AppProductsRouteImport } from './routes/_app.products'
+import { Route as AppLogsRouteImport } from './routes/_app.logs'
+import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
+import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppAuditRouteImport } from './routes/_app.audit'
+import { Route as AppAppointmentsRouteImport } from './routes/_app.appointments'
 import { Route as AppUsersIndexRouteImport } from './routes/_app.users.index'
+import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
+import { Route as AppQuotesIndexRouteImport } from './routes/_app.quotes.index'
+import { Route as AppProjectsIndexRouteImport } from './routes/_app.projects.index'
+import { Route as AppProductsIndexRouteImport } from './routes/_app.products.index'
+import { Route as AppOrdersIndexRouteImport } from './routes/_app.orders.index'
+import { Route as AppInvoicesIndexRouteImport } from './routes/_app.invoices.index'
 import { Route as AppUsersIdRouteImport } from './routes/_app.users.$id'
+import { Route as AppSalesIdRouteImport } from './routes/_app.sales.$id'
+import { Route as AppQuotesIdRouteImport } from './routes/_app.quotes.$id'
+import { Route as AppProjectsIdRouteImport } from './routes/_app.projects.$id'
+import { Route as AppProductsIdRouteImport } from './routes/_app.products.$id'
+import { Route as AppOrdersIdRouteImport } from './routes/_app.orders.$id'
+import { Route as AppInvoicesIdRouteImport } from './routes/_app.invoices.$id'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppRoute = AppRouteImport.update({
-  id: '/_app',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FontsPreviewRoute = FontsPreviewRouteImport.update({
@@ -55,64 +50,18 @@ const FontsPreviewRoute = FontsPreviewRouteImport.update({
   path: '/fonts-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
-  id: '/appointments',
-  path: '/appointments',
-  getParentRoute: () => AppRoute,
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AppAuditRoute = AppAuditRouteImport.update({
-  id: '/audit',
-  path: '/audit',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCustomersRoute = AppCustomersRouteImport.update({
-  id: '/customers',
-  path: '/customers',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDashboardRoute = AppDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDocumentsRoute = AppDocumentsRouteImport.update({
-  id: '/documents',
-  path: '/documents',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppLogsRoute = AppLogsRouteImport.update({
-  id: '/logs',
-  path: '/logs',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppProductsRoute = AppProductsRouteImport.update({
-  id: '/products',
-  path: '/products',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppReportsRoute = AppReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppRolesRoute = AppRolesRouteImport.update({
-  id: '/roles',
-  path: '/roles',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppStockRoute = AppStockRouteImport.update({
-  id: '/stock',
-  path: '/stock',
+const AppWarehousesRoute = AppWarehousesRouteImport.update({
+  id: '/warehouses',
+  path: '/warehouses',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSuppliersRoute = AppSuppliersRouteImport.update({
@@ -120,69 +69,54 @@ const AppSuppliersRoute = AppSuppliersRouteImport.update({
   path: '/suppliers',
   getParentRoute: () => AppRoute,
 } as any)
-const AppWarehousesRoute = AppWarehousesRouteImport.update({
-  id: '/warehouses',
-  path: '/warehouses',
+const AppStockRoute = AppStockRouteImport.update({
+  id: '/stock',
+  path: '/stock',
   getParentRoute: () => AppRoute,
 } as any)
-const AppInvoicesIndexRoute = AppInvoicesIndexRouteImport.update({
-  id: '/invoices/',
-  path: '/invoices/',
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
-const AppInvoicesIdRoute = AppInvoicesIdRouteImport.update({
-  id: '/invoices/$id',
-  path: '/invoices/$id',
+const AppRolesRoute = AppRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
   getParentRoute: () => AppRoute,
 } as any)
-const AppOrdersIndexRoute = AppOrdersIndexRouteImport.update({
-  id: '/orders/',
-  path: '/orders/',
+const AppReportsRoute = AppReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => AppRoute,
 } as any)
-const AppOrdersIdRoute = AppOrdersIdRouteImport.update({
-  id: '/orders/$id',
-  path: '/orders/$id',
+const AppProductsRoute = AppProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
   getParentRoute: () => AppRoute,
 } as any)
-const AppProductsIndexRoute = AppProductsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppProductsRoute,
-} as any)
-const AppProductsIdRoute = AppProductsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AppProductsRoute,
-} as any)
-const AppProjectsIndexRoute = AppProjectsIndexRouteImport.update({
-  id: '/projects/',
-  path: '/projects/',
+const AppLogsRoute = AppLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
   getParentRoute: () => AppRoute,
 } as any)
-const AppProjectsIdRoute = AppProjectsIdRouteImport.update({
-  id: '/projects/$id',
-  path: '/projects/$id',
+const AppDocumentsRoute = AppDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => AppRoute,
 } as any)
-const AppQuotesIndexRoute = AppQuotesIndexRouteImport.update({
-  id: '/quotes/',
-  path: '/quotes/',
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
-const AppQuotesIdRoute = AppQuotesIdRouteImport.update({
-  id: '/quotes/$id',
-  path: '/quotes/$id',
+const AppAuditRoute = AppAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSalesIndexRoute = AppSalesIndexRouteImport.update({
-  id: '/sales/',
-  path: '/sales/',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSalesIdRoute = AppSalesIdRouteImport.update({
-  id: '/sales/$id',
-  path: '/sales/$id',
+const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
+  id: '/appointments',
+  path: '/appointments',
   getParentRoute: () => AppRoute,
 } as any)
 const AppUsersIndexRoute = AppUsersIndexRouteImport.update({
@@ -190,9 +124,69 @@ const AppUsersIndexRoute = AppUsersIndexRouteImport.update({
   path: '/users/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSalesIndexRoute = AppSalesIndexRouteImport.update({
+  id: '/sales/',
+  path: '/sales/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppQuotesIndexRoute = AppQuotesIndexRouteImport.update({
+  id: '/quotes/',
+  path: '/quotes/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProjectsIndexRoute = AppProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProductsIndexRoute = AppProductsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppProductsRoute,
+} as any)
+const AppOrdersIndexRoute = AppOrdersIndexRouteImport.update({
+  id: '/orders/',
+  path: '/orders/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInvoicesIndexRoute = AppInvoicesIndexRouteImport.update({
+  id: '/invoices/',
+  path: '/invoices/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppUsersIdRoute = AppUsersIdRouteImport.update({
   id: '/users/$id',
   path: '/users/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSalesIdRoute = AppSalesIdRouteImport.update({
+  id: '/sales/$id',
+  path: '/sales/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppQuotesIdRoute = AppQuotesIdRouteImport.update({
+  id: '/quotes/$id',
+  path: '/quotes/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProjectsIdRoute = AppProjectsIdRouteImport.update({
+  id: '/projects/$id',
+  path: '/projects/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProductsIdRoute = AppProductsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppProductsRoute,
+} as any)
+const AppOrdersIdRoute = AppOrdersIdRouteImport.update({
+  id: '/orders/$id',
+  path: '/orders/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInvoicesIdRoute = AppInvoicesIdRouteImport.update({
+  id: '/invoices/$id',
+  path: '/invoices/$id',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -202,7 +196,6 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/appointments': typeof AppAppointmentsRoute
   '/audit': typeof AppAuditRoute
-  '/customers': typeof AppCustomersRoute
   '/dashboard': typeof AppDashboardRoute
   '/documents': typeof AppDocumentsRoute
   '/logs': typeof AppLogsRoute
@@ -234,7 +227,6 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/appointments': typeof AppAppointmentsRoute
   '/audit': typeof AppAuditRoute
-  '/customers': typeof AppCustomersRoute
   '/dashboard': typeof AppDashboardRoute
   '/documents': typeof AppDocumentsRoute
   '/logs': typeof AppLogsRoute
@@ -267,7 +259,6 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/appointments': typeof AppAppointmentsRoute
   '/_app/audit': typeof AppAuditRoute
-  '/_app/customers': typeof AppCustomersRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/documents': typeof AppDocumentsRoute
   '/_app/logs': typeof AppLogsRoute
@@ -301,7 +292,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/appointments'
     | '/audit'
-    | '/customers'
     | '/dashboard'
     | '/documents'
     | '/logs'
@@ -333,7 +323,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/appointments'
     | '/audit'
-    | '/customers'
     | '/dashboard'
     | '/documents'
     | '/logs'
@@ -365,7 +354,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/appointments'
     | '/_app/audit'
-    | '/_app/customers'
     | '/_app/dashboard'
     | '/_app/documents'
     | '/_app/logs'
@@ -401,18 +389,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_app': {
-      id: '/_app'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AppRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/fonts-preview': {
@@ -422,88 +403,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FontsPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/appointments': {
-      id: '/_app/appointments'
-      path: '/appointments'
-      fullPath: '/appointments'
-      preLoaderRoute: typeof AppAppointmentsRouteImport
-      parentRoute: typeof AppRoute
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_app/audit': {
-      id: '/_app/audit'
-      path: '/audit'
-      fullPath: '/audit'
-      preLoaderRoute: typeof AppAuditRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/customers': {
-      id: '/_app/customers'
-      path: '/customers'
-      fullPath: '/customers'
-      preLoaderRoute: typeof AppCustomersRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/dashboard': {
-      id: '/_app/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AppDashboardRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/documents': {
-      id: '/_app/documents'
-      path: '/documents'
-      fullPath: '/documents'
-      preLoaderRoute: typeof AppDocumentsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/logs': {
-      id: '/_app/logs'
-      path: '/logs'
-      fullPath: '/logs'
-      preLoaderRoute: typeof AppLogsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/products': {
-      id: '/_app/products'
-      path: '/products'
-      fullPath: '/products'
-      preLoaderRoute: typeof AppProductsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/reports': {
-      id: '/_app/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof AppReportsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/roles': {
-      id: '/_app/roles'
-      path: '/roles'
-      fullPath: '/roles'
-      preLoaderRoute: typeof AppRolesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/settings': {
-      id: '/_app/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/stock': {
-      id: '/_app/stock'
-      path: '/stock'
-      fullPath: '/stock'
-      preLoaderRoute: typeof AppStockRouteImport
+    '/_app/warehouses': {
+      id: '/_app/warehouses'
+      path: '/warehouses'
+      fullPath: '/warehouses'
+      preLoaderRoute: typeof AppWarehousesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/suppliers': {
@@ -513,95 +431,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSuppliersRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/warehouses': {
-      id: '/_app/warehouses'
-      path: '/warehouses'
-      fullPath: '/warehouses'
-      preLoaderRoute: typeof AppWarehousesRouteImport
+    '/_app/stock': {
+      id: '/_app/stock'
+      path: '/stock'
+      fullPath: '/stock'
+      preLoaderRoute: typeof AppStockRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/invoices/': {
-      id: '/_app/invoices/'
-      path: '/invoices'
-      fullPath: '/invoices/'
-      preLoaderRoute: typeof AppInvoicesIndexRouteImport
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/invoices/$id': {
-      id: '/_app/invoices/$id'
-      path: '/invoices/$id'
-      fullPath: '/invoices/$id'
-      preLoaderRoute: typeof AppInvoicesIdRouteImport
+    '/_app/roles': {
+      id: '/_app/roles'
+      path: '/roles'
+      fullPath: '/roles'
+      preLoaderRoute: typeof AppRolesRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/orders/': {
-      id: '/_app/orders/'
-      path: '/orders'
-      fullPath: '/orders/'
-      preLoaderRoute: typeof AppOrdersIndexRouteImport
+    '/_app/reports': {
+      id: '/_app/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AppReportsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/orders/$id': {
-      id: '/_app/orders/$id'
-      path: '/orders/$id'
-      fullPath: '/orders/$id'
-      preLoaderRoute: typeof AppOrdersIdRouteImport
+    '/_app/products': {
+      id: '/_app/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof AppProductsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/products/': {
-      id: '/_app/products/'
-      path: '/'
-      fullPath: '/products/'
-      preLoaderRoute: typeof AppProductsIndexRouteImport
-      parentRoute: typeof AppProductsRoute
-    }
-    '/_app/products/$id': {
-      id: '/_app/products/$id'
-      path: '/$id'
-      fullPath: '/products/$id'
-      preLoaderRoute: typeof AppProductsIdRouteImport
-      parentRoute: typeof AppProductsRoute
-    }
-    '/_app/projects/': {
-      id: '/_app/projects/'
-      path: '/projects'
-      fullPath: '/projects/'
-      preLoaderRoute: typeof AppProjectsIndexRouteImport
+    '/_app/logs': {
+      id: '/_app/logs'
+      path: '/logs'
+      fullPath: '/logs'
+      preLoaderRoute: typeof AppLogsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/projects/$id': {
-      id: '/_app/projects/$id'
-      path: '/projects/$id'
-      fullPath: '/projects/$id'
-      preLoaderRoute: typeof AppProjectsIdRouteImport
+    '/_app/documents': {
+      id: '/_app/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof AppDocumentsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/quotes/': {
-      id: '/_app/quotes/'
-      path: '/quotes'
-      fullPath: '/quotes/'
-      preLoaderRoute: typeof AppQuotesIndexRouteImport
+    '/_app/dashboard': {
+      id: '/_app/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/quotes/$id': {
-      id: '/_app/quotes/$id'
-      path: '/quotes/$id'
-      fullPath: '/quotes/$id'
-      preLoaderRoute: typeof AppQuotesIdRouteImport
+    '/_app/audit': {
+      id: '/_app/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AppAuditRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/sales/': {
-      id: '/_app/sales/'
-      path: '/sales'
-      fullPath: '/sales/'
-      preLoaderRoute: typeof AppSalesIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/sales/$id': {
-      id: '/_app/sales/$id'
-      path: '/sales/$id'
-      fullPath: '/sales/$id'
-      preLoaderRoute: typeof AppSalesIdRouteImport
+    '/_app/appointments': {
+      id: '/_app/appointments'
+      path: '/appointments'
+      fullPath: '/appointments'
+      preLoaderRoute: typeof AppAppointmentsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/users/': {
@@ -611,11 +508,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUsersIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sales/': {
+      id: '/_app/sales/'
+      path: '/sales'
+      fullPath: '/sales/'
+      preLoaderRoute: typeof AppSalesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/quotes/': {
+      id: '/_app/quotes/'
+      path: '/quotes'
+      fullPath: '/quotes/'
+      preLoaderRoute: typeof AppQuotesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/projects/': {
+      id: '/_app/projects/'
+      path: '/projects'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof AppProjectsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/products/': {
+      id: '/_app/products/'
+      path: '/'
+      fullPath: '/products/'
+      preLoaderRoute: typeof AppProductsIndexRouteImport
+      parentRoute: typeof AppProductsRoute
+    }
+    '/_app/orders/': {
+      id: '/_app/orders/'
+      path: '/orders'
+      fullPath: '/orders/'
+      preLoaderRoute: typeof AppOrdersIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/invoices/': {
+      id: '/_app/invoices/'
+      path: '/invoices'
+      fullPath: '/invoices/'
+      preLoaderRoute: typeof AppInvoicesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/users/$id': {
       id: '/_app/users/$id'
       path: '/users/$id'
       fullPath: '/users/$id'
       preLoaderRoute: typeof AppUsersIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sales/$id': {
+      id: '/_app/sales/$id'
+      path: '/sales/$id'
+      fullPath: '/sales/$id'
+      preLoaderRoute: typeof AppSalesIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/quotes/$id': {
+      id: '/_app/quotes/$id'
+      path: '/quotes/$id'
+      fullPath: '/quotes/$id'
+      preLoaderRoute: typeof AppQuotesIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/projects/$id': {
+      id: '/_app/projects/$id'
+      path: '/projects/$id'
+      fullPath: '/projects/$id'
+      preLoaderRoute: typeof AppProjectsIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/products/$id': {
+      id: '/_app/products/$id'
+      path: '/$id'
+      fullPath: '/products/$id'
+      preLoaderRoute: typeof AppProductsIdRouteImport
+      parentRoute: typeof AppProductsRoute
+    }
+    '/_app/orders/$id': {
+      id: '/_app/orders/$id'
+      path: '/orders/$id'
+      fullPath: '/orders/$id'
+      preLoaderRoute: typeof AppOrdersIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/invoices/$id': {
+      id: '/_app/invoices/$id'
+      path: '/invoices/$id'
+      fullPath: '/invoices/$id'
+      preLoaderRoute: typeof AppInvoicesIdRouteImport
       parentRoute: typeof AppRoute
     }
   }
@@ -638,7 +619,6 @@ const AppProductsRouteWithChildren = AppProductsRoute._addFileChildren(
 interface AppRouteChildren {
   AppAppointmentsRoute: typeof AppAppointmentsRoute
   AppAuditRoute: typeof AppAuditRoute
-  AppCustomersRoute: typeof AppCustomersRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppDocumentsRoute: typeof AppDocumentsRoute
   AppLogsRoute: typeof AppLogsRoute
@@ -666,7 +646,6 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAppointmentsRoute: AppAppointmentsRoute,
   AppAuditRoute: AppAuditRoute,
-  AppCustomersRoute: AppCustomersRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppDocumentsRoute: AppDocumentsRoute,
   AppLogsRoute: AppLogsRoute,
@@ -702,3 +681,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

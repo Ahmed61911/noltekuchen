@@ -1520,6 +1520,7 @@ export type Database = {
           stock_after: number | null
           stock_before: number | null
           type: Database["public"]["Enums"]["movement_type"]
+          unit_cost: number | null
           user_id: string | null
           warehouse_id: string | null
         }
@@ -1533,6 +1534,7 @@ export type Database = {
           stock_after?: number | null
           stock_before?: number | null
           type: Database["public"]["Enums"]["movement_type"]
+          unit_cost?: number | null
           user_id?: string | null
           warehouse_id?: string | null
         }
@@ -1546,6 +1548,7 @@ export type Database = {
           stock_after?: number | null
           stock_before?: number | null
           type?: Database["public"]["Enums"]["movement_type"]
+          unit_cost?: number | null
           user_id?: string | null
           warehouse_id?: string | null
         }

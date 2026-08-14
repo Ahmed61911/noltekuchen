@@ -124,7 +124,7 @@ function Sample({ p }: { p: Pair }) {
 
       <div className="mt-8 grid grid-cols-3 gap-4">
         {[
-          { label: "Chiffre d'affaires", value: "€128 450", d: "+12,4%" },
+          { label: "Chiffre d'affaires", value: "128 450 DH", d: "+12,4%" },
           { label: "Commandes", value: "342", d: "+8" },
           { label: "Stock critique", value: "17", d: "SKU" },
         ].map((k) => (
@@ -161,9 +161,9 @@ function Sample({ p }: { p: Pair }) {
             </thead>
             <tbody>
               {[
-                ["Nova Lack — Blanc mat", "1", "€8 240"],
-                ["Îlot central 240cm", "1", "€3 120"],
-                ["Plan travail céramique", "2", "€1 680"],
+                ["Nova Lack — Blanc mat", "1", "8 240 DH"],
+                ["Îlot central 240cm", "1", "3 120 DH"],
+                ["Plan travail céramique", "2", "1 680 DH"],
               ].map((r) => (
                 <tr key={r[0]} className="border-b last:border-0">
                   <td className="py-3">{r[0]}</td>

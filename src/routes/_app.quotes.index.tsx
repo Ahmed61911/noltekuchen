@@ -167,7 +167,6 @@ function QuotesPage() {
                 <Label>Nom du client (optionnel)</Label>
                 <Input
                   className="mt-1"
-                  placeholder="Ex: Mme Aicha"
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
                 />
@@ -177,7 +176,6 @@ function QuotesPage() {
                   <Label>Téléphone (optionnel)</Label>
                   <Input
                     className="mt-1"
-                    placeholder="Ex: 0612345678"
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
                   />
@@ -186,7 +184,6 @@ function QuotesPage() {
                   <Label>Email (optionnel)</Label>
                   <Input
                     className="mt-1"
-                    placeholder="Ex: client@email.com"
                     value={clientEmail}
                     onChange={(e) => setClientEmail(e.target.value)}
                   />
@@ -196,7 +193,6 @@ function QuotesPage() {
                 <Label>Adresse (optionnel)</Label>
                 <Input
                   className="mt-1"
-                  placeholder="Ex: Boulevard Al Massira, Nador"
                   value={clientAddress}
                   onChange={(e) => setClientAddress(e.target.value)}
                 />
