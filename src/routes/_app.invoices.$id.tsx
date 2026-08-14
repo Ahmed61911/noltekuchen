@@ -111,9 +111,8 @@ function InvoiceDetail() {
               <TableHead>Description</TableHead>
               <TableHead className="text-right">Qté</TableHead>
               <TableHead className="text-right">PU</TableHead>
-              <TableHead className="text-right">TVA</TableHead>
               <TableHead className="text-right">Remise</TableHead>
-              <TableHead className="text-right">Total HT</TableHead>
+              <TableHead className="text-right">Total</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -122,20 +121,15 @@ function InvoiceDetail() {
                 <TableCell>{it.description}</TableCell>
                 <TableCell className="text-right tabular-nums">{it.quantity}</TableCell>
                 <TableCell className="text-right tabular-nums">{fmt(Number(it.unit_price))}</TableCell>
-                <TableCell className="text-right">{it.tax_rate}%</TableCell>
                 <TableCell className="text-right">{it.discount_rate}%</TableCell>
-                <TableCell className="text-right tabular-nums">{fmt(Number(it.line_total_ht))}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmt(Number(it.line_total_ttc))}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
         <div className="p-6 flex justify-end">
           <div className="w-full max-w-xs space-y-2 text-sm">
-            <div className="flex justify-between"><span>Sous-total HT</span><span className="tabular-nums">{fmt(Number(inv.subtotal_ht))}</span></div>
-            <div className="flex justify-between"><span>TVA</span><span className="tabular-nums">{fmt(Number(inv.tax_amount))}</span></div>
-            {Number(inv.discount_amount) > 0 && (
-              <div className="flex justify-between"><span>Remise</span><span className="tabular-nums">-{fmt(Number(inv.discount_amount))}</span></div>
-            )}
+
             {cpValid && (
               <div className="flex justify-between text-muted-foreground">
                 <span>{cpLabel}{!cpAdd && " (info)"}</span>
@@ -164,7 +158,7 @@ function InvoiceDetail() {
               placeholder="Montant en DH — n'affecte pas le total"
             />
             <p className="text-xs text-muted-foreground">
-              Affiché sur la facture uniquement si renseigné. Ne modifie pas le sous-total HT, la TVA ni le TOTAL TTC.
+              Affiché sur la facture uniquement si renseigné. Ne modifie pas le TOTAL.
             </p>
           </div>
         </div>

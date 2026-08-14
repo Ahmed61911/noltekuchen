@@ -8,9 +8,7 @@ export type PdfOrder = {
   order_date: string;
   due_date: string;
   status: string;
-  subtotal_ht: number;
-  tax: number;
-  discount: number;
+
   total_ttc: number;
   notes: string | null;
   custom_price?: { label: string; amount: number; addToTotal: boolean } | null;
@@ -27,7 +25,6 @@ export type PdfOrder = {
     description: string;
     quantity: number;
     unit_price: number;
-    tax_rate: number;
     discount: number;
     total: number;
     code?: string | null;
@@ -52,11 +49,11 @@ const LINE: RGB = [206, 203, 199]; // --border assombri, pour survivre à l'impr
 const RED: RGB = [176, 32, 45]; // --destructive assombri (le token pur vire au rose à l'écran)
 const WHITE: RGB = [255, 255, 255];
 
-const STATUS_CHIP: Record<string, { label: string; fg: RGB; bg: RGB }> = {
-  draft: { label: "Brouillon", fg: MUTED, bg: SURFACE },
-  pending: { label: "En attente", fg: [180, 83, 9], bg: [253, 240, 218] },
-  paid: { label: "Payée", fg: [4, 120, 87], bg: [219, 244, 236] },
-  cancelled: { label: "Annulée", fg: [190, 18, 60], bg: [253, 226, 231] },
+const STATUS_CHIP: Record<string, { label: string; bg: number[]; fg: number[] }> = {
+  pending:   { label: "En attente",    bg: [254, 243, 199], fg: [146, 64, 14] },
+  validated: { label: "Validée",       bg: [219, 234, 254], fg: [29, 78, 216] },
+  delivered: { label: "Livrée",        bg: [209, 250, 229], fg: [21, 128, 61] },
+  cancelled: { label: "Annulée",       bg: [254, 226, 226], fg: [185, 28, 28] },
 };
 
 const PAYMENT_TERMS = [
@@ -376,9 +373,7 @@ export function generateOrderPdf(inv: PdfOrder) {
   const totalRows: Array<{ label: string; value: string; muted?: boolean }> = [
     { label: "Total", value: money(finalTotal) },
   ];
-  if (Number(inv.discount) > 0) {
-    totalRows.push({ label: "Remise", value: `-${money(inv.discount)}` });
-  }
+
   if (cpValid && cp) {
     totalRows.push({
       label: cp.label + (cp.addToTotal ? "" : " (info)"),

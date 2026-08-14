@@ -61,7 +61,7 @@ type Warehouse = { id: string; name: string; description: string | null; is_acti
 type FormState = Omit<Product, "id" | "image_url" | "images"> & { gallery: string[]; sku: string | null };
 
 const empty: FormState = {
-  name: "", reference: "", brand: "", sku: "", description: "",
+  name: "", reference: "", brand: "", sku: null, description: "",
   purchase_price: 0, selling_price: 0, stock_quantity: 0, min_stock: 5,
   dimensions: "", gallery: [], warehouse_id: null,
 };
@@ -111,6 +111,7 @@ function ProductsIndexPage() {
         ...rest,
         image_url: gallery[0] ?? null,
         images: gallery.slice(1),
+        sku: p.sku?.trim() || null,
       };
       if (p.id) {
         const { error } = await supabase.from("products").update(payload).eq("id", p.id);
@@ -180,7 +181,7 @@ function ProductsIndexPage() {
     const gallery = [p.image_url, ...(p.images ?? [])].filter((x): x is string => !!x);
     setForm({
       name: p.name, reference: p.reference,
-      brand: p.brand ?? "", sku: "",
+      brand: p.brand ?? "", sku: null,
       description: p.description ?? "",
       purchase_price: p.purchase_price, selling_price: p.selling_price,
       stock_quantity: p.stock_quantity, min_stock: p.min_stock,
@@ -293,7 +294,7 @@ function ProductsIndexPage() {
                       if (!form.reference.trim()) errs.push(t("reference"));
                       if (!form.warehouse_id) errs.push(t("warehouse"));
                       if (form.purchase_price < 0 || form.selling_price < 0) errs.push("Prix négatif interdit");
-                      if (form.stock_quantity < 0 || form.min_stock < 0) errs.push("Quantité négative interdite");
+                      if (form.min_stock < 0) errs.push("Quantité négative interdite");
                       if (errs.length) { toast.error("Champs requis : " + errs.join(", ")); return; }
                       const fallbackName = `${form.brand?.trim() ?? ""} ${form.reference.trim()}`.trim();
                       const payload = { ...form, name: form.name.trim() || fallbackName || form.reference };

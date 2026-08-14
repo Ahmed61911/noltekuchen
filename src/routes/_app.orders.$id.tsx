@@ -46,7 +46,7 @@ function OrderDetail() {
     queryKey: ["order", id],
     queryFn: async () => {
       const { data: order } = await supabase.from("orders").select("*, customers(*)").eq("id", id).single();
-      const { data: items } = await supabase.from("order_items").select("*").eq("order_id", id);
+      const { data: items } = await supabase.from("order_items").select("*, products(name, reference)").eq("order_id", id);
       const { data: payments } = await supabase.from("order_payments").select("*").eq("order_id", id).order("paid_at");
       return { order, items: items || [], payments: payments || [] };
     },
@@ -54,67 +54,15 @@ function OrderDetail() {
 
   const updateStatus = useMutation({
     mutationFn: async (status: "pending" | "validated" | "delivered" | "cancelled") => {
-      // ── VALIDATED: just update status (no sale, no invoice) ──
-      // Sale creation is deferred to the delivery step.
-
-      // ── DELIVERED: create sale + deduct stock ──
+      // ── DELIVERED: use atomic deliver_order RPC ──
       if (status === "delivered" && order.status !== "delivered") {
-        // 1. Create sale record
-        const { data: sale, error: saleErr } = await supabase.from("sales").insert({
-          customer_id: order.customer_id,
-          order_id: order.id,
-          sale_date: new Date().toISOString().split("T")[0],
-          payment_due_date: order.due_date,
-          payment_method: "cash",
-          payment_status: "unpaid",
-          subtotal_ht: order.subtotal_ht,
-          tax_amount: order.tax_amount,
-          total_ttc: order.total_ttc,
-          paid_amount: 0,
-          stock_applied: false,
-          notes: `Vente générée depuis la commande ${order.order_number}`,
-          created_by: user?.id,
-        }).select("id, sale_number").single();
-        if (saleErr) throw saleErr;
-
-        // 2. Copy order items to sale items
-        const saleItems = items.map((it: any) => ({
-          sale_id: sale.id,
-          product_id: it.product_id,
-          description: it.description,
-          quantity: it.quantity,
-          unit_price: it.unit_price,
-          tax_rate: it.tax_rate ?? 20,
-          discount_rate: it.discount_rate ?? 0,
-          warehouse_id: it.warehouse_id,
-        }));
-        if (saleItems.length > 0) {
-          const { error: siErr } = await supabase.from("sale_items").insert(saleItems);
-          if (siErr) throw siErr;
-        }
-
-        // 3. Fetch product prices for unit_cost tracking
-        const productIds = items.map((it: any) => it.product_id).filter(Boolean);
-        const { data: prods } = await supabase.from("products").select("id, purchase_price").in("id", productIds);
-        const priceMap = new Map((prods || []).map((p: any) => [p.id, p.purchase_price]));
-
-        // 4. Create stock movements
-        const movements = items.map((it: any) => ({
-          product_id: it.product_id, type: "out" as const, quantity: it.quantity,
-          unit_cost: priceMap.get(it.product_id) ?? 0,
-          reason: `Livraison - Commande #${order.order_number}`, user_id: user?.id, document_ref: order.order_number,
-        }));
-        if (movements.length > 0) {
-          const { error: smErr } = await supabase.from("stock_movements").insert(movements);
-          if (smErr) throw smErr;
-        }
-
-        // 5. Mark stock as applied
-        await supabase.from("orders").update({ stock_applied: true }).eq("id", id);
-
-        toast.success(`Commande livrée — Vente ${sale.sale_number} créée`);
+        const { data: result, error: rpcErr } = await supabase.rpc("deliver_order", { _order_id: id });
+        if (rpcErr) throw rpcErr;
+        toast.success(`Commande livrée — Vente ${(result as any)?.sale_number} créée`);
+        return status;
       }
 
+      // ── ALL OTHER STATUS CHANGES: just update status ──
       const { error } = await supabase.from("orders").update({ status }).eq("id", id);
       if (error) throw error;
       return status;
@@ -122,15 +70,16 @@ function OrderDetail() {
     onSuccess: (s) => {
       const msgs: Record<string, string> = {
         validated: "Commande validée",
+        cancelled: "Commande annulée",
       };
-      // "delivered" toast is shown inside the mutationFn after sale creation
+      // "delivered" toast is shown inside the mutationFn after RPC
       if (msgs[s]) toast.success(msgs[s]);
-      else if (s !== "delivered") toast.success("Statut mis à jour");
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["products"] });
-      qc.invalidateQueries({ queryKey: ["invoices"] });
       qc.invalidateQueries({ queryKey: ["sales"] });
+      qc.invalidateQueries({ queryKey: ["movements"] });
+      qc.invalidateQueries({ queryKey: ["inventory"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -142,19 +91,7 @@ function OrderDetail() {
         order_id: id, amount, method: method as "cash" | "card" | "transfer" | "check" | "credit", created_by: user?.id ?? null,
       });
       if (error) throw error;
-
-      // Recalculate paid_amount
-      const { data: paymentsData, error: pErr } = await supabase.from("order_payments").select("amount").eq("order_id", id);
-      if (pErr) throw pErr;
-      
-      const newPaidAmount = paymentsData.reduce((acc, p) => acc + Number(p.amount), 0);
-      const newStatus = newPaidAmount >= order.total_ttc ? "paid" : (newPaidAmount > 0 ? "partial" : "unpaid");
-      
-      const { error: oErr } = await supabase.from("orders").update({
-        paid_amount: newPaidAmount,
-        payment_status: newStatus
-      }).eq("id", id);
-      if (oErr) throw oErr;
+      // DB trigger sync_order_payment_status handles paid_amount and payment_status
     },
     onSuccess: () => {
       toast.success("Paiement enregistré");
@@ -191,17 +128,15 @@ function OrderDetail() {
           )}
           <Button variant="outline" onClick={() => generateOrderPdf({
             ...order,
-            tax: order.tax_amount,
-            discount: order.discount_amount || 0,
+            discount: 0,
             customer: order.customers,
             items: items.map((it: any) => ({
               description: it.description,
               quantity: it.quantity,
               unit_price: it.unit_price,
-              tax_rate: it.tax_rate,
               discount: it.discount_rate,
-              total: it.line_total_ht,
-              code: it.products?.reference,
+              total: it.line_total_ttc,
+              code: (it.products as any)?.reference,
             })),
           } as PdfOrder)}>
             <FileDown className="mr-2 h-4 w-4" /> Bon de commande
@@ -227,7 +162,7 @@ function OrderDetail() {
           </div>
         </Card>
         <Card className="p-4 space-y-1">
-          <div className="flex justify-between"><span className="text-sm">Total</span><span className="font-semibold tabular-nums">{fmt(order.total_ttc || order.subtotal_ht)}</span></div>
+          <div className="flex justify-between"><span className="text-sm">Total</span><span className="font-semibold tabular-nums">{fmt(order.total_ttc)}</span></div>
           <div className="flex justify-between text-sm"><span>Payé</span><span className="tabular-nums">{fmt(order.paid_amount)}</span></div>
           <div className="flex justify-between text-sm"><span>Reste</span><span className="tabular-nums">{fmt(reste)}</span></div>
         </Card>
@@ -247,7 +182,7 @@ function OrderDetail() {
                 <TableCell>{it.description}</TableCell>
                 <TableCell className="text-right tabular-nums">{Number(it.quantity)}</TableCell>
                 <TableCell className="text-right tabular-nums">{fmt(it.unit_price)}</TableCell>
-                <TableCell className="text-right tabular-nums font-medium">{fmt(it.line_total_ttc || it.line_total_ht)}</TableCell>
+                <TableCell className="text-right tabular-nums font-medium">{fmt(it.line_total_ttc)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

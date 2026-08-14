@@ -55,10 +55,10 @@ const PALETTE = [
 
 type SaleRow = {
   id: string; sale_number: string; sale_date: string; total_ttc: number;
-  subtotal_ht: number; customer_id: string | null;
+  customer_id: string | null;
   customers: { name: string } | null;
   sale_items: {
-    quantity: number; unit_price: number; line_total_ht: number; line_total_ttc: number;
+    quantity: number; unit_price: number; line_total_ttc: number;
     product_id: string | null;
     products: {
       id: string; name: string; reference: string; purchase_price: number;
@@ -107,10 +107,10 @@ function ReportsPage() {
       const { data, error } = await supabase
         .from("sales")
         .select(`
-          id, sale_number, sale_date, total_ttc, subtotal_ht, customer_id,
+          id, sale_number, sale_date, total_ttc, customer_id,
           customers ( name ),
           sale_items (
-            quantity, unit_price, line_total_ht, line_total_ttc, product_id,
+            quantity, unit_price, line_total_ttc, product_id,
             products ( id, name, reference, purchase_price, category_id,
               categories ( id, name ) )
           )
@@ -235,7 +235,7 @@ function ReportsPage() {
           quantity: 0, revenue: 0, cost: 0,
         };
         cur.quantity += Number(it.quantity || 0);
-        cur.revenue += Number(it.line_total_ht || 0);
+        cur.revenue += Number(it.line_total_ttc || 0);
         cur.cost += Number(it.quantity || 0) * Number(it.products.purchase_price || 0);
         map.set(key, cur);
       });

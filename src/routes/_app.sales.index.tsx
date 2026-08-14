@@ -21,7 +21,6 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 import { generateInvoicePdf, type PdfInvoice } from "@/lib/invoice-pdf";
 import { computeLine, computeTotals } from "@/lib/money";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -59,7 +58,7 @@ type Sale = {
   id: string; sale_number: string; customer_id: string | null;
   sale_date: string; payment_due_date: string | null;
   payment_method: Method; payment_status: PayStatus;
-  subtotal_ht: number; tax_amount: number; total_ttc: number; paid_amount: number;
+  total_ttc: number; paid_amount: number;
   invoice_id: string | null; notes: string | null;
   warehouse_id: string | null;
   customers: { name: string } | null;
@@ -73,11 +72,11 @@ type Warehouse = { id: string; name: string };
 
 type LineForm = {
   product_id: string | null; product_key: string | null; description: string; quantity: number;
-  unit_price: number; tax_rate: number; discount_rate: number;
+  unit_price: number; discount_rate: number;
   warehouse_id: string | null;
 };
 const emptyLine = (): LineForm => ({
-  product_id: null, product_key: null, description: "", quantity: 1, unit_price: 0, tax_rate: 20, discount_rate: 0, warehouse_id: null,
+  product_id: null, product_key: null, description: "", quantity: 1, unit_price: 0, discount_rate: 0, warehouse_id: null,
 });
 const productKey = (p: Product) => (p.reference && p.reference.trim()) ? `ref:${p.reference}` : `name:${p.name}`;
 const fmt = (n: number) =>
@@ -86,7 +85,6 @@ const fmt = (n: number) =>
 function SalesPage() {
   const qc = useQueryClient();
   const confirm = useConfirm();
-  const { user } = useAuth();
   const { t } = useI18n();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -188,8 +186,6 @@ function SalesPage() {
           payment_due_date: dueDate || null,
           payment_method: method,
           payment_status: paidAmount >= totals.ttc ? "paid" : (paidAmount > 0 ? "partial" : "unpaid"),
-          subtotal_ht: totals.ht,
-          tax_amount: totals.tva,
           total_ttc: totals.ttc,
           paid_amount: paidAmount || 0,
           stock_applied: true,
@@ -200,9 +196,8 @@ function SalesPage() {
           const c = computeLine(l);
           return {
             product_id: l.product_id, description: l.description,
-            quantity: l.quantity, unit_price: l.unit_price, tax_rate: l.tax_rate,
-            discount_rate: l.discount_rate,
-            line_total_ht: c.ht, line_tax: c.tva, line_total_ttc: c.ttc,
+            quantity: l.quantity, unit_price: l.unit_price, discount_rate: l.discount_rate,
+            line_total_ttc: c.ttc,
             warehouse_id: l.warehouse_id,
           };
         }),
@@ -227,39 +222,6 @@ function SalesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const generateInvoice = useMutation({
-    mutationFn: async (sale: Sale) => {
-      if (sale.invoice_id) throw new Error("Facture déjà générée");
-      const { data: items } = await supabase.from("sale_items").select("*").eq("sale_id", sale.id);
-      const { data: inv, error } = await supabase.from("invoices").insert({
-        customer_id: sale.customer_id,
-        invoice_date: sale.sale_date,
-        due_date: sale.payment_due_date || sale.sale_date,
-        status: sale.payment_status === "paid" ? "paid" : "pending",
-        subtotal_ht: sale.subtotal_ht, tax_amount: sale.tax_amount, total_ttc: sale.total_ttc,
-        notes: `Issue de la vente ${sale.sale_number}`,
-        created_by: user?.id ?? null,
-        warehouse_id: sale.warehouse_id,
-        // The sale already moved these goods out of stock. Marking the origin
-        // stops the invoice trigger deducting them a second time.
-        source_sale_id: sale.id,
-      }).select("id").single();
-      if (error) throw error;
-      if (items?.length) {
-        await supabase.from("invoice_items").insert(items.map((it: any) => ({
-          invoice_id: inv.id, product_id: it.product_id, description: it.description,
-          quantity: it.quantity, unit_price: it.unit_price, tax_rate: it.tax_rate,
-          discount_rate: it.discount_rate,
-          line_total_ht: it.line_total_ht, line_tax: it.line_tax, line_total_ttc: it.line_total_ttc,
-        })));
-      }
-      await supabase.from("sales").update({ invoice_id: inv.id }).eq("id", sale.id);
-      return inv.id;
-    },
-    onSuccess: () => { toast.success("Facture générée"); qc.invalidateQueries({ queryKey: ["sales"] }); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const printSale = async (sale: Sale) => {
     const { data: items } = await supabase.from("sale_items").select("*").eq("sale_id", sale.id);
     const { data: cust } = sale.customer_id
@@ -269,7 +231,6 @@ function SalesPage() {
       invoice_number: sale.sale_number, invoice_date: sale.sale_date,
       due_date: sale.payment_due_date || sale.sale_date,
       status: sale.payment_status === "paid" ? "paid" : "pending",
-      subtotal_ht: sale.subtotal_ht, tax_amount: sale.tax_amount,
       discount_amount: 0, total_ttc: sale.total_ttc, notes: sale.notes,
       customer: cust, items: (items || []) as PdfInvoice["items"],
     });
@@ -440,7 +401,7 @@ function SalesPage() {
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.quantity} onChange={e => upd({ quantity: Number(e.target.value) })} /></TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.unit_price} onChange={e => upd({ unit_price: Number(e.target.value) })} /></TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} max={100} step="0.1" value={l.discount_rate} onChange={e => upd({ discount_rate: Number(e.target.value) })} /></TableCell>
-                          <TableCell className="text-right text-sm tabular-nums font-medium">{fmt(c.ttc || c.ht)}</TableCell>
+                          <TableCell className="text-right text-sm tabular-nums font-medium">{fmt(c.ttc)}</TableCell>
                           <TableCell>
                             <Button size="icon" variant="ghost" onClick={() => setLines(lines.filter((_, i) => i !== idx))}>
                               <Trash2 className="h-4 w-4" />
@@ -472,8 +433,8 @@ function SalesPage() {
                 </div>
               </div>
               <Card className="p-4 space-y-2 self-start">
-                <div className="flex justify-between font-semibold text-lg"><span>Total</span><span className="tabular-nums">{fmt(totals.ttc || totals.ht)}</span></div>
-                <div className="flex justify-between text-sm text-muted-foreground"><span>Reste à payer</span><span className="tabular-nums">{fmt(Math.max(0, (totals.ttc || totals.ht) - (paidAmount || 0)))}</span></div>
+                <div className="flex justify-between font-semibold text-lg"><span>Total</span><span className="tabular-nums">{fmt(totals.ttc)}</span></div>
+                <div className="flex justify-between text-sm text-muted-foreground"><span>Reste à payer</span><span className="tabular-nums">{fmt(Math.max(0, totals.ttc - (paidAmount || 0)))}</span></div>
               </Card>
             </div>
 

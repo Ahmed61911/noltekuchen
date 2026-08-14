@@ -363,12 +363,10 @@ export type Database = {
           discount_rate: number
           id: string
           invoice_id: string
-          line_tax: number
-          line_total_ht: number
+          line_
           line_total_ttc: number
           product_id: string | null
           quantity: number
-          tax_rate: number
           unit_price: number
           warehouse_id: string | null
         }
@@ -378,12 +376,10 @@ export type Database = {
           discount_rate?: number
           id?: string
           invoice_id: string
-          line_tax?: number
-          line_total_ht?: number
+          line_
           line_total_ttc?: number
           product_id?: string | null
           quantity: number
-          tax_rate?: number
           unit_price?: number
           warehouse_id?: string | null
         }
@@ -393,12 +389,10 @@ export type Database = {
           discount_rate?: number
           id?: string
           invoice_id?: string
-          line_tax?: number
-          line_total_ht?: number
+          line_
           line_total_ttc?: number
           product_id?: string | null
           quantity?: number
-          tax_rate?: number
           unit_price?: number
           warehouse_id?: string | null
         }
@@ -440,8 +434,6 @@ export type Database = {
           status: Database["public"]["Enums"]["invoice_status"]
           stock_applied: boolean
           source_sale_id: string | null
-          subtotal_ht: number
-          tax_amount: number
           total_ttc: number
           updated_at: string
           warehouse_id: string | null
@@ -459,8 +451,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["invoice_status"]
           stock_applied?: boolean
           source_sale_id?: string | null
-          subtotal_ht?: number
-          tax_amount?: number
           total_ttc?: number
           updated_at?: string
           warehouse_id?: string | null
@@ -478,8 +468,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["invoice_status"]
           stock_applied?: boolean
           source_sale_id?: string | null
-          subtotal_ht?: number
-          tax_amount?: number
           total_ttc?: number
           updated_at?: string
           warehouse_id?: string | null
@@ -507,13 +495,11 @@ export type Database = {
           description: string
           discount_rate: number
           id: string
-          line_tax: number
-          line_total_ht: number
+          line_
           line_total_ttc: number
           order_id: string
           product_id: string | null
           quantity: number
-          tax_rate: number
           unit_price: number
           warehouse_id: string | null
         }
@@ -522,13 +508,11 @@ export type Database = {
           description: string
           discount_rate?: number
           id?: string
-          line_tax?: number
-          line_total_ht?: number
+          line_
           line_total_ttc?: number
           order_id: string
           product_id?: string | null
           quantity?: number
-          tax_rate?: number
           unit_price?: number
           warehouse_id?: string | null
         }
@@ -537,13 +521,11 @@ export type Database = {
           description?: string
           discount_rate?: number
           id?: string
-          line_tax?: number
-          line_total_ht?: number
+          line_
           line_total_ttc?: number
           order_id?: string
           product_id?: string | null
           quantity?: number
-          tax_rate?: number
           unit_price?: number
           warehouse_id?: string | null
         }
@@ -624,10 +606,9 @@ export type Database = {
           order_number: string
           paid_amount: number
           payment_status: Database["public"]["Enums"]["payment_status"]
+          quote_id: string | null
           status: Database["public"]["Enums"]["order_status"]
           stock_applied: boolean
-          subtotal_ht: number
-          tax_amount: number
           total_ttc: number
           updated_at: string
           warehouse_id: string | null
@@ -643,10 +624,9 @@ export type Database = {
           order_number?: string
           paid_amount?: number
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          quote_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           stock_applied?: boolean
-          subtotal_ht?: number
-          tax_amount?: number
           total_ttc?: number
           updated_at?: string
           warehouse_id?: string | null
@@ -662,10 +642,9 @@ export type Database = {
           order_number?: string
           paid_amount?: number
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          quote_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           stock_applied?: boolean
-          subtotal_ht?: number
-          tax_amount?: number
           total_ttc?: number
           updated_at?: string
           warehouse_id?: string | null
@@ -1143,7 +1122,6 @@ export type Database = {
           product_id: string | null
           quantity: number
           quote_id: string
-          tax_rate: number
           total: number
           unit_price: number
         }
@@ -1155,7 +1133,6 @@ export type Database = {
           product_id?: string | null
           quantity?: number
           quote_id: string
-          tax_rate?: number
           total?: number
           unit_price?: number
         }
@@ -1167,7 +1144,6 @@ export type Database = {
           product_id?: string | null
           quantity?: number
           quote_id?: string
-          tax_rate?: number
           total?: number
           unit_price?: number
         }
@@ -1201,8 +1177,6 @@ export type Database = {
           quote_date: string
           quote_number: string
           status: Database["public"]["Enums"]["quote_status"]
-          subtotal_ht: number
-          tax: number
           total_ttc: number
           updated_at: string
         }
@@ -1218,8 +1192,6 @@ export type Database = {
           quote_date?: string
           quote_number?: string
           status?: Database["public"]["Enums"]["quote_status"]
-          subtotal_ht?: number
-          tax?: number
           total_ttc?: number
           updated_at?: string
         }
@@ -1235,8 +1207,6 @@ export type Database = {
           quote_date?: string
           quote_number?: string
           status?: Database["public"]["Enums"]["quote_status"]
-          subtotal_ht?: number
-          tax?: number
           total_ttc?: number
           updated_at?: string
         }
@@ -1309,13 +1279,11 @@ export type Database = {
           description: string
           discount_rate: number
           id: string
-          line_tax: number
-          line_total_ht: number
+          line_
           line_total_ttc: number
           product_id: string | null
           quantity: number
           sale_id: string
-          tax_rate: number
           unit_price: number
           warehouse_id: string | null
         }
@@ -1324,13 +1292,11 @@ export type Database = {
           description: string
           discount_rate?: number
           id?: string
-          line_tax?: number
-          line_total_ht?: number
+          line_
           line_total_ttc?: number
           product_id?: string | null
           quantity?: number
           sale_id: string
-          tax_rate?: number
           unit_price?: number
           warehouse_id?: string | null
         }
@@ -1339,13 +1305,11 @@ export type Database = {
           description?: string
           discount_rate?: number
           id?: string
-          line_tax?: number
-          line_total_ht?: number
+          line_
           line_total_ttc?: number
           product_id?: string | null
           quantity?: number
           sale_id?: string
-          tax_rate?: number
           unit_price?: number
           warehouse_id?: string | null
         }
@@ -1430,8 +1394,6 @@ export type Database = {
           sale_date: string
           sale_number: string
           stock_applied: boolean
-          subtotal_ht: number
-          tax_amount: number
           total_ttc: number
           updated_at: string
           warehouse_id: string | null
@@ -1451,8 +1413,6 @@ export type Database = {
           sale_date?: string
           sale_number?: string
           stock_applied?: boolean
-          subtotal_ht?: number
-          tax_amount?: number
           total_ttc?: number
           updated_at?: string
           warehouse_id?: string | null
@@ -1472,8 +1432,6 @@ export type Database = {
           sale_date?: string
           sale_number?: string
           stock_applied?: boolean
-          subtotal_ht?: number
-          tax_amount?: number
           total_ttc?: number
           updated_at?: string
           warehouse_id?: string | null
@@ -1786,6 +1744,7 @@ export type Database = {
         | "supplier_return"
         | "inventory"
         | "transfer"
+        | "damaged"
       order_status: "pending" | "validated" | "delivered" | "cancelled"
       payment_method: "cash" | "card" | "transfer" | "check" | "credit"
       payment_status: "unpaid" | "partial" | "paid"

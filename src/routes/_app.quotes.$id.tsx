@@ -72,12 +72,11 @@ function QuoteDetail() {
         // Create the order
         const { data: order, error: orderErr } = await supabase.from("orders").insert({
           customer_id: quote.customer_id,
+          quote_id: id,
           order_date: new Date().toISOString().split("T")[0],
           due_date: quote.expiry_date || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
           status: "pending",
           payment_status: "unpaid",
-          subtotal_ht: quote.subtotal_ht,
-          tax_amount: quote.tax,
           total_ttc: quote.total_ttc,
           paid_amount: 0,
           stock_applied: false,
@@ -88,19 +87,8 @@ function QuoteDetail() {
 
         // Map quote_items → order_items
         const orderItems = qItems.map((it: any) => {
-          const lineHt = Number(it.total) || 0;
-          const lineTax = (lineHt * (Number(it.tax_rate) || 20)) / 100;
-          return {
-            order_id: order.id,
-            product_id: it.product_id,
-            description: it.description || "",
-            quantity: it.quantity,
-            unit_price: it.unit_price,
-            tax_rate: it.tax_rate || 20,
             discount_rate: it.discount || 0,
-            line_total_ht: lineHt,
-            line_tax: lineTax,
-            line_total_ttc: lineHt + lineTax,
+            line_total_ttc: Number(it.total) || 0,
           };
         });
         if (orderItems.length > 0) {
@@ -132,7 +120,7 @@ function QuoteDetail() {
       const total = subtotal - dVal;
       const { error } = await supabase.from("quote_items").insert({
         quote_id: id, product_id: p.id, quantity: qty,
-        unit_price: price, tax_rate: 20, discount, total, description: p.name
+        unit_price: price, discount, total, description: p.name
       });
       if (error) throw error;
       await recomputeTotals();
@@ -157,15 +145,14 @@ function QuoteDetail() {
   });
 
   async function recomputeTotals() {
-    const { data: items } = await supabase.from("quote_items").select("total, tax_rate").eq("quote_id", id);
+    const { data: items } = await supabase.from("quote_items").select("total").eq("quote_id", id);
     if (!items) return;
-    let ht = 0, tax = 0;
+    let total_ttc = 0;
     for (const it of items) {
-      ht += Number(it.total);
-      tax += (Number(it.total) * Number(it.tax_rate)) / 100;
+      total_ttc += Number(it.total);
     }
     await supabase.from("quotes").update({
-      subtotal_ht: ht, tax, total_ttc: ht + tax,
+      total_ttc
     }).eq("id", id);
   }
 
@@ -233,7 +220,14 @@ function QuoteDetail() {
                   <div className="grid gap-4 py-4">
                     <div>
                       <Label>Produit</Label>
-                      <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                      <Select
+                        value={selectedProduct}
+                        onValueChange={(val) => {
+                          setSelectedProduct(val);
+                          const prod = products.find((p) => p.id === val);
+                          if (prod?.selling_price) setUnitPrice(prod.selling_price);
+                        }}
+                      >
                         <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
                         <SelectContent>
                           {products.map(p => <SelectItem key={p.id} value={p.id}>{p.reference} - {p.name}</SelectItem>)}
@@ -295,7 +289,7 @@ function QuoteDetail() {
           <Card className="p-6 space-y-4">
             <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Résumé financier</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between font-semibold text-lg"><span>Total</span><span>{fmt(quote.total_ttc || quote.subtotal_ht)}</span></div>
+              <div className="flex justify-between font-semibold text-lg"><span>Total</span><span>{fmt(quote.total_ttc)}</span></div>
             </div>
           </Card>
 

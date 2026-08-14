@@ -8,9 +8,7 @@ export type PdfInvoice = {
   invoice_date: string;
   due_date: string;
   status: string;
-  subtotal_ht: number;
-  tax_amount: number;
-  discount_amount: number;
+
   total_ttc: number;
   notes: string | null;
   custom_price?: { label: string; amount: number; addToTotal: boolean } | null;
@@ -27,9 +25,7 @@ export type PdfInvoice = {
     description: string;
     quantity: number;
     unit_price: number;
-    tax_rate: number;
     discount_rate: number;
-    line_total_ht: number;
     line_total_ttc: number;
     code?: string | null;
   }>;
@@ -321,7 +317,7 @@ export function generateInvoicePdf(inv: PdfInvoice) {
         return rate > 0 ? `${pdfNumber(rate, Number.isInteger(rate) ? 0 : 2)} %` : "";
       }
       default:
-        return money(it.line_total_ht);
+        return money(it.line_total_ttc);
     }
   };
 
@@ -378,9 +374,7 @@ export function generateInvoicePdf(inv: PdfInvoice) {
   const totalRows: Array<{ label: string; value: string; muted?: boolean }> = [
     { label: "Total", value: money(finalTotal) },
   ];
-  if (Number(inv.discount_amount) > 0) {
-    totalRows.push({ label: "Remise", value: `-${money(inv.discount_amount)}` });
-  }
+
   if (cpValid && cp) {
     totalRows.push({
       label: cp.label + (cp.addToTotal ? "" : " (info)"),

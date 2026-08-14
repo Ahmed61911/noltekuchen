@@ -55,9 +55,6 @@ type Invoice = {
   invoice_date: string;
   due_date: string;
   status: Status;
-  subtotal_ht: number;
-  tax_amount: number;
-  discount_amount: number;
   total_ttc: number;
   notes: string | null;
   warehouse_id: string | null;
@@ -76,14 +73,12 @@ type LineForm = {
   product_key: string | null;
   description: string;
   quantity: number;
-  unit_price: number;
-  tax_rate: number;
-  discount_rate: number;
+  unit_price: number; discount_rate: number;
   warehouse_id: string | null;
 };
 
 const emptyLine = (): LineForm => ({
-  product_id: null, product_key: null, description: "", quantity: 1, unit_price: 0, tax_rate: 20, discount_rate: 0, warehouse_id: null,
+  product_id: null, product_key: null, description: "", quantity: 1, unit_price: 0, discount_rate: 0, warehouse_id: null,
 });
 const productKey = (p: Product) => (p.reference && p.reference.trim()) ? `ref:${p.reference}` : `name:${p.name}`;
 
@@ -197,8 +192,6 @@ function InvoicesPage() {
           invoice_date: invoiceDate,
           due_date: dueDate,
           status,
-          subtotal_ht: totals.ht,
-          tax_amount: totals.tva,
           total_ttc: totals.ttc,
           notes: notes || null,
           warehouse_id: null,
@@ -210,10 +203,7 @@ function InvoicesPage() {
             description: l.description,
             quantity: l.quantity,
             unit_price: l.unit_price,
-            tax_rate: l.tax_rate,
             discount_rate: l.discount_rate,
-            line_total_ht: c.ht,
-            line_tax: c.tva,
             line_total_ttc: c.ttc,
             warehouse_id: l.warehouse_id,
           };
@@ -437,9 +427,8 @@ function InvoicesPage() {
                           </TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.quantity} onChange={e => update({ quantity: Number(e.target.value) })} /></TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.unit_price} onChange={e => update({ unit_price: Number(e.target.value) })} /></TableCell>
-                          <TableCell><Input className="h-8" type="number" min={0} max={100} step="0.1" value={l.tax_rate} onChange={e => update({ tax_rate: Number(e.target.value) })} /></TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} max={100} step="0.1" value={l.discount_rate} onChange={e => update({ discount_rate: Number(e.target.value) })} /></TableCell>
-                          <TableCell className="text-right text-sm tabular-nums">{fmt(c.ht)}</TableCell>
+                          <TableCell className="text-right text-sm tabular-nums">{fmt(c.ttc)}</TableCell>
                           <TableCell>
                             <Button size="icon" variant="ghost" onClick={() => setLines(lines.filter((_, i) => i !== idx))}>
                               <Trash2 className="h-4 w-4" />
@@ -470,9 +459,7 @@ function InvoicesPage() {
                 </div>
               </div>
               <Card className="p-4 space-y-2 self-start">
-                <div className="flex justify-between"><span>Sous-total HT</span><span className="tabular-nums">{fmt(totals.ht)}</span></div>
-                <div className="flex justify-between"><span>TVA</span><span className="tabular-nums">{fmt(totals.tva)}</span></div>
-                <div className="flex justify-between border-t pt-2 font-semibold text-lg"><span>Total TTC</span><span className="tabular-nums">{fmt(totals.ttc)}</span></div>
+                <div className="flex justify-between font-semibold text-lg"><span>Total TTC</span><span className="tabular-nums">{fmt(totals.ttc)}</span></div>
               </Card>
             </div>
 

@@ -38,6 +38,7 @@ function QuotesPage() {
   const [search, setSearch] = useState("");
   const [statusF, setStatusF] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("_new");
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientEmail, setClientEmail] = useState("");
@@ -66,7 +67,11 @@ function QuotesPage() {
   const createQuote = useMutation({
     mutationFn: async () => {
       let customerId: string | null = null;
-      if (clientName.trim()) {
+      if (selectedCustomerId && selectedCustomerId !== "_new" && selectedCustomerId !== "_none") {
+        // Use existing customer
+        customerId = selectedCustomerId;
+      } else if (selectedCustomerId === "_new" && clientName.trim()) {
+        // Create new customer
         const { data: newCust, error: cErr } = await supabase
           .from("customers")
           .insert({
@@ -77,34 +82,25 @@ function QuotesPage() {
           })
           .select("id")
           .single();
-        if (!cErr && newCust) {
-          customerId = newCust.id;
-        }
+        if (cErr) throw cErr;
+        customerId = newCust.id;
+        qc.invalidateQueries({ queryKey: ["customers-list"] });
       }
-
-      const prefix = "DEV-" + new Date().getFullYear().toString().slice(-2) + (new Date().getMonth() + 1).toString().padStart(2, "0");
-      const { data: latest } = await supabase.from("quotes").select("quote_number").like("quote_number", `${prefix}-%`).order("quote_number", { ascending: false }).limit(1).single();
-      let nextSeq = 1;
-      if (latest?.quote_number) {
-        const parts = latest.quote_number.split("-");
-        nextSeq = parseInt(parts[2], 10) + 1;
-      }
-      const num = `${prefix}-${nextSeq.toString().padStart(4, "0")}`;
 
       const { data, error } = await supabase.from("quotes").insert({
-        quote_number: num,
         customer_id: customerId,
         commercial_id: user?.id,
         status: "draft",
         quote_date: new Date().toISOString().split("T")[0],
-        subtotal_ht: 0, tax: 0, discount: 0, total_ttc: 0,
+        expiry_date: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+        discount: 0, total_ttc: 0,
       }).select("id").single();
       if (error) throw error;
       return data;
     },
     onSuccess: (data) => {
       setCreateOpen(false);
-      setClientName(""); setClientPhone(""); setClientEmail(""); setClientAddress("");
+      setSelectedCustomerId("_new"); setClientName(""); setClientPhone(""); setClientEmail(""); setClientAddress("");
       navigate({ to: "/quotes/$id", params: { id: data.id } });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -164,39 +160,38 @@ function QuotesPage() {
             <DialogHeader><DialogTitle>Créer un devis</DialogTitle></DialogHeader>
             <div className="py-4 space-y-3">
               <div>
-                <Label>Nom du client (optionnel)</Label>
-                <Input
-                  className="mt-1"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                />
+                <Label>Client</Label>
+                <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Sélectionner un client" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">— Aucun (prospect) —</SelectItem>
+                    <SelectItem value="_new">+ Nouveau client</SelectItem>
+                    {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Téléphone (optionnel)</Label>
-                  <Input
-                    className="mt-1"
-                    value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>Email (optionnel)</Label>
-                  <Input
-                    className="mt-1"
-                    value={clientEmail}
-                    onChange={(e) => setClientEmail(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label>Adresse (optionnel)</Label>
-                <Input
-                  className="mt-1"
-                  value={clientAddress}
-                  onChange={(e) => setClientAddress(e.target.value)}
-                />
-              </div>
+              {selectedCustomerId === "_new" && (
+                <>
+                  <div>
+                    <Label>Nom du client</Label>
+                    <Input className="mt-1" value={clientName} onChange={(e) => setClientName(e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Téléphone</Label>
+                      <Input className="mt-1" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Email</Label>
+                      <Input className="mt-1" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Adresse</Label>
+                    <Input className="mt-1" value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} />
+                  </div>
+                </>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreateOpen(false)}>Annuler</Button>
@@ -266,6 +261,10 @@ function QuotesPage() {
                           <FileDown className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" className="text-rose-600 hover:text-rose-700 hover:bg-rose-50" onClick={async () => {
+                          if (q.status === 'accepted') {
+                            toast.error("Ce devis est lié à une commande et ne peut pas être supprimé.");
+                            return;
+                          }
                           if (await confirm({ title: "Supprimer", message: "Voulez-vous vraiment supprimer ce devis ?" })) removeQuote.mutate(q.id);
                         }}>
                           <Trash2 className="h-4 w-4" />

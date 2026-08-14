@@ -61,7 +61,7 @@ type Order = {
   id: string; order_number: string; customer_id: string | null;
   order_date: string; due_date: string;
   status: OrderStatus; payment_status: PayStatus;
-  subtotal_ht: number; tax_amount: number; total_ttc: number; paid_amount: number;
+  total_ttc: number; paid_amount: number;
   notes: string | null; warehouse_id: string | null;
   customers: { name: string } | null;
   warehouses: { name: string } | null;
@@ -73,11 +73,11 @@ type Customer = { id: string; name: string };
 type Product = { id: string; name: string; reference: string | null; selling_price: number; warehouse_id: string | null; stock_quantity: number };
 type LineForm = {
   product_id: string | null; product_key: string | null; description: string; quantity: number;
-  unit_price: number; tax_rate: number; discount_rate: number;
+  unit_price: number; discount_rate: number;
   warehouse_id: string | null;
 };
 const emptyLine = (): LineForm => ({
-  product_id: null, product_key: null, description: "", quantity: 1, unit_price: 0, tax_rate: 20, discount_rate: 0, warehouse_id: null,
+  product_id: null, product_key: null, description: "", quantity: 1, unit_price: 0, discount_rate: 0, warehouse_id: null,
 });
 const productKey = (p: Product) => (p.reference && p.reference.trim()) ? `ref:${p.reference}` : `name:${p.name}`;
 const fmt = (n: number) =>
@@ -172,16 +172,14 @@ function OrdersPage() {
       const { error } = await supabase.rpc("create_order", {
         _order: {
           customer_id: resolvedCustId, order_date: orderDate, due_date: dueDate,
-          status: "pending", subtotal_ht: totals.ht, tax_amount: totals.tva,
-          total_ttc: totals.ttc, notes: notes || null, warehouse_id: null,
+          status: "pending", total_ttc: totals.ttc, notes: notes || null, warehouse_id: null,
         },
         _items: validLines.map(l => {
           const c = computeLine(l);
           return {
             product_id: l.product_id, description: l.description,
-            quantity: l.quantity, unit_price: l.unit_price, tax_rate: l.tax_rate,
-            discount_rate: l.discount_rate,
-            line_total_ht: c.ht, line_tax: c.tva, line_total_ttc: c.ttc,
+            quantity: l.quantity, unit_price: l.unit_price, discount_rate: l.discount_rate,
+            line_total_ttc: c.ttc, warehouse_id: l.warehouse_id,
             warehouse_id: l.warehouse_id,
           };
         }),
@@ -198,13 +196,23 @@ function OrdersPage() {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: OrderStatus }) => {
+      // Use atomic deliver_order RPC for delivery
+      if (status === "delivered") {
+        const { data: result, error: rpcErr } = await supabase.rpc("deliver_order", { _order_id: id });
+        if (rpcErr) throw rpcErr;
+        toast.success(`Commande livrée — Vente ${(result as any)?.sale_number} créée`);
+        return;
+      }
       const { error } = await supabase.from("orders").update({ status }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: (_d, v) => {
-      toast.success(`Statut: ${STATUS[v.status].label}`);
+      if (v.status !== "delivered") toast.success(`Statut: ${STATUS[v.status].label}`);
       qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["sales"] });
+      qc.invalidateQueries({ queryKey: ["movements"] });
+      qc.invalidateQueries({ queryKey: ["inventory"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -380,9 +388,8 @@ function OrdersPage() {
                           </TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.quantity} onChange={e => upd({ quantity: Number(e.target.value) })} /></TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.unit_price} onChange={e => upd({ unit_price: Number(e.target.value) })} /></TableCell>
-                          <TableCell><Input className="h-8" type="number" min={0} max={100} step="0.1" value={l.tax_rate} onChange={e => upd({ tax_rate: Number(e.target.value) })} /></TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} max={100} step="0.1" value={l.discount_rate} onChange={e => upd({ discount_rate: Number(e.target.value) })} /></TableCell>
-                          <TableCell className="text-right text-sm tabular-nums">{fmt(c.ht)}</TableCell>
+                          <TableCell className="text-right text-sm tabular-nums">{fmt(c.ttc)}</TableCell>
                           <TableCell>
                             <Button size="icon" variant="ghost" onClick={() => setLines(lines.filter((_, i) => i !== idx))}>
                               <Trash2 className="h-4 w-4" />
@@ -399,7 +406,7 @@ function OrdersPage() {
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Notes</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} /></div>
               <Card className="p-4 space-y-2 self-start">
-                <div className="flex justify-between font-semibold text-lg"><span>Total</span><span className="tabular-nums">{fmt(totals.ttc || totals.ht)}</span></div>
+                <div className="flex justify-between font-semibold text-lg"><span>Total</span><span className="tabular-nums">{fmt(totals.ttc)}</span></div>
               </Card>
             </div>
 
@@ -481,7 +488,7 @@ function OrdersPage() {
                     const p = products.find(x => x.id === pid)!;
                     return {
                       product_id: p.id, product_key: productKey(p), description: p.name, quantity: qty,
-                      unit_price: Number(p.selling_price), tax_rate: 20, discount_rate: 0,
+                      unit_price: Number(p.selling_price), discount_rate: 0,
                       warehouse_id: p.warehouse_id,
                     };
                   });
