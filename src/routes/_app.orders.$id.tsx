@@ -128,7 +128,6 @@ function OrderDetail() {
           )}
           <Button variant="outline" onClick={() => generateOrderPdf({
             ...order,
-            discount: 0,
             customer: order.customers,
             items: items.map((it: any) => ({
               description: it.description,

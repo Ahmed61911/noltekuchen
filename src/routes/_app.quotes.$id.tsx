@@ -199,7 +199,14 @@ function QuoteDetail() {
           <Button variant="outline" onClick={() => generateQuotePdf({
             ...quote,
             customer: quote.customers,
-            items: items.map((it: any) => ({ ...it, code: it.products?.reference }))
+            items: items.map((it: any) => ({
+              description: it.description,
+              quantity: it.quantity,
+              unit_price: it.unit_price,
+              discount: it.discount_rate,
+              total: it.line_total_ttc,
+              code: it.products?.reference
+            }))
           } as PdfQuote)}>
             <FileDown className="mr-2 h-4 w-4" /> Télécharger PDF
           </Button>

@@ -231,7 +231,7 @@ function SalesPage() {
       invoice_number: sale.sale_number, invoice_date: sale.sale_date,
       due_date: sale.payment_due_date || sale.sale_date,
       status: sale.payment_status === "paid" ? "paid" : "pending",
-      discount_amount: 0, total_ttc: sale.total_ttc, notes: sale.notes,
+      total_ttc: sale.total_ttc, notes: sale.notes,
       customer: cust, items: (items || []) as PdfInvoice["items"],
     });
   };

@@ -93,7 +93,7 @@ function QuotesPage() {
         status: "draft",
         quote_date: new Date().toISOString().split("T")[0],
         expiry_date: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
-        discount: 0, total_ttc: 0,
+        total_ttc: 0,
       }).select("id").single();
       if (error) throw error;
       return data;
@@ -126,7 +126,14 @@ function QuotesPage() {
     generateQuotePdf({
       ...quote,
       customer: quote.customers,
-      items: items.map((it: any) => ({ ...it, code: it.products?.reference }))
+      items: items.map((it: any) => ({
+        description: it.description,
+        quantity: it.quantity,
+        unit_price: it.unit_price,
+        discount: it.discount_rate,
+        total: it.line_total_ttc,
+        code: it.products?.reference
+      }))
     } as PdfQuote);
   };
 

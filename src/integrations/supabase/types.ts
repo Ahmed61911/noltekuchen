@@ -363,7 +363,6 @@ export type Database = {
           discount_rate: number
           id: string
           invoice_id: string
-          line_
           line_total_ttc: number
           product_id: string | null
           quantity: number
@@ -376,7 +375,6 @@ export type Database = {
           discount_rate?: number
           id?: string
           invoice_id: string
-          line_
           line_total_ttc?: number
           product_id?: string | null
           quantity: number
@@ -389,7 +387,6 @@ export type Database = {
           discount_rate?: number
           id?: string
           invoice_id?: string
-          line_
           line_total_ttc?: number
           product_id?: string | null
           quantity?: number
@@ -495,7 +492,6 @@ export type Database = {
           description: string
           discount_rate: number
           id: string
-          line_
           line_total_ttc: number
           order_id: string
           product_id: string | null
@@ -508,7 +504,6 @@ export type Database = {
           description: string
           discount_rate?: number
           id?: string
-          line_
           line_total_ttc?: number
           order_id: string
           product_id?: string | null
@@ -521,7 +516,6 @@ export type Database = {
           description?: string
           discount_rate?: number
           id?: string
-          line_
           line_total_ttc?: number
           order_id?: string
           product_id?: string | null
@@ -1279,7 +1273,6 @@ export type Database = {
           description: string
           discount_rate: number
           id: string
-          line_
           line_total_ttc: number
           product_id: string | null
           quantity: number
@@ -1292,7 +1285,6 @@ export type Database = {
           description: string
           discount_rate?: number
           id?: string
-          line_
           line_total_ttc?: number
           product_id?: string | null
           quantity?: number
@@ -1305,7 +1297,6 @@ export type Database = {
           description?: string
           discount_rate?: number
           id?: string
-          line_
           line_total_ttc?: number
           product_id?: string | null
           quantity?: number
