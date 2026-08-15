@@ -130,8 +130,8 @@ function QuotesPage() {
         description: it.description,
         quantity: it.quantity,
         unit_price: it.unit_price,
-        discount: it.discount_rate,
-        total: it.line_total_ttc,
+        discount: it.discount,
+        total: it.total,
         code: it.products?.reference
       }))
     } as PdfQuote);

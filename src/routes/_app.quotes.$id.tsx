@@ -86,11 +86,15 @@ function QuoteDetail() {
         if (orderErr) throw orderErr;
 
         // Map quote_items → order_items
-        const orderItems = qItems.map((it: any) => {
-            discount_rate: it.discount || 0,
-            line_total_ttc: Number(it.total) || 0,
-          };
-        });
+        const orderItems = qItems.map((it: any) => ({
+          order_id: order.id,
+          product_id: it.product_id,
+          description: it.description,
+          quantity: it.quantity,
+          unit_price: it.unit_price,
+          discount_rate: it.discount || 0,
+          line_total_ttc: Number(it.total) || 0,
+        }));
         if (orderItems.length > 0) {
           const { error: oiErr } = await supabase.from("order_items").insert(orderItems);
           if (oiErr) throw oiErr;
@@ -203,8 +207,8 @@ function QuoteDetail() {
               description: it.description,
               quantity: it.quantity,
               unit_price: it.unit_price,
-              discount: it.discount_rate,
-              total: it.line_total_ttc,
+              discount: it.discount,
+              total: it.total,
               code: it.products?.reference
             }))
           } as PdfQuote)}>
