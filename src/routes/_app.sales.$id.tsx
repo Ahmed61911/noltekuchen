@@ -44,6 +44,8 @@ function SaleDetail() {
   const addPayment = useMutation({
     mutationFn: async () => {
       if (payAmount <= 0) throw new Error('Montant invalide');
+      const remaining = Math.max(0, Number(data?.sale?.total_ttc ?? 0) - Number(data?.sale?.paid_amount ?? 0));
+      if (payAmount > remaining + 0.009) throw new Error(`Le montant dépasse le reste à payer (${remaining.toFixed(2)} DH)`);
       const { error } = await supabase.from('sale_payments').insert({
         sale_id: id, amount: payAmount, method: payMethod as any,
       });

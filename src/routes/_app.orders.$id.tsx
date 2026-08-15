@@ -87,6 +87,8 @@ function OrderDetail() {
   const addPayment = useMutation({
     mutationFn: async () => {
       if (amount <= 0) throw new Error("Montant invalide");
+      const remaining = Math.max(0, Number(data?.order?.total_ttc ?? 0) - Number(data?.order?.paid_amount ?? 0));
+      if (amount > remaining + 0.009) throw new Error(`Le montant dépasse le reste à payer (${remaining.toFixed(2)} DH)`);
       const { error } = await supabase.from("order_payments").insert({
         order_id: id, amount, method: method as "cash" | "card" | "transfer" | "check" | "credit", created_by: user?.id ?? null,
       });
@@ -121,10 +123,10 @@ function OrderDetail() {
             <Button variant="outline" onClick={async () => { if (await confirm({ title: "Valider cette commande ?", description: "La commande passe en préparation. Le stock sera mouvementé à la livraison.", confirmLabel: "Valider" })) updateStatus.mutate("validated"); }}><CheckCircle2 className="mr-2 h-4 w-4" />Valider</Button>
           )}
           {(order.status === "pending" || order.status === "validated") && (
-            <Button onClick={async () => { if (await confirm({ title: "Marquer cette commande comme livrée ?", description: "La marchandise sera immédiatement sortie du stock. En cas d'erreur, l'annulation la réintègre.", confirmLabel: "Livrer" })) updateStatus.mutate("delivered"); }}><Truck className="mr-2 h-4 w-4" />Livrer</Button>
+            <Button onClick={async () => { if (await confirm({ title: "Marquer cette commande comme livrée ?", description: "La marchandise sera immédiatement sortie du stock et une vente sera créée. Cette action est définitive.", confirmLabel: "Livrer" })) updateStatus.mutate("delivered"); }}><Truck className="mr-2 h-4 w-4" />Livrer</Button>
           )}
           {order.status !== "cancelled" && order.status !== "delivered" && (
-            <Button variant="outline" onClick={async () => { if (await confirm({ title: "Annuler cette commande ?", description: "Si elle avait déjà été livrée, la marchandise sera réintégrée au stock.", confirmLabel: "Annuler la commande", destructive: true })) updateStatus.mutate("cancelled"); }}><XCircle className="mr-2 h-4 w-4" />Annuler</Button>
+            <Button variant="outline" onClick={async () => { if (await confirm({ title: "Annuler cette commande ?", description: "Cette commande sera annulée. Aucune marchandise n'a encore été sortie du stock à ce stade.", confirmLabel: "Annuler la commande", destructive: true })) updateStatus.mutate("cancelled"); }}><XCircle className="mr-2 h-4 w-4" />Annuler</Button>
           )}
           <Button variant="outline" onClick={() => generateOrderPdf({
             ...order,

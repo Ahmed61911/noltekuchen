@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ArrowLeft, CheckCircle2, XCircle, Plus, Loader2, Send, Save, Trash2, Edit2, FileDown } from "lucide-react";
@@ -12,9 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 import { useConfirm } from "@/components/confirm-dialog";
 import { generateQuotePdf, type PdfQuote } from "@/lib/quote-pdf";
+import { computeLine, round2 } from "@/lib/money";
 
 export const Route = createFileRoute("/_app/quotes/$id")({
   component: QuoteDetail,
@@ -35,8 +35,6 @@ function QuoteDetail() {
   const { id } = useParams({ from: "/_app/quotes/$id" });
   const qc = useQueryClient();
   const confirm = useConfirm();
-  const navigate = useNavigate();
-  const { user } = useAuth();
 
   const [addOpen, setAddOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState("");
@@ -63,44 +61,21 @@ function QuoteDetail() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async (status: string) => {
-      // ── When accepting a quote, create an order ──
+    mutationFn: async (status: "draft" | "sent" | "accepted" | "refused" | "expired") => {
+      // ── Accepting a quote atomically creates (or reuses) the order ──
+      // The accept_quote RPC locks the quote, copies its lines into a new order
+      // and flips the status in one transaction, so a retry or double-click can
+      // never spawn a duplicate order.
       if (status === "accepted" && data?.quote.status !== "accepted") {
-        const quote = data!.quote;
-        const qItems = data!.items;
-
-        // Create the order
-        const { data: order, error: orderErr } = await supabase.from("orders").insert({
-          customer_id: quote.customer_id,
-          quote_id: id,
-          order_date: new Date().toISOString().split("T")[0],
-          due_date: quote.expiry_date || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
-          status: "pending",
-          payment_status: "unpaid",
-          total_ttc: quote.total_ttc,
-          paid_amount: 0,
-          stock_applied: false,
-          notes: `Commande générée depuis le devis ${quote.quote_number}`,
-          created_by: user?.id,
-        }).select("id, order_number").single();
-        if (orderErr) throw orderErr;
-
-        // Map quote_items → order_items
-        const orderItems = qItems.map((it: any) => ({
-          order_id: order.id,
-          product_id: it.product_id,
-          description: it.description,
-          quantity: it.quantity,
-          unit_price: it.unit_price,
-          discount_rate: it.discount || 0,
-          line_total_ttc: Number(it.total) || 0,
-        }));
-        if (orderItems.length > 0) {
-          const { error: oiErr } = await supabase.from("order_items").insert(orderItems);
-          if (oiErr) throw oiErr;
-        }
-
-        toast.success(`Devis accepté — Commande ${order.order_number} créée !`);
+        const { data: result, error: rpcErr } = await supabase.rpc("accept_quote", { _quote_id: id });
+        if (rpcErr) throw rpcErr;
+        const r = result as { order_number?: string; already?: boolean } | null;
+        toast.success(
+          r?.already
+            ? `Devis déjà accepté — Commande ${r?.order_number}`
+            : `Devis accepté — Commande ${r?.order_number} créée !`,
+        );
+        return;
       }
 
       const { error } = await supabase.from("quotes").update({ status }).eq("id", id);
@@ -119,9 +94,8 @@ function QuoteDetail() {
       const p = products.find(x => x.id === selectedProduct);
       if (!p) throw new Error("Produit invalide");
       const price = Number(unitPrice) || 0;
-      const subtotal = price * qty;
-      const dVal = (subtotal * discount) / 100;
-      const total = subtotal - dVal;
+      // Shared rounding so quote lines match the order/sale/invoice they feed.
+      const { ttc: total } = computeLine({ quantity: qty, unit_price: price, discount_rate: discount });
       const { error } = await supabase.from("quote_items").insert({
         quote_id: id, product_id: p.id, quantity: qty,
         unit_price: price, discount, total, description: p.name
@@ -151,13 +125,8 @@ function QuoteDetail() {
   async function recomputeTotals() {
     const { data: items } = await supabase.from("quote_items").select("total").eq("quote_id", id);
     if (!items) return;
-    let total_ttc = 0;
-    for (const it of items) {
-      total_ttc += Number(it.total);
-    }
-    await supabase.from("quotes").update({
-      total_ttc
-    }).eq("id", id);
+    const total_ttc = round2(items.reduce((s, it) => s + Number(it.total), 0));
+    await supabase.from("quotes").update({ total_ttc }).eq("id", id);
   }
 
   if (isLoading) return <div className="grid h-40 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -286,7 +255,7 @@ function QuoteDetail() {
                   {isDraft && (
                     <TableCell>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-rose-600" onClick={async () => {
-                        if (await confirm({ title: "Retirer la ligne", message: "Confirmez-vous ?" })) removeItem.mutate(it.id);
+                        if (await confirm({ title: "Retirer la ligne", description: "Confirmez-vous ?" })) removeItem.mutate(it.id);
                       }}><Trash2 className="h-4 w-4" /></Button>
                     </TableCell>
                   )}

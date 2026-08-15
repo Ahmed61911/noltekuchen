@@ -38,7 +38,6 @@ type Product = {
   brand: string | null;
   description: string | null;
   purchase_price: number;
-  selling_price: number;
   stock_quantity: number;
   min_stock: number;
   dimensions: string | null;
@@ -104,9 +103,9 @@ function ProductDetailPage() {
     [product]
   );
 
-  const [form, setForm] = useState<Partial<Product> & { gallery: string[]; sku?: string | null }>({
-    name: "", reference: "", brand: "", sku: "", description: "",
-    purchase_price: 0, selling_price: 0, stock_quantity: 0, min_stock: 5,
+  const [form, setForm] = useState<Partial<Product> & { gallery: string[] }>({
+    name: "", reference: "", brand: "", description: "",
+    purchase_price: 0, stock_quantity: 0, min_stock: 5,
     dimensions: "", warehouse_id: null, gallery: [],
   });
 
@@ -163,10 +162,8 @@ function ProductDetailPage() {
       name: product.name,
       reference: product.reference,
       brand: product.brand ?? "",
-      sku: "",
       description: product.description ?? "",
       purchase_price: product.purchase_price,
-      selling_price: product.selling_price,
       stock_quantity: product.stock_quantity,
       min_stock: product.min_stock,
       dimensions: product.dimensions ?? "",
@@ -193,8 +190,6 @@ function ProductDetailPage() {
     );
   }
 
-  const margin = product.selling_price - product.purchase_price;
-  const marginPct = product.purchase_price > 0 ? (margin / product.purchase_price) * 100 : 0;
   const low = product.stock_quantity <= product.min_stock;
   const out = product.stock_quantity === 0;
   const warehouse = product.warehouse_id ? warehouseMap.get(product.warehouse_id) : null;
@@ -243,7 +238,7 @@ function ProductDetailPage() {
               <Input value={form.reference ?? ""} onChange={(e) => setForm({ ...form, reference: e.target.value })} placeholder="Ex : BOS-DWK-90" />
             </Field>
 
-            {/* Row 2 — SKU & Warehouse */}
+            {/* Row 2 — Warehouse */}
             <Field label={t("warehouse") + " *"}>
               <Select value={form.warehouse_id ?? ""} onValueChange={(v) => setForm({ ...form, warehouse_id: v })}>
                 <SelectTrigger><SelectValue placeholder={t("select_warehouse")} /></SelectTrigger>
@@ -292,7 +287,7 @@ function ProductDetailPage() {
                   if (!form.name?.trim()) errs.push(t("product_name"));
                   if (!form.reference?.trim()) errs.push(t("reference"));
                   if (!form.warehouse_id) errs.push(t("warehouse"));
-                  if ((form.purchase_price ?? 0) < 0 || (form.selling_price ?? 0) < 0) errs.push("Prix négatif interdit");
+                  if ((form.purchase_price ?? 0) < 0) errs.push("Prix négatif interdit");
                   if ((form.stock_quantity ?? 0) < 0 || (form.min_stock ?? 0) < 0) errs.push("Quantité négative interdite");
                   if (errs.length) { toast.error("Champs requis : " + errs.join(", ")); return; }
                   const fallbackName = `${form.brand?.trim() ?? ""} ${form.reference?.trim() ?? ""}`.trim();

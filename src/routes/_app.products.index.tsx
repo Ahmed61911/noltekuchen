@@ -47,7 +47,6 @@ type Product = {
   brand: string | null;
   description: string | null;
   purchase_price: number;
-  selling_price: number;
   stock_quantity: number;
   min_stock: number;
   dimensions: string | null;
@@ -58,11 +57,11 @@ type Product = {
 
 type Warehouse = { id: string; name: string; description: string | null; is_active: boolean };
 
-type FormState = Omit<Product, "id" | "image_url" | "images"> & { gallery: string[]; sku: string | null };
+type FormState = Omit<Product, "id" | "image_url" | "images"> & { gallery: string[] };
 
 const empty: FormState = {
-  name: "", reference: "", brand: "", sku: null, description: "",
-  purchase_price: 0, selling_price: 0, stock_quantity: 0, min_stock: 5,
+  name: "", reference: "", brand: "", description: "",
+  purchase_price: 0, stock_quantity: 0, min_stock: 5,
   dimensions: "", gallery: [], warehouse_id: null,
 };
 
@@ -111,7 +110,6 @@ function ProductsIndexPage() {
         ...rest,
         image_url: gallery[0] ?? null,
         images: gallery.slice(1),
-        sku: p.sku?.trim() || null,
       };
       if (p.id) {
         const { error } = await supabase.from("products").update(payload).eq("id", p.id);
@@ -146,8 +144,8 @@ function ProductsIndexPage() {
 
   const baseFiltered = products.filter((p) => {
     if (q && ![p.name, p.reference].some((s) => s.toLowerCase().includes(q.toLowerCase()))) return false;
-    if (priceMin && p.selling_price < Number(priceMin)) return false;
-    if (priceMax && p.selling_price > Number(priceMax)) return false;
+    if (priceMin && p.purchase_price < Number(priceMin)) return false;
+    if (priceMax && p.purchase_price > Number(priceMax)) return false;
     if (warehouseFilter !== "all") {
       if (warehouseFilter === "none" ? p.warehouse_id !== null : p.warehouse_id !== warehouseFilter) return false;
     }
@@ -181,9 +179,9 @@ function ProductsIndexPage() {
     const gallery = [p.image_url, ...(p.images ?? [])].filter((x): x is string => !!x);
     setForm({
       name: p.name, reference: p.reference,
-      brand: p.brand ?? "", sku: null,
+      brand: p.brand ?? "",
       description: p.description ?? "",
-      purchase_price: p.purchase_price, selling_price: p.selling_price,
+      purchase_price: p.purchase_price,
       stock_quantity: p.stock_quantity, min_stock: p.min_stock,
       dimensions: p.dimensions ?? "", gallery, warehouse_id: p.warehouse_id ?? null,
     });
@@ -223,7 +221,7 @@ function ProductsIndexPage() {
                     />
                   </Field>
 
-                  {/* Row 2 — SKU & Warehouse */}
+                  {/* Row 2 — Warehouse */}
                   <Field label={t("warehouse") + " *"}>
                     <Select value={form.warehouse_id ?? ""} onValueChange={(v) => setForm({ ...form, warehouse_id: v })}>
                       <SelectTrigger><SelectValue placeholder={t("select_warehouse")} /></SelectTrigger>
@@ -293,7 +291,7 @@ function ProductsIndexPage() {
                       if (!form.name.trim()) errs.push(t("product_name"));
                       if (!form.reference.trim()) errs.push(t("reference"));
                       if (!form.warehouse_id) errs.push(t("warehouse"));
-                      if (form.purchase_price < 0 || form.selling_price < 0) errs.push("Prix négatif interdit");
+                      if (form.purchase_price < 0) errs.push("Prix négatif interdit");
                       if (form.min_stock < 0) errs.push("Quantité négative interdite");
                       if (errs.length) { toast.error("Champs requis : " + errs.join(", ")); return; }
                       const fallbackName = `${form.brand?.trim() ?? ""} ${form.reference.trim()}`.trim();
@@ -419,8 +417,6 @@ function ProductsIndexPage() {
               </TableStateRow>
             )}
             {!isLoading && !error && pageRows.map((p) => {
-              const margin = p.selling_price - p.purchase_price;
-              const marginPct = p.purchase_price > 0 ? (margin / p.purchase_price) * 100 : 0;
               const low = p.stock_quantity <= p.min_stock;
               const gallery = [p.image_url, ...(p.images ?? [])].filter((x): x is string => !!x);
               return (

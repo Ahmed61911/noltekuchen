@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { motion } from "framer-motion";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line
@@ -113,7 +112,7 @@ function useDashboardCharts() {
         const mth = m.created_at.slice(0, 7);
         const p = prices.get(m.product_id) || 0;
         const q = Number(m.quantity) || 0;
-        const isOut = ["out", "sale", "supplier_return"].includes(m.type);
+        const isOut = ["out", "sale", "supplier_return", "damaged"].includes(m.type);
         const delta = isOut ? -q : q;
         valMovs.set(mth, (valMovs.get(mth) || 0) + delta * p);
       });
@@ -155,26 +154,28 @@ function useDashboardData(period: Period) {
         .limit(5000);
       if (start) q = q.gte("created_at", start.toISOString());
 
-      const [products, movements] = await Promise.all([
-        supabase.from("products").select("id,name,reference,stock_quantity,min_stock,selling_price"),
+      // Le CA vient des ventes réelles (total_ttc), pas d'une estimation
+      // mouvements × prix : c'est la même source que le graphe « CA Mensuel »,
+      // donc les deux chiffres concordent enfin.
+      let salesQ = supabase.from("sales").select("total_ttc,sale_date");
+      if (start) salesQ = salesQ.gte("sale_date", start.toISOString().slice(0, 10));
+
+      const [products, movements, sales] = await Promise.all([
+        supabase.from("products").select("id,name,reference,stock_quantity,min_stock"),
         q,
+        salesQ,
       ]);
       const prods = products.data ?? [];
       const movs = movements.data ?? [];
 
       const IN = ["in", "purchase", "customer_return", "inventory"];
-      const OUT = ["out", "sale", "supplier_return"];
+      const OUT = ["out", "sale", "supplier_return", "damaged"];
 
       // Stock total = photo de l'instant : volontairement hors période.
       const totalStock = prods.reduce((s, p) => s + Number(p.stock_quantity ?? 0), 0);
       const stockIn = movs.filter((m) => IN.includes(m.type)).reduce((s, m) => s + Number(m.quantity), 0);
       const stockOut = movs.filter((m) => OUT.includes(m.type)).reduce((s, m) => s + Number(m.quantity), 0);
-      const revenue = movs
-        .filter((m) => OUT.includes(m.type))
-        .reduce((s, m) => {
-          const price = prods.find((p) => p.id === m.product_id)?.selling_price ?? 0;
-          return s + Number(price) * Number(m.quantity);
-        }, 0);
+      const revenue = (sales.data ?? []).reduce((s, x) => s + Number(x.total_ttc ?? 0), 0);
 
       const lowStock = prods.filter((p) => Number(p.stock_quantity) <= Number(p.min_stock)).slice(0, 6);
 
@@ -229,7 +230,7 @@ function Stat({ icon: Icon, label, value, tone, delta }: { icon: typeof Boxes; l
     info: "bg-info text-info-foreground",
   } as const;
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+    <div>
       <Card className={`overflow-hidden border-0 shadow-card transition-shadow hover:shadow-soft ${tones[tone]}`}>
         <CardContent className="p-5">
           <div className="flex items-start justify-between gap-3">
@@ -244,7 +245,7 @@ function Stat({ icon: Icon, label, value, tone, delta }: { icon: typeof Boxes; l
           </div>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   );
 }
 
