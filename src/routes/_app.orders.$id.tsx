@@ -54,25 +54,34 @@ function OrderDetail() {
 
   const updateStatus = useMutation({
     mutationFn: async (status: "pending" | "validated" | "delivered" | "cancelled") => {
-      // ── DELIVERED: use atomic deliver_order RPC ──
-      if (status === "delivered" && order.status !== "delivered") {
-        const { data: result, error: rpcErr } = await supabase.rpc("deliver_order", { _order_id: id });
+      // ── VALIDATED: create the vente via validate_order RPC (no stock move) ──
+      if (status === "validated" && order.status !== "validated") {
+        const { data: result, error: rpcErr } = await supabase.rpc("validate_order", { _order_id: id });
         if (rpcErr) throw rpcErr;
-        toast.success(`Commande livrée — Vente ${(result as any)?.sale_number} créée`);
+        const r = result as { sale_number?: string; already?: boolean } | null;
+        toast.success(r?.already ? `Commande validée — Vente ${r?.sale_number}` : `Commande validée — Vente ${r?.sale_number} créée`);
         return status;
       }
 
-      // ── ALL OTHER STATUS CHANGES: just update status ──
+      // ── CANCELLED: cancel_order cascades to the vente and returns stock ──
+      if (status === "cancelled") {
+        const { error: rpcErr } = await supabase.rpc("cancel_order", { _order_id: id });
+        if (rpcErr) throw rpcErr;
+        return status;
+      }
+
+      // ── DELIVERED / other: plain status update. The order trigger moves
+      //    stock out when the status becomes 'delivered'. ──
       const { error } = await supabase.from("orders").update({ status }).eq("id", id);
       if (error) throw error;
       return status;
     },
     onSuccess: (s) => {
       const msgs: Record<string, string> = {
-        validated: "Commande validée",
+        delivered: "Commande livrée — stock mis à jour",
         cancelled: "Commande annulée",
       };
-      // "delivered" toast is shown inside the mutationFn after RPC
+      // "validated" toast is shown inside the mutationFn after the RPC
       if (msgs[s]) toast.success(msgs[s]);
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.invalidateQueries({ queryKey: ["orders"] });
@@ -120,13 +129,13 @@ function OrderDetail() {
         </div>
         <div className="flex gap-2">
           {order.status === "pending" && (
-            <Button variant="outline" onClick={async () => { if (await confirm({ title: "Valider cette commande ?", description: "La commande passe en préparation. Le stock sera mouvementé à la livraison.", confirmLabel: "Valider" })) updateStatus.mutate("validated"); }}><CheckCircle2 className="mr-2 h-4 w-4" />Valider</Button>
+            <Button variant="outline" onClick={async () => { if (await confirm({ title: "Valider cette commande ?", description: "Une vente est créée pour cette commande. Le stock ne bouge pas encore — il sera sorti à la livraison.", confirmLabel: "Valider" })) updateStatus.mutate("validated"); }}><CheckCircle2 className="mr-2 h-4 w-4" />Valider</Button>
           )}
-          {(order.status === "pending" || order.status === "validated") && (
-            <Button onClick={async () => { if (await confirm({ title: "Marquer cette commande comme livrée ?", description: "La marchandise sera immédiatement sortie du stock et une vente sera créée. Cette action est définitive.", confirmLabel: "Livrer" })) updateStatus.mutate("delivered"); }}><Truck className="mr-2 h-4 w-4" />Livrer</Button>
+          {order.status === "validated" && (
+            <Button onClick={async () => { if (await confirm({ title: "Marquer cette commande comme livrée ?", description: "La marchandise sera sortie du stock. Vous pourrez encore l'annuler, ce qui réintègre le stock.", confirmLabel: "Livrer" })) updateStatus.mutate("delivered"); }}><Truck className="mr-2 h-4 w-4" />Livrer</Button>
           )}
-          {order.status !== "cancelled" && order.status !== "delivered" && (
-            <Button variant="outline" onClick={async () => { if (await confirm({ title: "Annuler cette commande ?", description: "Cette commande sera annulée. Aucune marchandise n'a encore été sortie du stock à ce stade.", confirmLabel: "Annuler la commande", destructive: true })) updateStatus.mutate("cancelled"); }}><XCircle className="mr-2 h-4 w-4" />Annuler</Button>
+          {order.status !== "cancelled" && (
+            <Button variant="outline" onClick={async () => { if (await confirm({ title: "Annuler cette commande ?", description: "La commande et sa vente seront annulées. Si elle avait déjà été livrée, la marchandise est réintégrée au stock.", confirmLabel: "Annuler la commande", destructive: true })) updateStatus.mutate("cancelled"); }}><XCircle className="mr-2 h-4 w-4" />Annuler</Button>
           )}
           <Button variant="outline" onClick={() => generateOrderPdf({
             ...order,

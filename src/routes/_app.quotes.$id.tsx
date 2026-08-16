@@ -29,6 +29,7 @@ const STATUS_META: Record<string, { label: string; className: string }> = {
   accepted: { label: "Accepté", className: "bg-emerald-500/15 text-emerald-700" },
   refused: { label: "Refusé", className: "bg-rose-500/15 text-rose-700" },
   expired: { label: "Expiré", className: "bg-amber-500/15 text-amber-700" },
+  cancelled: { label: "Annulé", className: "bg-zinc-500/15 text-zinc-700" },
 };
 
 function QuoteDetail() {
@@ -61,7 +62,7 @@ function QuoteDetail() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async (status: "draft" | "sent" | "accepted" | "refused" | "expired") => {
+    mutationFn: async (status: "draft" | "sent" | "accepted" | "refused" | "expired" | "cancelled") => {
       // ── Accepting a quote atomically creates (or reuses) the order ──
       // The accept_quote RPC locks the quote, copies its lines into a new order
       // and flips the status in one transaction, so a retry or double-click can
@@ -168,6 +169,13 @@ function QuoteDetail() {
                 <XCircle className="me-2 h-4 w-4" /> Refusé
               </Button>
             </>
+          )}
+          {(quote.status === "draft" || quote.status === "sent" || quote.status === "expired") && (
+            <Button variant="outline" className="text-zinc-600 hover:text-zinc-700" onClick={async () => {
+              if (await confirm({ title: "Annuler ce devis ?", description: "Le devis sera marqué comme annulé. Vous pourrez toujours le consulter.", confirmLabel: "Annuler le devis", destructive: true })) updateStatus.mutate("cancelled");
+            }}>
+              <XCircle className="me-2 h-4 w-4" /> Annuler
+            </Button>
           )}
           <Button variant="outline" onClick={() => generateQuotePdf({
             ...quote,

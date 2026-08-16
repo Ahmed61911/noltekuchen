@@ -180,7 +180,6 @@ function OrdersPage() {
             product_id: l.product_id, description: l.description,
             quantity: l.quantity, unit_price: l.unit_price, discount_rate: l.discount_rate,
             line_total_ttc: c.ttc, warehouse_id: l.warehouse_id,
-            warehouse_id: l.warehouse_id,
           };
         }),
       } as never);
@@ -196,18 +195,26 @@ function OrdersPage() {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: OrderStatus }) => {
-      // Use atomic deliver_order RPC for delivery
-      if (status === "delivered") {
-        const { data: result, error: rpcErr } = await supabase.rpc("deliver_order", { _order_id: id });
+      // Validation creates the vente (no stock move yet)
+      if (status === "validated") {
+        const { data: result, error: rpcErr } = await supabase.rpc("validate_order", { _order_id: id });
         if (rpcErr) throw rpcErr;
-        toast.success(`Commande livrée — Vente ${(result as any)?.sale_number} créée`);
+        const r = result as { sale_number?: string } | null;
+        toast.success(`Commande validée — Vente ${r?.sale_number} créée`);
         return;
       }
+      // Cancellation cascades to the vente and returns stock if delivered
+      if (status === "cancelled") {
+        const { error: rpcErr } = await supabase.rpc("cancel_order", { _order_id: id });
+        if (rpcErr) throw rpcErr;
+        return;
+      }
+      // delivered / other: plain update; the order trigger moves stock on delivery
       const { error } = await supabase.from("orders").update({ status }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: (_d, v) => {
-      if (v.status !== "delivered") toast.success(`Statut: ${STATUS[v.status].label}`);
+      if (v.status !== "validated") toast.success(v.status === "delivered" ? "Commande livrée — stock mis à jour" : `Statut: ${STATUS[v.status].label}`);
       qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["sales"] });
@@ -641,17 +648,17 @@ function OrdersPage() {
                         <Link to="/orders/$id" params={{ id: o.id }}><Eye className="h-4 w-4" /></Link>
                       </Button>
                       {o.status === "pending" && (
-                        <Button size="icon" variant="ghost" title="Valider" onClick={async () => { if (await confirm({ title: `Valider la commande ${o.order_number} ?`, description: "La commande passe en préparation. Le stock n'est pas encore mouvementé — il le sera à la livraison.", confirmLabel: "Valider" })) updateStatus.mutate({ id: o.id, status: "validated" }); }}>
+                        <Button size="icon" variant="ghost" title="Valider" onClick={async () => { if (await confirm({ title: `Valider la commande ${o.order_number} ?`, description: "Une vente est créée pour cette commande. Le stock ne bouge pas encore — il sera sorti à la livraison.", confirmLabel: "Valider" })) updateStatus.mutate({ id: o.id, status: "validated" }); }}>
                           <CheckCircle2 className="h-4 w-4" />
                         </Button>
                       )}
-                      {(o.status === "pending" || o.status === "validated") && (
-                        <Button size="icon" variant="ghost" title="Livrer" onClick={async () => { if (await confirm({ title: `Marquer la commande ${o.order_number} comme livrée ?`, description: "La marchandise sera immédiatement sortie du stock. En cas d'erreur, repasser la commande en Annulée la réintègre.", confirmLabel: "Livrer" })) updateStatus.mutate({ id: o.id, status: "delivered" }); }}>
+                      {o.status === "validated" && (
+                        <Button size="icon" variant="ghost" title="Livrer" onClick={async () => { if (await confirm({ title: `Marquer la commande ${o.order_number} comme livrée ?`, description: "La marchandise sera sortie du stock. Vous pourrez encore l'annuler, ce qui réintègre le stock.", confirmLabel: "Livrer" })) updateStatus.mutate({ id: o.id, status: "delivered" }); }}>
                           <Truck className="h-4 w-4" />
                         </Button>
                       )}
-                      {o.status !== "cancelled" && o.status !== "delivered" && (
-                        <Button size="icon" variant="ghost" title="Annuler" onClick={async () => { if (await confirm({ title: `Annuler la commande ${o.order_number} ?`, description: "Si elle avait déjà été livrée, la marchandise sera réintégrée au stock.", confirmLabel: "Annuler la commande", destructive: true })) updateStatus.mutate({ id: o.id, status: "cancelled" }); }}>
+                      {o.status !== "cancelled" && (
+                        <Button size="icon" variant="ghost" title="Annuler" onClick={async () => { if (await confirm({ title: `Annuler la commande ${o.order_number} ?`, description: "La commande et sa vente seront annulées. Si elle avait déjà été livrée, la marchandise est réintégrée au stock.", confirmLabel: "Annuler la commande", destructive: true })) updateStatus.mutate({ id: o.id, status: "cancelled" }); }}>
                           <XCircle className="h-4 w-4" />
                         </Button>
                       )}

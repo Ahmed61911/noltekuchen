@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
-  Plus, Trash2, Eye, FileDown, Printer, Loader2, ShoppingCart,
+  Plus, Trash2, Eye, FileDown, XCircle, Loader2, ShoppingCart,
   TrendingUp, CalendarDays, Wallet, AlertCircle, Receipt, RotateCcw,
 } from "lucide-react";
 import { toast } from "@/lib/notify";
@@ -21,7 +21,6 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import { generateInvoicePdf, type PdfInvoice } from "@/lib/invoice-pdf";
 import { computeLine, computeTotals } from "@/lib/money";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useI18n } from "@/lib/i18n";
@@ -222,19 +221,21 @@ function SalesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const printSale = async (sale: Sale) => {
-    const { data: items } = await supabase.from("sale_items").select("*").eq("sale_id", sale.id);
-    const { data: cust } = sale.customer_id
-      ? await supabase.from("customers").select("*").eq("id", sale.customer_id).single()
-      : { data: null } as any;
-    generateInvoicePdf({
-      invoice_number: sale.sale_number, invoice_date: sale.sale_date,
-      due_date: sale.payment_due_date || sale.sale_date,
-      status: sale.payment_status === "paid" ? "paid" : "pending",
-      total_ttc: sale.total_ttc, notes: sale.notes,
-      customer: cust, items: (items || []) as PdfInvoice["items"],
-    });
-  };
+  const cancelSale = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("cancel_sale", { _sale_id: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Vente annulée");
+      qc.invalidateQueries({ queryKey: ["sales"] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["movements"] });
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const filtered = sales.filter(s => {
     if (statusFilter !== "all" && s.payment_status !== statusFilter) return false;
@@ -571,10 +572,11 @@ function SalesPage() {
                       <Button size="icon" variant="ghost" asChild title="Voir">
                         <Link to="/sales/$id" params={{ id: s.id }}><Eye className="h-4 w-4" /></Link>
                       </Button>
-                      <Button size="icon" variant="ghost" title="Imprimer" onClick={() => printSale(s)}>
-                        <Printer className="h-4 w-4" />
-                      </Button>
-
+                      {(s as { status?: string }).status !== "cancelled" && (
+                        <Button size="icon" variant="ghost" title="Annuler" onClick={async () => { if (await confirm({ title: `Annuler la vente ${s.sale_number} ?`, description: "La vente sera annulée et la marchandise réintégrée au stock. Si elle provient d'une commande, la commande sera également annulée.", confirmLabel: "Annuler la vente", destructive: true })) cancelSale.mutate(s.id); }}>
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button size="icon" variant="ghost" title="Supprimer" onClick={async () => { if (await confirm({ title: `Supprimer la vente ${s.sale_number} ?`, description: "La marchandise vendue sera automatiquement réintégrée au stock.", confirmLabel: "Supprimer", destructive: true })) remove.mutate(s.id); }}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

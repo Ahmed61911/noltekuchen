@@ -1384,6 +1384,7 @@ export type Database = {
           payment_status: Database["public"]["Enums"]["payment_status"]
           sale_date: string
           sale_number: string
+          status: string
           stock_applied: boolean
           total_ttc: number
           updated_at: string
@@ -1403,6 +1404,7 @@ export type Database = {
           payment_status?: Database["public"]["Enums"]["payment_status"]
           sale_date?: string
           sale_number?: string
+          status?: string
           stock_applied?: boolean
           total_ttc?: number
           updated_at?: string
@@ -1422,6 +1424,7 @@ export type Database = {
           payment_status?: Database["public"]["Enums"]["payment_status"]
           sale_date?: string
           sale_number?: string
+          status?: string
           stock_applied?: boolean
           total_ttc?: number
           updated_at?: string
@@ -1676,10 +1679,13 @@ export type Database = {
     }
     Functions: {
       accept_quote: { Args: { _quote_id: string }; Returns: Json }
+      cancel_order: { Args: { _order_id: string }; Returns: Json }
+      cancel_sale: { Args: { _sale_id: string }; Returns: Json }
       create_sale: { Args: { _sale: Json; _items: Json }; Returns: string }
       create_order: { Args: { _order: Json; _items: Json }; Returns: string }
       create_invoice: { Args: { _invoice: Json; _items: Json }; Returns: string }
       deliver_order: { Args: { _order_id: string }; Returns: Json }
+      validate_order: { Args: { _order_id: string }; Returns: Json }
       generate_invoice_number: { Args: never; Returns: string }
       generate_order_number: { Args: never; Returns: string }
       generate_purchase_order_number: { Args: never; Returns: string }
@@ -1760,7 +1766,7 @@ export type Database = {
         | "shipped"
         | "received"
         | "cancelled"
-      quote_status: "draft" | "sent" | "accepted" | "refused" | "expired"
+      quote_status: "draft" | "sent" | "accepted" | "refused" | "expired" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1947,7 +1953,7 @@ export const Constants = {
         "received",
         "cancelled",
       ],
-      quote_status: ["draft", "sent", "accepted", "refused", "expired"],
+      quote_status: ["draft", "sent", "accepted", "refused", "expired", "cancelled"],
     },
   },
 } as const

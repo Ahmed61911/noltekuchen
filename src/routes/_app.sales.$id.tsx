@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, Printer, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, XCircle, Plus, Loader2 } from "lucide-react";
 import { toast } from "@/lib/notify";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import { generateInvoicePdf, type PdfInvoice } from "@/lib/invoice-pdf";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_app/sales/$id")({
   component: SaleDetail,
@@ -29,6 +29,7 @@ const PS: Record<string, { l: string; c: string }> = {
 function SaleDetail() {
   const { id } = useParams({ from: "/_app/sales/$id" });
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [payAmount, setPayAmount] = useState<number>(0);
   const [payMethod, setPayMethod] = useState('cash');
 
@@ -61,17 +62,27 @@ function SaleDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const cancelSale = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc('cancel_sale', { _sale_id: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Vente annulée');
+      qc.invalidateQueries({ queryKey: ['sale', id] });
+      qc.invalidateQueries({ queryKey: ['sales'] });
+      qc.invalidateQueries({ queryKey: ['orders'] });
+      qc.invalidateQueries({ queryKey: ['products'] });
+      qc.invalidateQueries({ queryKey: ['movements'] });
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (!data?.sale) return <div className="p-6">Chargement…</div>;
   const { sale, items, payments } = data;
   const reste = Math.max(0, Number(sale.total_ttc) - Number(sale.paid_amount));
-
-  const print = () => generateInvoicePdf({
-    invoice_number: sale.sale_number, invoice_date: sale.sale_date,
-    due_date: sale.payment_due_date || sale.sale_date,
-    status: sale.payment_status === "paid" ? "paid" : "pending",
-    total_ttc: sale.total_ttc, notes: sale.notes,
-    customer: sale.customers, items: items as PdfInvoice["items"],
-  });
+  const isCancelled = (sale as { status?: string }).status === "cancelled";
 
   return (
     <div className="space-y-6">
@@ -79,11 +90,18 @@ function SaleDetail() {
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" asChild><Link to="/sales"><ArrowLeft className="h-4 w-4" /></Link></Button>
           <div>
-            <h1 className="font-display text-2xl font-semibold">{sale.sale_number}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-display text-2xl font-semibold">{sale.sale_number}</h1>
+              {isCancelled && <Badge className="bg-zinc-500/15 text-zinc-700" variant="secondary">Annulée</Badge>}
+            </div>
             <p className="text-sm text-muted-foreground">{new Date(sale.sale_date).toLocaleDateString("fr-FR")}</p>
           </div>
         </div>
-        <Button onClick={print}><Printer className="mr-2 h-4 w-4" /> Imprimer</Button>
+        {!isCancelled && (
+          <Button variant="outline" onClick={async () => { if (await confirm({ title: "Annuler cette vente ?", description: "La vente sera annulée et la marchandise réintégrée au stock. Si elle provient d'une commande, la commande sera également annulée.", confirmLabel: "Annuler la vente", destructive: true })) cancelSale.mutate(); }}>
+            <XCircle className="mr-2 h-4 w-4" /> Annuler la vente
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -128,7 +146,7 @@ function SaleDetail() {
 
       <Card className="p-4">
         <h2 className="mb-3 font-medium">Paiements</h2>
-        {sale.payment_status !== 'paid' && (
+        {!isCancelled && sale.payment_status !== 'paid' && (
           <div className="mb-4 flex flex-wrap items-end gap-3">
             <div><Label>Montant</Label><Input type="number" min={0} step="0.01" value={payAmount} onChange={e => setPayAmount(Number(e.target.value))} className="w-32" /></div>
             <div><Label>Mode</Label>
