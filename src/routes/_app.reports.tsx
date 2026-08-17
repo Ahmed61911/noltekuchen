@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  TrendingUp, ShoppingCart, Receipt, Package, FileDown, FileText, Filter,
+  TrendingUp, TrendingDown, ShoppingCart, Receipt, Package, Undo2, FileDown, FileText, Filter,
 } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -115,6 +115,7 @@ function ReportsPage() {
               categories ( id, name ) )
           )
         `)
+        .neq("status", "cancelled")
         .gte("sale_date", dateFrom)
         .lte("sale_date", dateTo)
         .order("sale_date", { ascending: true });
@@ -123,19 +124,18 @@ function ReportsPage() {
     },
   });
 
-  const { data: invoiceStats } = useQuery({
-    queryKey: ["reports", "invoices", dateFrom, dateTo],
+  // Retours de la période (avoirs clients réduisent le C.A. ; retours
+  // fournisseurs réduisent les achats — ces derniers via leurs mouvements).
+  const { data: returns = [] } = useQuery({
+    queryKey: ["reports", "returns", dateFrom, dateTo],
     queryFn: async () => {
       const { data } = await supabase
-        .from("invoices")
-        .select("id,total_ttc,status,invoice_date")
-        .gte("invoice_date", dateFrom)
-        .lte("invoice_date", dateTo);
-      const rows = data ?? [];
-      return {
-        paid: rows.filter((r) => r.status === "paid").length,
-        total: rows.length,
-      };
+        .from("returns")
+        .select("type,total_ttc,status,return_date")
+        .neq("status", "cancelled")
+        .gte("return_date", dateFrom)
+        .lte("return_date", dateTo);
+      return data ?? [];
     },
   });
 
@@ -144,7 +144,7 @@ function ReportsPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("stock_movements")
-        .select("type,quantity,created_at")
+        .select("type,quantity,unit_cost,created_at")
         .gte("created_at", dateFrom)
         .lte("created_at", `${dateTo}T23:59:59`)
         .order("created_at");
@@ -164,18 +164,32 @@ function ReportsPage() {
 
   // KPIs
   const kpis = useMemo(() => {
-    const totalCA = filteredSales.reduce((a, s) => a + Number(s.total_ttc || 0), 0);
+    const grossCA = filteredSales.reduce((a, s) => a + Number(s.total_ttc || 0), 0);
+    const clientReturns = (returns as any[])
+      .filter((r) => r.type === "client")
+      .reduce((a, r) => a + Number(r.total_ttc || 0), 0);
+    const totalCA = grossCA - clientReturns; // C.A. net des avoirs
     const thisMonth = today.toISOString().slice(0, 7);
     const monthCA = filteredSales
       .filter((s) => monthKey(s.sale_date) === thisMonth)
       .reduce((a, s) => a + Number(s.total_ttc || 0), 0);
     const stockCount = products.reduce((a, p) => a + Number(p.stock_quantity || 0), 0);
+
+    // Achats = entrées (in/purchase) valorisées au coût, moins retours
+    // fournisseurs. Pertes = mouvements 'damaged' valorisés au coût.
+    let achats = 0, pertes = 0;
+    (stockMovements as any[]).forEach((m) => {
+      const val = Number(m.quantity || 0) * Number(m.unit_cost || 0);
+      if (m.type === "in" || m.type === "purchase") achats += val;
+      else if (m.type === "supplier_return") achats -= val;
+      else if (m.type === "damaged") pertes += val;
+    });
+
     return {
-      totalCA, monthCA, stockCount,
-      paidInvoices: invoiceStats?.paid ?? 0,
-      totalInvoices: invoiceStats?.total ?? 0,
+      totalCA, monthCA, stockCount, clientReturns,
+      achats: Math.max(0, achats), pertes,
     };
-  }, [filteredSales, products, invoiceStats, today]);
+  }, [filteredSales, products, returns, stockMovements, today]);
 
   // Sales by month
   const salesByMonth = useMemo(() => {
@@ -372,22 +386,34 @@ function ReportsPage() {
       </Card>
 
       {/* KPIs */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <KpiCard
-          label="Chiffre d'affaires total"
+          label="Chiffre d'affaires net"
           value={fmtMoney(kpis.totalCA)}
           icon={<TrendingUp className="h-5 w-5" />}
           tone="from-primary/15 to-primary/5 text-primary"
         />
         <KpiCard
-          label="Ventes du mois"
-          value={fmtMoney(kpis.monthCA)}
+          label="Achats"
+          value={fmtMoney(kpis.achats)}
           icon={<ShoppingCart className="h-5 w-5" />}
           tone="from-sky-500/15 to-sky-500/5 text-sky-600 dark:text-sky-400"
         />
         <KpiCard
-          label="Factures payées"
-          value={`${kpis.paidInvoices} / ${kpis.totalInvoices}`}
+          label="Pertes (endommagé)"
+          value={fmtMoney(kpis.pertes)}
+          icon={<TrendingDown className="h-5 w-5" />}
+          tone="from-rose-500/15 to-rose-500/5 text-rose-600 dark:text-rose-400"
+        />
+        <KpiCard
+          label="Retours clients (avoirs)"
+          value={fmtMoney(kpis.clientReturns)}
+          icon={<Undo2 className="h-5 w-5" />}
+          tone="from-amber-500/15 to-amber-500/5 text-amber-600 dark:text-amber-400"
+        />
+        <KpiCard
+          label="Ventes du mois"
+          value={fmtMoney(kpis.monthCA)}
           icon={<Receipt className="h-5 w-5" />}
           tone="from-emerald-500/15 to-emerald-500/5 text-emerald-600 dark:text-emerald-400"
         />
@@ -395,7 +421,7 @@ function ReportsPage() {
           label="Produits en stock"
           value={fmt(kpis.stockCount)}
           icon={<Package className="h-5 w-5" />}
-          tone="from-amber-500/15 to-amber-500/5 text-amber-600 dark:text-amber-400"
+          tone="from-violet-500/15 to-violet-500/5 text-violet-600 dark:text-violet-400"
         />
       </div>
 

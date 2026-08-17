@@ -55,7 +55,7 @@ function StockPage() {
 
   const { data: products = [] } = useQuery({
     queryKey: ["products-min"],
-    queryFn: async () => (await supabase.from("products").select("id,name,reference")).data ?? [],
+    queryFn: async () => (await supabase.from("products").select("id,name,reference,purchase_price")).data ?? [],
   });
 
   const { data: warehouses = [] } = useQuery({
@@ -271,7 +271,13 @@ function StockPage() {
                   <div className="space-y-3">
                     <div className="space-y-1.5">
                       <Label className="text-xs">{t("product")}</Label>
-                      <Select value={productId} onValueChange={setProductId}>
+                      <Select value={productId} onValueChange={(v) => {
+                        setProductId(v);
+                        // Prefill the unit cost from the product so losses
+                        // (endommagé) and entries are valued automatically.
+                        const p = products.find((x) => x.id === v) as { purchase_price?: number } | undefined;
+                        if (p?.purchase_price != null) setUnitCost(Number(p.purchase_price) || 0);
+                      }}>
                         <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                         <SelectContent>
                           {products.map((p) => (

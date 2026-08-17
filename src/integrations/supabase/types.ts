@@ -14,6 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
+      returns: {
+        Row: {
+          id: string
+          return_number: string | null
+          type: string
+          customer_id: string | null
+          supplier_id: string | null
+          sale_id: string | null
+          return_date: string
+          total_ttc: number
+          reason: string | null
+          notes: string | null
+          warehouse_id: string | null
+          status: string
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          return_number?: string | null
+          type: string
+          customer_id?: string | null
+          supplier_id?: string | null
+          sale_id?: string | null
+          return_date?: string
+          total_ttc?: number
+          reason?: string | null
+          notes?: string | null
+          warehouse_id?: string | null
+          status?: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          return_number?: string | null
+          type?: string
+          customer_id?: string | null
+          supplier_id?: string | null
+          sale_id?: string | null
+          return_date?: string
+          total_ttc?: number
+          reason?: string | null
+          notes?: string | null
+          warehouse_id?: string | null
+          status?: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      return_items: {
+        Row: {
+          id: string
+          return_id: string
+          product_id: string | null
+          description: string
+          quantity: number
+          unit_price: number
+          line_total: number
+          warehouse_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          return_id: string
+          product_id?: string | null
+          description?: string
+          quantity?: number
+          unit_price?: number
+          line_total?: number
+          warehouse_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          return_id?: string
+          product_id?: string | null
+          description?: string
+          quantity?: number
+          unit_price?: number
+          line_total?: number
+          warehouse_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           assigned_to: string | null
@@ -1680,7 +1767,10 @@ export type Database = {
     Functions: {
       accept_quote: { Args: { _quote_id: string }; Returns: Json }
       cancel_order: { Args: { _order_id: string }; Returns: Json }
+      cancel_return: { Args: { _return_id: string }; Returns: Json }
       cancel_sale: { Args: { _sale_id: string }; Returns: Json }
+      create_return: { Args: { _return: Json; _items: Json }; Returns: Json }
+      generate_return_number: { Args: { _type: string }; Returns: string }
       create_sale: { Args: { _sale: Json; _items: Json }; Returns: string }
       create_sale_with_order: { Args: { _sale: Json; _items: Json }; Returns: Json }
       create_order: { Args: { _order: Json; _items: Json }; Returns: string }
@@ -1929,6 +2019,7 @@ export const Constants = {
         "supplier_return",
         "inventory",
         "transfer",
+        "damaged",
       ],
       order_status: ["pending", "validated", "delivered", "cancelled"],
       payment_method: ["cash", "card", "transfer", "check", "credit"],

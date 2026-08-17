@@ -18,6 +18,7 @@ import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
 import { Route as AppStockRouteImport } from './routes/_app.stock'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppRolesRouteImport } from './routes/_app.roles'
+import { Route as AppReturnsRouteImport } from './routes/_app.returns'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppProductsRouteImport } from './routes/_app.products'
 import { Route as AppLogsRouteImport } from './routes/_app.logs'
@@ -82,6 +83,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
 const AppRolesRoute = AppRolesRouteImport.update({
   id: '/roles',
   path: '/roles',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReturnsRoute = AppReturnsRouteImport.update({
+  id: '/returns',
+  path: '/returns',
   getParentRoute: () => AppRoute,
 } as any)
 const AppReportsRoute = AppReportsRouteImport.update({
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/logs': typeof AppLogsRoute
   '/products': typeof AppProductsRouteWithChildren
   '/reports': typeof AppReportsRoute
+  '/returns': typeof AppReturnsRoute
   '/roles': typeof AppRolesRoute
   '/settings': typeof AppSettingsRoute
   '/stock': typeof AppStockRoute
@@ -231,6 +238,7 @@ export interface FileRoutesByTo {
   '/documents': typeof AppDocumentsRoute
   '/logs': typeof AppLogsRoute
   '/reports': typeof AppReportsRoute
+  '/returns': typeof AppReturnsRoute
   '/roles': typeof AppRolesRoute
   '/settings': typeof AppSettingsRoute
   '/stock': typeof AppStockRoute
@@ -264,6 +272,7 @@ export interface FileRoutesById {
   '/_app/logs': typeof AppLogsRoute
   '/_app/products': typeof AppProductsRouteWithChildren
   '/_app/reports': typeof AppReportsRoute
+  '/_app/returns': typeof AppReturnsRoute
   '/_app/roles': typeof AppRolesRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/stock': typeof AppStockRoute
@@ -297,6 +306,7 @@ export interface FileRouteTypes {
     | '/logs'
     | '/products'
     | '/reports'
+    | '/returns'
     | '/roles'
     | '/settings'
     | '/stock'
@@ -327,6 +337,7 @@ export interface FileRouteTypes {
     | '/documents'
     | '/logs'
     | '/reports'
+    | '/returns'
     | '/roles'
     | '/settings'
     | '/stock'
@@ -359,6 +370,7 @@ export interface FileRouteTypes {
     | '/_app/logs'
     | '/_app/products'
     | '/_app/reports'
+    | '/_app/returns'
     | '/_app/roles'
     | '/_app/settings'
     | '/_app/stock'
@@ -450,6 +462,13 @@ declare module '@tanstack/react-router' {
       path: '/roles'
       fullPath: '/roles'
       preLoaderRoute: typeof AppRolesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/returns': {
+      id: '/_app/returns'
+      path: '/returns'
+      fullPath: '/returns'
+      preLoaderRoute: typeof AppReturnsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/reports': {
@@ -624,6 +643,7 @@ interface AppRouteChildren {
   AppLogsRoute: typeof AppLogsRoute
   AppProductsRoute: typeof AppProductsRouteWithChildren
   AppReportsRoute: typeof AppReportsRoute
+  AppReturnsRoute: typeof AppReturnsRoute
   AppRolesRoute: typeof AppRolesRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppStockRoute: typeof AppStockRoute
@@ -651,6 +671,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLogsRoute: AppLogsRoute,
   AppProductsRoute: AppProductsRouteWithChildren,
   AppReportsRoute: AppReportsRoute,
+  AppReturnsRoute: AppReturnsRoute,
   AppRolesRoute: AppRolesRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppStockRoute: AppStockRoute,

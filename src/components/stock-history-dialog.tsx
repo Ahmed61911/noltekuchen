@@ -30,6 +30,7 @@ const TYPE_LABELS: Record<string, { label: string; className: string }> = {
   supplier_return: { label: "Retour fournisseur", className: "bg-orange-500/15 text-orange-700" },
   inventory: { label: "Inventaire", className: "bg-amber-500/15 text-amber-700" },
   transfer: { label: "Transfert", className: "bg-purple-500/15 text-purple-700" },
+  damaged: { label: "Endommagé", className: "bg-destructive/15 text-destructive" },
 };
 
 export function StockHistoryButton({ productId, productName }: { productId: string; productName: string }) {

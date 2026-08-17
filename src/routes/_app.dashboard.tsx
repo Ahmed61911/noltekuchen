@@ -62,7 +62,7 @@ function useDashboardCharts() {
       d12.setMonth(d12.getMonth() - 11);
       d12.setDate(1);
       d12.setHours(0,0,0,0);
-      const { data: salesData } = await supabase.from("sales").select("sale_date, total_ttc").gte("sale_date", d12.toISOString());
+      const { data: salesData } = await supabase.from("sales").select("sale_date, total_ttc").neq("status", "cancelled").gte("sale_date", d12.toISOString());
       const monthlyRev = new Map<string, number>();
       (salesData || []).forEach(s => {
         if (!s.sale_date) return;
@@ -157,13 +157,18 @@ function useDashboardData(period: Period) {
       // Le CA vient des ventes réelles (total_ttc), pas d'une estimation
       // mouvements × prix : c'est la même source que le graphe « CA Mensuel »,
       // donc les deux chiffres concordent enfin.
-      let salesQ = supabase.from("sales").select("total_ttc,sale_date");
+      let salesQ = supabase.from("sales").select("total_ttc,sale_date").neq("status", "cancelled");
       if (start) salesQ = salesQ.gte("sale_date", start.toISOString().slice(0, 10));
 
-      const [products, movements, sales] = await Promise.all([
+      // Avoirs clients de la période — ils réduisent le C.A.
+      let returnsQ = supabase.from("returns").select("total_ttc,return_date").eq("type", "client").neq("status", "cancelled");
+      if (start) returnsQ = returnsQ.gte("return_date", start.toISOString().slice(0, 10));
+
+      const [products, movements, sales, returns] = await Promise.all([
         supabase.from("products").select("id,name,reference,stock_quantity,min_stock"),
         q,
         salesQ,
+        returnsQ,
       ]);
       const prods = products.data ?? [];
       const movs = movements.data ?? [];
@@ -175,7 +180,9 @@ function useDashboardData(period: Period) {
       const totalStock = prods.reduce((s, p) => s + Number(p.stock_quantity ?? 0), 0);
       const stockIn = movs.filter((m) => IN.includes(m.type)).reduce((s, m) => s + Number(m.quantity), 0);
       const stockOut = movs.filter((m) => OUT.includes(m.type)).reduce((s, m) => s + Number(m.quantity), 0);
-      const revenue = (sales.data ?? []).reduce((s, x) => s + Number(x.total_ttc ?? 0), 0);
+      const revenue =
+        (sales.data ?? []).reduce((s, x) => s + Number(x.total_ttc ?? 0), 0) -
+        (returns.data ?? []).reduce((s, x) => s + Number(x.total_ttc ?? 0), 0);
 
       const lowStock = prods.filter((p) => Number(p.stock_quantity) <= Number(p.min_stock)).slice(0, 6);
 
