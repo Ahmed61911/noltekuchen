@@ -88,7 +88,7 @@ function ReportsPage() {
     queryKey: ["reports", "products-list"],
     queryFn: async () => {
       const { data } = await supabase.from("products")
-        .select("id,name,reference,stock_quantity,selling_price,purchase_price,category_id")
+        .select("id,name,reference,stock_quantity,damaged_quantity,selling_price,purchase_price,category_id")
         .order("name");
       return data ?? [];
     },
@@ -176,18 +176,21 @@ function ReportsPage() {
     const stockCount = products.reduce((a, p) => a + Number(p.stock_quantity || 0), 0);
 
     // Achats = entrées (in/purchase) valorisées au coût, moins retours
-    // fournisseurs. Pertes = mouvements 'damaged' valorisés au coût.
-    let achats = 0, pertes = 0;
+    // fournisseurs.
+    let achats = 0;
     (stockMovements as any[]).forEach((m) => {
       const val = Number(m.quantity || 0) * Number(m.unit_cost || 0);
       if (m.type === "in" || m.type === "purchase") achats += val;
       else if (m.type === "supplier_return") achats -= val;
-      else if (m.type === "damaged") pertes += val;
     });
+
+    // Stock endommagé = valeur des unités actuellement dans le dépôt endommagé.
+    const damagedValue = (products as any[]).reduce(
+      (a, p) => a + Number(p.damaged_quantity || 0) * Number(p.purchase_price || 0), 0);
 
     return {
       totalCA, monthCA, stockCount, clientReturns,
-      achats: Math.max(0, achats), pertes,
+      achats: Math.max(0, achats), damagedValue,
     };
   }, [filteredSales, products, returns, stockMovements, today]);
 
@@ -400,8 +403,8 @@ function ReportsPage() {
           tone="from-sky-500/15 to-sky-500/5 text-sky-600 dark:text-sky-400"
         />
         <KpiCard
-          label="Pertes (endommagé)"
-          value={fmtMoney(kpis.pertes)}
+          label="Stock endommagé"
+          value={fmtMoney(kpis.damagedValue)}
           icon={<TrendingDown className="h-5 w-5" />}
           tone="from-rose-500/15 to-rose-500/5 text-rose-600 dark:text-rose-400"
         />

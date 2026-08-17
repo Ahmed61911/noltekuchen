@@ -81,7 +81,7 @@ function StockPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, reference, name, stock_quantity, purchase_price, warehouse_id, warehouses(name)")
+        .select("id, reference, name, stock_quantity, damaged_quantity, purchase_price, warehouse_id, warehouses(name)")
         .order("name");
       if (error) throw error;
       return data;
@@ -132,6 +132,7 @@ function StockPage() {
   });
 
   const totalInventoryQty = filteredInventory.reduce((acc, p) => acc + (Number(p.stock_quantity) || 0), 0);
+  const totalInventoryDamaged = filteredInventory.reduce((acc, p) => acc + (Number(p.damaged_quantity) || 0), 0);
   const totalInventoryValue = filteredInventory.reduce((acc, p) => acc + ((Number(p.stock_quantity) || 0) * (Number(p.purchase_price) || 0)), 0);
 
   const pagination = usePagination({
@@ -460,24 +461,27 @@ function StockPage() {
                 <TableHead>Nom du produit</TableHead>
                 <TableHead>Dépôt</TableHead>
                 <TableHead className="text-right">Quantité en stock</TableHead>
+                <TableHead className="text-right">Endommagé</TableHead>
                 <TableHead className="text-right">Prix d'achat (TTC)</TableHead>
                 <TableHead className="text-right">Valeur totale</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoadingInventory && <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("loading")}</TableCell></TableRow>}
+              {isLoadingInventory && <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">{t("loading")}</TableCell></TableRow>}
               {!isLoadingInventory && pagedInventory.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">{t("no_data")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">{t("no_data")}</TableCell></TableRow>
               )}
               {pagedInventory.map((p) => {
                 const wh = p.warehouses as { name?: string } | null;
                 const val = (Number(p.stock_quantity) || 0) * (Number(p.purchase_price) || 0);
+                const dmg = Number(p.damaged_quantity) || 0;
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{p.reference}</TableCell>
                     <TableCell className="font-medium">{p.name}</TableCell>
                     <TableCell className="text-sm">{wh?.name ?? "—"}</TableCell>
                     <TableCell className="text-right font-medium">{p.stock_quantity || 0}</TableCell>
+                    <TableCell className="text-right">{dmg > 0 ? <span className="font-medium text-destructive">{dmg}</span> : <span className="text-muted-foreground">0</span>}</TableCell>
                     <TableCell className="text-right text-sm">{(p.purchase_price || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " DH"}</TableCell>
                     <TableCell className="text-right font-medium">{val.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " DH"}</TableCell>
                   </TableRow>
@@ -487,6 +491,7 @@ function StockPage() {
                 <TableRow className="bg-muted/50 font-bold">
                   <TableCell colSpan={3} className="text-right">Total</TableCell>
                   <TableCell className="text-right">{totalInventoryQty}</TableCell>
+                  <TableCell className="text-right">{totalInventoryDamaged}</TableCell>
                   <TableCell></TableCell>
                   <TableCell className="text-right">{totalInventoryValue.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " DH"}</TableCell>
                 </TableRow>

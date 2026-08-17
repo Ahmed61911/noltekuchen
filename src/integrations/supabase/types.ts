@@ -23,6 +23,7 @@ export type Database = {
           supplier_id: string | null
           sale_id: string | null
           return_date: string
+          damaged: boolean
           total_ttc: number
           reason: string | null
           notes: string | null
@@ -39,6 +40,7 @@ export type Database = {
           supplier_id?: string | null
           sale_id?: string | null
           return_date?: string
+          damaged?: boolean
           total_ttc?: number
           reason?: string | null
           notes?: string | null
@@ -55,6 +57,7 @@ export type Database = {
           supplier_id?: string | null
           sale_id?: string | null
           return_date?: string
+          damaged?: boolean
           total_ttc?: number
           reason?: string | null
           notes?: string | null
@@ -783,6 +786,7 @@ export type Database = {
           image_url: string | null
           images: string[]
           min_stock: number
+          damaged_quantity: number
           name: string
           purchase_price: number
           reference: string
@@ -804,6 +808,7 @@ export type Database = {
           image_url?: string | null
           images?: string[]
           min_stock?: number
+          damaged_quantity?: number
           name: string
           purchase_price?: number
           reference: string
@@ -825,6 +830,7 @@ export type Database = {
           image_url?: string | null
           images?: string[]
           min_stock?: number
+          damaged_quantity?: number
           name?: string
           purchase_price?: number
           reference?: string
@@ -1552,6 +1558,7 @@ export type Database = {
         Row: {
           created_at: string
           document_ref: string | null
+          to_damaged: boolean
           id: string
           product_id: string
           quantity: number
@@ -1566,6 +1573,7 @@ export type Database = {
         Insert: {
           created_at?: string
           document_ref?: string | null
+          to_damaged?: boolean
           id?: string
           product_id: string
           quantity: number
@@ -1580,6 +1588,7 @@ export type Database = {
         Update: {
           created_at?: string
           document_ref?: string | null
+          to_damaged?: boolean
           id?: string
           product_id?: string
           quantity?: number

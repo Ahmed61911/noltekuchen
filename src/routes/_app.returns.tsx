@@ -13,6 +13,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -55,6 +56,7 @@ function ReturnsPage() {
   const [clientName, setClientName] = useState("");          // client, standalone
   const [returnDate, setReturnDate] = useState(new Date().toISOString().slice(0, 10));
   const [reason, setReason] = useState("");
+  const [damaged, setDamaged] = useState(false); // client return -> damaged depot
   const [lines, setLines] = useState<LineForm[]>([newLine()]);
   const [typeFilter, setTypeFilter] = useState<"all" | ReturnType>("all");
 
@@ -114,7 +116,7 @@ function ReturnsPage() {
 
   function resetForm() {
     setType("client"); setSaleId(""); setSupplierId(""); setClientName("");
-    setReturnDate(new Date().toISOString().slice(0, 10)); setReason(""); setLines([newLine()]);
+    setReturnDate(new Date().toISOString().slice(0, 10)); setReason(""); setDamaged(false); setLines([newLine()]);
   }
 
   const create = useMutation({
@@ -145,6 +147,7 @@ function ReturnsPage() {
           sale_id: type === "client" ? (saleId || null) : null,
           return_date: returnDate,
           reason: reason || null,
+          damaged: type === "client" ? damaged : false,
           warehouse_id: null,
         },
         _items: valid.map((l) => ({
@@ -224,6 +227,7 @@ function ReturnsPage() {
 
               {/* Party */}
               {type === "client" ? (
+                <>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label>Vente liée (optionnel)</Label>
@@ -244,6 +248,11 @@ function ReturnsPage() {
                     </div>
                   )}
                 </div>
+                <label className="flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2 text-sm">
+                  <Checkbox checked={damaged} onCheckedChange={(v) => setDamaged(!!v)} />
+                  <span>Produits endommagés — les envoyer au stock endommagé (pas au stock vendable)</span>
+                </label>
+                </>
               ) : (
                 <div>
                   <Label>Fournisseur</Label>
