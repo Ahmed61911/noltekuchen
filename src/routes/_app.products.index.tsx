@@ -27,7 +27,8 @@ import { PageHeader } from "@/components/data/page-header";
 import { ResultCount, SearchField, Toolbar } from "@/components/data/toolbar";
 import { StatCard } from "@/components/data/stat-card";
 import { StatusBadge } from "@/components/data/status-badge";
-import { TableShell, TableStateRow } from "@/components/data/table-shell";
+import { Card } from "@/components/ui/card";
+import { TableStateRow } from "@/components/data/table-shell";
 import { TableSkeleton } from "@/components/data/table-skeleton";
 import { EmptyState } from "@/components/data/empty-state";
 import { ErrorState } from "@/components/data/error-state";
@@ -368,7 +369,7 @@ function ProductsIndexPage() {
         <ResultCount shown={filtered.length} total={products.length} />
       </Toolbar>
 
-      <TableShell>
+      <Card className="overflow-hidden shadow-card">
         <Table aria-busy={isLoading}>
           <caption className="sr-only">{t("products")}</caption>
           <TableHeader>
@@ -484,7 +485,7 @@ function ProductsIndexPage() {
             })}
           </TableBody>
         </Table>
-      </TableShell>
+      </Card>
 
       <DataPagination pagination={pagination} />
 

@@ -28,7 +28,7 @@ import { PageHeader } from "@/components/data/page-header";
 import { ResultCount, SearchField, Toolbar } from "@/components/data/toolbar";
 import { StatCard } from "@/components/data/stat-card";
 import { StatusBadge } from "@/components/data/status-badge";
-import { TableShell, TableStateRow } from "@/components/data/table-shell";
+import { TableStateRow } from "@/components/data/table-shell";
 import { TableSkeleton } from "@/components/data/table-skeleton";
 import { EmptyState } from "@/components/data/empty-state";
 import { ErrorState } from "@/components/data/error-state";
@@ -291,8 +291,8 @@ function OrdersPage() {
             <DialogHeader><DialogTitle>Nouvelle commande</DialogTitle></DialogHeader>
             <div className="grid grid-cols-4 gap-3">
               <div className="col-span-2">
-                <Label>Nom du client (optionnel)</Label>
-                <Input placeholder="Ex: Mme Aicha" value={clientName} onChange={e => setClientName(e.target.value)} />
+                <Label>Nom du client</Label>
+                <Input value={clientName} onChange={e => setClientName(e.target.value)} />
               </div>
               <div><Label>Date commande</Label><Input type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)} /></div>
               <div><Label>Dernier jour</Label><Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
@@ -562,7 +562,7 @@ function OrdersPage() {
         <ResultCount shown={filtered.length} total={orders.length} />
       </Toolbar>
 
-      <TableShell>
+      <Card className="overflow-hidden shadow-card">
         <Table aria-busy={isLoading}>
           <caption className="sr-only">Commandes clients</caption>
           <TableHeader><TableRow>
@@ -574,9 +574,7 @@ function OrdersPage() {
             <TableHead className="text-end">Payé</TableHead>
             <TableHead className="text-end">Reste</TableHead>
             <TableHead>Statut</TableHead><TableHead>Paiement</TableHead>
-            {/* Twelve columns never fit on a 1366px laptop, and Valider /
-                Livrer were the first things to scroll out of reach. */}
-            <TableHead className="sticky end-0 text-end">Actions</TableHead>
+            <TableHead className="text-end">Actions</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {isLoading && <TableSkeleton rows={8} columns={12} />}
@@ -619,7 +617,7 @@ function OrdersPage() {
               const dLabel = d === null ? "—" : d < 0 ? `${Math.abs(d)}j retard` : d === 0 ? "Aujourd'hui" : `${d}j`;
               const st = STATUS[o.status]; const ps = PAY[o.payment_status];
               return (
-                <TableRow key={o.id} className="group">
+                <TableRow key={o.id}>
                   <TableCell className="font-mono text-sm">
                     <Link to="/orders/$id" params={{ id: o.id }} className="font-medium hover:underline">
                       {o.order_number}
@@ -636,9 +634,7 @@ function OrdersPage() {
                   <TableCell className="text-end tabular-nums">{fmt(Math.max(0, ttc - paid))}</TableCell>
                   <TableCell><StatusBadge tone={st.tone} label={st.label} /></TableCell>
                   <TableCell><StatusBadge tone={ps.tone} label={ps.label} /></TableCell>
-                  {/* Pinned to the end edge so the row's actions stay reachable
-                      while the twelve columns scroll horizontally. */}
-                  <TableCell className="sticky end-0 z-10 bg-card text-end group-hover:bg-(--row-hover)">
+                  <TableCell className="text-end">
                     {/* Five hard-coded icon colours per row over forty rows left
                         the eye nowhere to rest: the icons now inherit a muted
                         colour and take the button's own hover. Only deletion
@@ -672,7 +668,7 @@ function OrdersPage() {
             })}
           </TableBody>
         </Table>
-      </TableShell>
+      </Card>
 
       <DataPagination pagination={pagination} />
     </div>

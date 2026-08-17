@@ -28,7 +28,7 @@ import { PageHeader } from "@/components/data/page-header";
 import { ResultCount, SearchField, Toolbar } from "@/components/data/toolbar";
 import { StatCard } from "@/components/data/stat-card";
 import { StatusBadge } from "@/components/data/status-badge";
-import { TableShell, TableStateRow } from "@/components/data/table-shell";
+import { TableStateRow } from "@/components/data/table-shell";
 import { TableSkeleton } from "@/components/data/table-skeleton";
 import { EmptyState } from "@/components/data/empty-state";
 import { ErrorState } from "@/components/data/error-state";
@@ -292,8 +292,8 @@ function SalesPage() {
             <DialogHeader><DialogTitle>Nouvelle vente</DialogTitle></DialogHeader>
             <div className="grid grid-cols-5 gap-3">
               <div className="col-span-2">
-                <Label>Nom du client (optionnel)</Label>
-                <Input placeholder="Ex: Mme Aicha" value={clientName} onChange={e => setClientName(e.target.value)} />
+                <Label>Nom du client</Label>
+                <Input value={clientName} onChange={e => setClientName(e.target.value)} />
               </div>
               <div><Label>Date</Label><Input type="date" value={saleDate} onChange={e => setSaleDate(e.target.value)} /></div>
               <div>
@@ -499,7 +499,7 @@ function SalesPage() {
         <ResultCount shown={filtered.length} total={sales.length} />
       </Toolbar>
 
-      <TableShell>
+      <Card className="overflow-hidden shadow-card">
         <Table aria-busy={isLoading}>
           <caption className="sr-only">Ventes</caption>
           <TableHeader><TableRow>
@@ -509,9 +509,7 @@ function SalesPage() {
             <TableHead className="text-end">Payé</TableHead><TableHead className="text-end">Reste</TableHead>
             <TableHead>Mode</TableHead><TableHead>Échéance</TableHead>
             <TableHead>Statut</TableHead>
-            {/* Onze colonnes : les actions restent au bord de fin même quand le
-                tableau défile horizontalement. */}
-            <TableHead className="sticky end-0 text-end">Actions</TableHead>
+            <TableHead className="text-end">Actions</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {isLoading && <TableSkeleton rows={8} columns={11} />}
@@ -551,7 +549,7 @@ function SalesPage() {
               const ttc = Number(s.total_ttc), paid = Number(s.paid_amount);
               const st = PAY_STATUS[s.payment_status];
               return (
-                <TableRow key={s.id} className="group">
+                <TableRow key={s.id}>
                   <TableCell className="font-mono text-sm">
                     <Link to="/sales/$id" params={{ id: s.id }} className="font-medium hover:underline">
                       {s.sale_number}
@@ -566,8 +564,8 @@ function SalesPage() {
                   <TableCell className="text-end tabular-nums">{fmt(Math.max(0, ttc - paid))}</TableCell>
                   <TableCell>{METHODS[s.payment_method]}</TableCell>
                   <TableCell className="tabular-nums">{s.payment_due_date ? new Date(s.payment_due_date).toLocaleDateString("fr-FR") : "—"}</TableCell>
-                  <TableCell><StatusBadge tone={st.tone} label={st.label} /></TableCell>
-                  <TableCell className="sticky end-0 z-10 bg-card text-end group-hover:bg-(--row-hover)">
+                  <TableCell>{(s as { status?: string }).status === "cancelled" ? <StatusBadge tone="neutral" label="Annulée" /> : <StatusBadge tone={st.tone} label={st.label} />}</TableCell>
+                  <TableCell className="text-end">
                     <div className="flex justify-end gap-1 text-muted-foreground [&_button]:h-8 [&_button]:w-8">
                       <Button size="icon" variant="ghost" asChild title="Voir">
                         <Link to="/sales/$id" params={{ id: s.id }}><Eye className="h-4 w-4" /></Link>
@@ -587,7 +585,7 @@ function SalesPage() {
             })}
           </TableBody>
         </Table>
-      </TableShell>
+      </Card>
 
       <DataPagination pagination={pagination} />
     </div>
