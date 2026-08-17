@@ -29,6 +29,20 @@ export const Route = createFileRoute("/_app/stock")({
   component: StockPage,
 });
 
+// Every movement type mapped to a label and a direction, so entries (incl.
+// retours clients) read as "Entrée" and exits (incl. retours fournisseurs) as
+// "Sortie" — the list used to fall back to "Sortie" for anything not in/damaged.
+const MOVE_META: Record<string, { label: string; dir: "in" | "out" | "damaged" }> = {
+  in: { label: "Entrée", dir: "in" },
+  purchase: { label: "Achat", dir: "in" },
+  customer_return: { label: "Retour client", dir: "in" },
+  inventory: { label: "Inventaire", dir: "in" },
+  out: { label: "Sortie", dir: "out" },
+  sale: { label: "Vente", dir: "out" },
+  supplier_return: { label: "Retour fournisseur", dir: "out" },
+  damaged: { label: "Endommagé", dir: "damaged" },
+};
+
 function StockPage() {
   const { t } = useI18n();
   const { user } = useAuth();
@@ -55,13 +69,14 @@ function StockPage() {
 
   const { data: products = [] } = useQuery({
     queryKey: ["products-min"],
-    queryFn: async () => (await supabase.from("products").select("id,name,reference,purchase_price")).data ?? [],
+    queryFn: async () => (await supabase.from("products").select("id,name,reference,purchase_price,warehouse_id")).data ?? [],
   });
 
   const { data: warehouses = [] } = useQuery({
     queryKey: ["warehouses-list"],
     queryFn: async () => (await supabase.from("warehouses").select("id,name").eq("is_active", true).order("name")).data ?? [],
   });
+  const damagedWarehouseId = (warehouses as { id: string; name: string }[]).find((w) => w.name === "Stock endommagé")?.id ?? "";
 
   const { data: movements = [], isLoading } = useQuery({
     queryKey: ["movements"],
@@ -156,10 +171,7 @@ function StockPage() {
     const tableData = filteredMovements.map(m => {
       const prod = m.products as any;
       const wh = m.warehouses as any;
-      let typeStr = "";
-      if (m.type === "in") typeStr = "Entrée";
-      else if (m.type === "out") typeStr = "Sortie";
-      else if (m.type === "damaged") typeStr = "Endommagé";
+      const typeStr = MOVE_META[m.type]?.label ?? m.type;
 
       return [
         new Date(m.created_at).toLocaleString("fr-FR"),
@@ -276,8 +288,11 @@ function StockPage() {
                         setProductId(v);
                         // Prefill the unit cost from the product so losses
                         // (endommagé) and entries are valued automatically.
-                        const p = products.find((x) => x.id === v) as { purchase_price?: number } | undefined;
+                        const p = products.find((x) => x.id === v) as { purchase_price?: number; warehouse_id?: string | null } | undefined;
                         if (p?.purchase_price != null) setUnitCost(Number(p.purchase_price) || 0);
+                        // Auto-select the product's depot (unless the movement is
+                        // damaged, which is pinned to the damaged depot).
+                        if (type !== "damaged" && p?.warehouse_id) setWarehouseId(p.warehouse_id);
                       }}>
                         <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                         <SelectContent>
@@ -290,7 +305,18 @@ function StockPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs">{t("type")}</Label>
-                        <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
+                        <Select value={type} onValueChange={(v) => {
+                          const nt = v as typeof type;
+                          setType(nt);
+                          if (nt === "damaged") {
+                            // Damaged goods are pinned to the damaged depot.
+                            if (damagedWarehouseId) setWarehouseId(damagedWarehouseId);
+                          } else {
+                            // Back to the selected product's own depot.
+                            const p = products.find((x) => x.id === productId) as { warehouse_id?: string | null } | undefined;
+                            setWarehouseId(p?.warehouse_id ?? "");
+                          }
+                        }}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="in">{t("movement_in")}</SelectItem>
@@ -311,7 +337,7 @@ function StockPage() {
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs">Dépôt</Label>
-                        <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
+                        <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)} disabled={type === "damaged"}>
                           <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="_none">— Aucun —</SelectItem>
@@ -435,13 +461,12 @@ function StockPage() {
                     </TableCell>
                     <TableCell className="text-sm">{wh?.name ?? "—"}</TableCell>
                     <TableCell>
-                      {m.type === "in" ? (
-                        <Badge className="bg-success/15 text-success hover:bg-success/15"><ArrowDown className="me-1 h-3 w-3" />{t("movement_in")}</Badge>
-                      ) : m.type === "damaged" ? (
-                        <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/15"><AlertTriangle className="me-1 h-3 w-3" />Endommagé</Badge>
-                      ) : (
-                        <Badge className="bg-warning/20 text-warning-foreground hover:bg-warning/20 dark:bg-warning/15 dark:text-warning"><ArrowUp className="me-1 h-3 w-3" />{t("movement_out")}</Badge>
-                      )}
+                      {(() => {
+                        const meta = MOVE_META[m.type] ?? { label: m.type, dir: "out" as const };
+                        if (meta.dir === "in") return <Badge className="bg-success/15 text-success hover:bg-success/15"><ArrowDown className="me-1 h-3 w-3" />{meta.label}</Badge>;
+                        if (meta.dir === "damaged") return <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/15"><AlertTriangle className="me-1 h-3 w-3" />{meta.label}</Badge>;
+                        return <Badge className="bg-warning/20 text-warning-foreground hover:bg-warning/20 dark:bg-warning/15 dark:text-warning"><ArrowUp className="me-1 h-3 w-3" />{meta.label}</Badge>;
+                      })()}
                     </TableCell>
                     <TableCell className="text-right font-medium">{m.quantity}</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">

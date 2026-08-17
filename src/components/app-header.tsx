@@ -91,12 +91,6 @@ export function AppHeader() {
     // header feel like glass rather than a lid.
     <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border/60 bg-background/70 px-3 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 md:px-4">
       <SidebarTrigger className="text-muted-foreground transition-colors duration-(--dur-fast) hover:text-foreground" />
-      {/* Same words, different weighting: the product name now leads in the
-          display face and the tagline recedes. */}
-      <div className="ms-2 hidden text-sm text-muted-foreground md:block">
-        <span className="font-display font-semibold text-foreground">{t("app_name")}</span> ·{" "}
-        {t("app_tagline")}
-      </div>
 
       <div className="ms-auto flex items-center gap-1">
         <Button variant="ghost" size="icon" onClick={toggle} title="Thème">
