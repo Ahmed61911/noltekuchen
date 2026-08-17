@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
-  Plus, Trash2, Eye, FileDown, XCircle, Loader2, ShoppingCart,
+  Plus, Trash2, Eye, FileDown, XCircle, Loader2, ShoppingCart, Truck,
   TrendingUp, CalendarDays, Wallet, AlertCircle, Receipt, RotateCcw,
 } from "lucide-react";
 import { toast } from "@/lib/notify";
@@ -23,6 +23,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { computeLine, computeTotals } from "@/lib/money";
 import { useConfirm } from "@/components/confirm-dialog";
+import { generateOrderPdf, type PdfOrder } from "@/lib/order-pdf";
 import { useI18n } from "@/lib/i18n";
 import { PageHeader } from "@/components/data/page-header";
 import { ResultCount, SearchField, Toolbar } from "@/components/data/toolbar";
@@ -60,8 +61,11 @@ type Sale = {
   total_ttc: number; paid_amount: number;
   invoice_id: string | null; notes: string | null;
   warehouse_id: string | null;
+  order_id: string | null;
+  status: string | null;
   customers: { name: string } | null;
   warehouses: { name: string } | null;
+  orders: { order_number: string; status: string } | null;
   sale_items: { warehouse_id: string | null; warehouses: { name: string } | null }[];
 };
 type Customer = { id: string; name: string };
@@ -107,7 +111,7 @@ function SalesPage() {
     queryKey: ["sales"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sales").select("*, customers(name), warehouses(name), sale_items(warehouse_id, warehouses(name))").order("created_at", { ascending: false });
+        .from("sales").select("*, customers(name), warehouses(name), orders(order_number, status), sale_items(warehouse_id, warehouses(name))").order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Sale[];
     },
@@ -178,7 +182,7 @@ function SalesPage() {
         if (newC) resolvedCustId = newC.id;
       }
 
-      const { error } = await supabase.rpc("create_sale", {
+      const { error } = await supabase.rpc("create_sale_with_order", {
         _sale: {
           customer_id: resolvedCustId,
           sale_date: saleDate,
@@ -187,7 +191,6 @@ function SalesPage() {
           payment_status: paidAmount >= totals.ttc ? "paid" : (paidAmount > 0 ? "partial" : "unpaid"),
           total_ttc: totals.ttc,
           paid_amount: paidAmount || 0,
-          stock_applied: true,
           notes: notes || null,
           warehouse_id: null,
         },
@@ -204,8 +207,9 @@ function SalesPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Vente enregistrée");
+      toast.success("Vente enregistrée — commande validée créée");
       qc.invalidateQueries({ queryKey: ["sales"] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["products"] });
       setOpen(false); resetForm();
     },
@@ -236,6 +240,37 @@ function SalesPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const deliverSale = useMutation({
+    mutationFn: async (orderId: string) => {
+      // Delivering the linked commande is what moves the stock out.
+      const { error } = await supabase.from("orders").update({ status: "delivered" }).eq("id", orderId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Vente livrée — stock mis à jour");
+      qc.invalidateQueries({ queryKey: ["sales"] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["movements"] });
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const printOrder = async (orderId: string) => {
+    const { data: o } = await supabase.from("orders").select("*, customers(*)").eq("id", orderId).single();
+    if (!o) { toast.error("Commande introuvable"); return; }
+    const { data: oi } = await supabase.from("order_items").select("*, products(reference)").eq("order_id", orderId);
+    generateOrderPdf({
+      ...o,
+      customer: o.customers,
+      items: (oi ?? []).map((it: any) => ({
+        description: it.description, quantity: it.quantity, unit_price: it.unit_price,
+        discount: it.discount_rate, total: it.line_total_ttc, code: it.products?.reference,
+      })),
+    } as PdfOrder);
+  };
 
   const filtered = sales.filter(s => {
     if (statusFilter !== "all" && s.payment_status !== statusFilter) return false;
@@ -564,13 +599,28 @@ function SalesPage() {
                   <TableCell className="text-end tabular-nums">{fmt(Math.max(0, ttc - paid))}</TableCell>
                   <TableCell>{METHODS[s.payment_method]}</TableCell>
                   <TableCell className="tabular-nums">{s.payment_due_date ? new Date(s.payment_due_date).toLocaleDateString("fr-FR") : "—"}</TableCell>
-                  <TableCell>{(s as { status?: string }).status === "cancelled" ? <StatusBadge tone="neutral" label="Annulée" /> : <StatusBadge tone={st.tone} label={st.label} />}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      {s.status === "cancelled" ? <StatusBadge tone="neutral" label="Annulée" /> : <StatusBadge tone={st.tone} label={st.label} />}
+                      {s.status !== "cancelled" && s.orders?.status === "delivered" && <StatusBadge tone="success" label="Livrée" />}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-end">
                     <div className="flex justify-end gap-1 text-muted-foreground [&_button]:h-8 [&_button]:w-8">
                       <Button size="icon" variant="ghost" asChild title="Voir">
                         <Link to="/sales/$id" params={{ id: s.id }}><Eye className="h-4 w-4" /></Link>
                       </Button>
-                      {(s as { status?: string }).status !== "cancelled" && (
+                      {s.order_id && (
+                        <Button size="icon" variant="ghost" title="Bon de commande" onClick={() => printOrder(s.order_id!)}>
+                          <FileDown className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {s.order_id && s.status !== "cancelled" && s.orders?.status === "validated" && (
+                        <Button size="icon" variant="ghost" title="Livrer" onClick={async () => { if (await confirm({ title: `Marquer la vente ${s.sale_number} comme livrée ?`, description: "La marchandise sera sortie du stock. Vous pourrez encore l'annuler, ce qui réintègre le stock.", confirmLabel: "Livrer" })) deliverSale.mutate(s.order_id!); }}>
+                          <Truck className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {s.status !== "cancelled" && (
                         <Button size="icon" variant="ghost" title="Annuler" onClick={async () => { if (await confirm({ title: `Annuler la vente ${s.sale_number} ?`, description: "La vente sera annulée et la marchandise réintégrée au stock. Si elle provient d'une commande, la commande sera également annulée.", confirmLabel: "Annuler la vente", destructive: true })) cancelSale.mutate(s.id); }}>
                           <XCircle className="h-4 w-4" />
                         </Button>

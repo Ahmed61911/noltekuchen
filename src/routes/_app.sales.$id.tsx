@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, XCircle, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, XCircle, Plus, Loader2, Truck, FileDown } from "lucide-react";
 import { toast } from "@/lib/notify";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfirm } from "@/components/confirm-dialog";
+import { generateOrderPdf, type PdfOrder } from "@/lib/order-pdf";
 
 export const Route = createFileRoute("/_app/sales/$id")({
   component: SaleDetail,
@@ -39,7 +40,16 @@ function SaleDetail() {
       const { data: sale } = await supabase.from("sales").select("*, customers(*)").eq("id", id).single();
       const { data: items } = await supabase.from("sale_items").select("*").eq("sale_id", id);
       const { data: payments } = await supabase.from("sale_payments").select("*").eq("sale_id", id).order("paid_at");
-      return { sale, items: items || [], payments: payments || [] };
+      // The linked commande (if any) carries the bon de commande and the
+      // delivery status — it owns the stock movement.
+      let order: any = null;
+      let orderItems: any[] = [];
+      if (sale?.order_id) {
+        const { data: o } = await supabase.from("orders").select("*, customers(*)").eq("id", sale.order_id).single();
+        const { data: oi } = await supabase.from("order_items").select("*, products(name, reference)").eq("order_id", sale.order_id);
+        order = o; orderItems = oi || [];
+      }
+      return { sale, items: items || [], payments: payments || [], order, orderItems };
     },
   });
   const addPayment = useMutation({
@@ -79,10 +89,47 @@ function SaleDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const deliverSale = useMutation({
+    mutationFn: async () => {
+      const orderId = data?.sale?.order_id;
+      if (!orderId) throw new Error("Aucune commande liée à cette vente");
+      // Delivering the linked commande is what moves the stock out.
+      const { error } = await supabase.from("orders").update({ status: "delivered" }).eq("id", orderId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Vente livrée — stock mis à jour');
+      qc.invalidateQueries({ queryKey: ['sale', id] });
+      qc.invalidateQueries({ queryKey: ['sales'] });
+      qc.invalidateQueries({ queryKey: ['orders'] });
+      qc.invalidateQueries({ queryKey: ['products'] });
+      qc.invalidateQueries({ queryKey: ['movements'] });
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (!data?.sale) return <div className="p-6">Chargement…</div>;
-  const { sale, items, payments } = data;
+  const { sale, items, payments, order, orderItems } = data;
   const reste = Math.max(0, Number(sale.total_ttc) - Number(sale.paid_amount));
   const isCancelled = (sale as { status?: string }).status === "cancelled";
+  const isDelivered = order?.status === "delivered";
+
+  const printOrder = () => {
+    if (!order) return;
+    generateOrderPdf({
+      ...order,
+      customer: order.customers,
+      items: (orderItems ?? []).map((it: any) => ({
+        description: it.description,
+        quantity: it.quantity,
+        unit_price: it.unit_price,
+        discount: it.discount_rate,
+        total: it.line_total_ttc,
+        code: it.products?.reference,
+      })),
+    } as PdfOrder);
+  };
 
   return (
     <div className="space-y-6">
@@ -93,15 +140,31 @@ function SaleDetail() {
             <div className="flex items-center gap-2">
               <h1 className="font-display text-2xl font-semibold">{sale.sale_number}</h1>
               {isCancelled && <Badge className="bg-zinc-500/15 text-zinc-700" variant="secondary">Annulée</Badge>}
+              {!isCancelled && isDelivered && <Badge className="bg-emerald-500/15 text-emerald-700" variant="secondary">Livrée</Badge>}
             </div>
-            <p className="text-sm text-muted-foreground">{new Date(sale.sale_date).toLocaleDateString("fr-FR")}</p>
+            <p className="text-sm text-muted-foreground">
+              {new Date(sale.sale_date).toLocaleDateString("fr-FR")}
+              {order && <> · Commande {order.order_number}</>}
+            </p>
           </div>
         </div>
-        {!isCancelled && (
-          <Button variant="outline" onClick={async () => { if (await confirm({ title: "Annuler cette vente ?", description: "La vente sera annulée et la marchandise réintégrée au stock. Si elle provient d'une commande, la commande sera également annulée.", confirmLabel: "Annuler la vente", destructive: true })) cancelSale.mutate(); }}>
-            <XCircle className="mr-2 h-4 w-4" /> Annuler la vente
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {order && (
+            <Button variant="outline" onClick={printOrder}>
+              <FileDown className="mr-2 h-4 w-4" /> Bon de commande
+            </Button>
+          )}
+          {order && !isCancelled && !isDelivered && (
+            <Button onClick={async () => { if (await confirm({ title: "Marquer cette vente comme livrée ?", description: "La marchandise sera sortie du stock. Vous pourrez encore l'annuler, ce qui réintègre le stock.", confirmLabel: "Livrer" })) deliverSale.mutate(); }}>
+              <Truck className="mr-2 h-4 w-4" /> Livrer
+            </Button>
+          )}
+          {!isCancelled && (
+            <Button variant="outline" onClick={async () => { if (await confirm({ title: "Annuler cette vente ?", description: "La vente sera annulée et la marchandise réintégrée au stock. Si elle provient d'une commande, la commande sera également annulée.", confirmLabel: "Annuler la vente", destructive: true })) cancelSale.mutate(); }}>
+              <XCircle className="mr-2 h-4 w-4" /> Annuler la vente
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

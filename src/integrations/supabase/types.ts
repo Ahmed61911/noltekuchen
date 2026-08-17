@@ -1682,6 +1682,7 @@ export type Database = {
       cancel_order: { Args: { _order_id: string }; Returns: Json }
       cancel_sale: { Args: { _sale_id: string }; Returns: Json }
       create_sale: { Args: { _sale: Json; _items: Json }; Returns: string }
+      create_sale_with_order: { Args: { _sale: Json; _items: Json }; Returns: Json }
       create_order: { Args: { _order: Json; _items: Json }; Returns: string }
       create_invoice: { Args: { _invoice: Json; _items: Json }; Returns: string }
       deliver_order: { Args: { _order_id: string }; Returns: Json }
