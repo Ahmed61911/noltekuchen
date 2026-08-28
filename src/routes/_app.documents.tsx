@@ -87,7 +87,7 @@ function DocumentsPage() {
   const [upFile, setUpFile] = useState<File | null>(null);
   const [upName, setUpName] = useState("");
   const [upCat, setUpCat] = useState<Category>("autres");
-  const [upCustomer, setUpCustomer] = useState<string>("");
+  const [upClientName, setUpClientName] = useState("");
   const [upDesc, setUpDesc] = useState("");
 
   const { data: docs = [], isLoading } = useQuery({
@@ -157,10 +157,17 @@ function DocumentsPage() {
         contentType: upFile.type || undefined,
       });
       if (upErr) throw upErr;
+      // Le client est saisi manuellement : un nom crée la fiche client, un
+      // champ vide laisse le document sans client.
+      let resolvedCustId: string | null = null;
+      if (upClientName.trim()) {
+        const { data: newC } = await supabase.from("customers").insert({ name: upClientName.trim() }).select("id").single();
+        if (newC) resolvedCustId = newC.id;
+      }
       const { data, error } = await supabase.from("documents").insert({
         name: upName || upFile.name,
         category: upCat,
-        customer_id: upCustomer || null,
+        customer_id: resolvedCustId,
         file_path: path,
         file_type: upFile.type || null,
         file_size: upFile.size,
@@ -176,8 +183,9 @@ function DocumentsPage() {
     onSuccess: () => {
       toast.success("Document ajouté");
       setUploadOpen(false);
-      setUpFile(null); setUpName(""); setUpCat("autres"); setUpCustomer(""); setUpDesc("");
+      setUpFile(null); setUpName(""); setUpCat("autres"); setUpClientName(""); setUpDesc("");
       qc.invalidateQueries({ queryKey: ["documents"] });
+      qc.invalidateQueries({ queryKey: ["customers-min"] });
     },
     onError: (e: any) => toast.error(e.message ?? "Erreur upload"),
   });
@@ -374,14 +382,8 @@ function DocumentsPage() {
                 </Select>
               </div>
               <div>
-                <Label>Client (optionnel)</Label>
-                <Select value={upCustomer || "none"} onValueChange={(v) => setUpCustomer(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Aucun</SelectItem>
-                    {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label>Nom du client</Label>
+                <Input value={upClientName} onChange={(e) => setUpClientName(e.target.value)} />
               </div>
             </div>
             <div>
