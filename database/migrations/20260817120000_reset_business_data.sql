@@ -18,38 +18,44 @@
 -- des mouvements de stock pendant la purge. TRUNCATE ne les déclenche pas.
 -- Une seule instruction pour toutes les tables : les clés étrangères croisées
 -- (sales.invoice_id <-> invoices.source_sale_id, orders.quote_id) sont gérées.
+--
+-- La liste est filtrée sur les tables réellement présentes (to_regclass). Le
+-- schéma déployé et src/integrations/supabase/types.ts ont divergé : types.ts
+-- déclare brands et units, qui ne sont créées par aucune migration. Une
+-- instruction TRUNCATE statique échouait donc en bloc sur « relation does not
+-- exist ». Ce filtre couvre les deux sens de la divergence : une table absente
+-- est ignorée, une table présente mais non déclarée reste vidée.
 
-TRUNCATE TABLE
-  public.return_items,
-  public.returns,
-  public.sale_payments,
-  public.sale_items,
-  public.sales,
-  public.invoice_items,
-  public.invoices,
-  public.order_payments,
-  public.order_items,
-  public.orders,
-  public.quote_items,
-  public.quotes,
-  public.purchase_order_items,
-  public.purchase_orders,
-  public.stock_movements,
-  public.project_activity,
-  public.project_attachments,
-  public.project_stages,
-  public.projects,
-  public.document_history,
-  public.documents,
-  public.appointments,
-  public.audit_logs,
-  public.products,
-  public.customers,
-  public.suppliers,
-  public.categories,
-  public.brands,
-  public.units
-RESTART IDENTITY CASCADE;
+DO $$
+DECLARE
+  wanted text[] := ARRAY[
+    'return_items','returns',
+    'sale_payments','sale_items','sales',
+    'invoice_items','invoices',
+    'order_payments','order_items','orders',
+    'quote_items','quotes',
+    'purchase_order_items','purchase_orders',
+    'stock_movements',
+    'project_activity','project_attachments','project_stages','projects',
+    'document_history','documents',
+    'appointments','audit_logs',
+    'products','customers','suppliers',
+    'categories','brands','units'
+  ];
+  present text[] := ARRAY[]::text[];
+  t text;
+BEGIN
+  FOREACH t IN ARRAY wanted LOOP
+    IF to_regclass(format('public.%I', t)) IS NOT NULL THEN
+      present := array_append(present, format('public.%I', t));
+    END IF;
+  END LOOP;
+
+  IF array_length(present, 1) > 0 THEN
+    EXECUTE 'TRUNCATE TABLE ' || array_to_string(present, ', ')
+         || ' RESTART IDENTITY CASCADE';
+  END IF;
+END $$;
 
 -- Les dépôts sont vidés SAUF « Stock endommagé », conservé tel quel (même id).
 -- DELETE et non TRUNCATE ici, précisément pour pouvoir en garder une ligne ;
@@ -62,10 +68,19 @@ INSERT INTO public.warehouses (name, description, is_active)
 SELECT 'Stock endommagé', 'Produits endommagés (hors stock vendable)', true
 WHERE NOT EXISTS (SELECT 1 FROM public.warehouses WHERE name = 'Stock endommagé');
 
--- La numérotation des documents repart à 1 (DEV-AAMM-0001, etc.).
-ALTER SEQUENCE public.quote_number_seq          RESTART WITH 1;
-ALTER SEQUENCE public.order_number_seq          RESTART WITH 1;
-ALTER SEQUENCE public.sale_number_seq           RESTART WITH 1;
-ALTER SEQUENCE public.invoice_number_seq        RESTART WITH 1;
-ALTER SEQUENCE public.purchase_order_number_seq RESTART WITH 1;
-ALTER SEQUENCE public.return_number_seq         RESTART WITH 1;
+-- La numérotation des documents repart à 1 (DEV-AAMM-0001, etc.), là encore
+-- sans supposer que chaque séquence existe.
+DO $$
+DECLARE
+  seqs text[] := ARRAY[
+    'quote_number_seq','order_number_seq','sale_number_seq',
+    'invoice_number_seq','purchase_order_number_seq','return_number_seq'
+  ];
+  s text;
+BEGIN
+  FOREACH s IN ARRAY seqs LOOP
+    IF to_regclass(format('public.%I', s)) IS NOT NULL THEN
+      EXECUTE format('ALTER SEQUENCE public.%I RESTART WITH 1', s);
+    END IF;
+  END LOOP;
+END $$;
