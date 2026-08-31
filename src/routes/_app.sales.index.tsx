@@ -34,6 +34,7 @@ import { TableSkeleton } from "@/components/data/table-skeleton";
 import { EmptyState } from "@/components/data/empty-state";
 import { ErrorState } from "@/components/data/error-state";
 import { DataPagination, usePagination } from "@/components/data/pagination";
+import { useStockByWarehouse } from "@/lib/stock-by-warehouse";
 
 export const Route = createFileRoute("/_app/sales/")({
   component: SalesPage,
@@ -140,6 +141,8 @@ function SalesPage() {
       return (data ?? []) as Warehouse[];
     },
   });
+
+  const { depotsFor } = useStockByWarehouse();
 
   const totals = useMemo(() => computeTotals(lines), [lines]);
 
@@ -362,9 +365,8 @@ function SalesPage() {
                       const upd = (p: Partial<LineForm>) => {
                         const nx = [...lines]; nx[idx] = { ...l, ...p }; setLines(nx);
                       };
-                      const selected = l.product_id ? products.find(p => p.id === l.product_id) : undefined;
-                      const stockLeft = selected ? Number(selected.stock_quantity ?? 0) : null;
-                      const outOfStock = !!selected && Number(selected.stock_quantity ?? 0) <= 0;
+                      const lineDepots = depotsFor(l.product_id);
+                      const outOfStock = !!l.product_id && lineDepots.length === 0;
                       return (
                         <TableRow key={idx}>
                           <TableCell>
@@ -376,14 +378,16 @@ function SalesPage() {
                               const matches = products.filter(p => productKey(p) === v);
                               const pick = matches.find(p => Number(p.stock_quantity ?? 0) > 0) ?? matches[0];
                               if (!pick) return;
+                              // Le dépôt par défaut est celui qui détient le plus de stock.
+                              const d = depotsFor(pick.id);
                               upd({
                                 product_key: v,
                                 product_id: pick.id,
-                                warehouse_id: pick.warehouse_id,
+                                warehouse_id: d[0]?.warehouse_id ?? null,
                                 description: pick.name,
                                 unit_price: Number(pick.selling_price),
                               });
-                              if (Number(pick.stock_quantity ?? 0) <= 0) toast.error("Produit indisponible en stock");
+                              if (d.length === 0) toast.error("Produit dans aucun dépôt approvisionné");
                             }}>
                               <SelectTrigger className="h-8 mb-1"><SelectValue placeholder="Produit…" /></SelectTrigger>
                               <SelectContent>
@@ -399,24 +403,27 @@ function SalesPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {/* Dépôt librement choisi. Auparavant il était déduit des
-                                fiches produit et ne devenait un menu que si plusieurs
-                                fiches partageaient la même référence — donc figé en
-                                texte dès qu'un produit n'existait qu'une fois. */}
-                            <Select
-                              value={l.warehouse_id ?? "_none"}
-                              onValueChange={(v) => upd({ warehouse_id: v === "_none" ? null : v })}
-                            >
-                              <SelectTrigger className="h-8"><SelectValue placeholder="Dépôt…" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="_none">— Aucun —</SelectItem>
-                                {warehouses.map(w => (
-                                  <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {stockLeft !== null && (
-                              <div className="mt-1 text-xs text-muted-foreground">Stock : {stockLeft}</div>
+                            {/* Seuls les dépôts où le produit a réellement du stock
+                                sont proposés : la liste vient des mouvements, pas
+                                d'un champ de la fiche produit. */}
+                            {!l.product_id ? (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            ) : lineDepots.length === 0 ? (
+                              <span className="text-xs text-rose-600">Aucun dépôt approvisionné</span>
+                            ) : (
+                              <Select
+                                value={l.warehouse_id ?? ""}
+                                onValueChange={(v) => upd({ warehouse_id: v })}
+                              >
+                                <SelectTrigger className="h-8"><SelectValue placeholder="Dépôt…" /></SelectTrigger>
+                                <SelectContent>
+                                  {lineDepots.map(d => (
+                                    <SelectItem key={d.warehouse_id} value={d.warehouse_id}>
+                                      {warehouses.find(w => w.id === d.warehouse_id)?.name ?? "—"} – Stock : {d.quantity}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             )}
                           </TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.quantity} onChange={e => upd({ quantity: Number(e.target.value) })} /></TableCell>

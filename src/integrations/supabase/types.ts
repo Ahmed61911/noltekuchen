@@ -1780,7 +1780,14 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      product_stock_by_warehouse: {
+        Row: {
+          product_id: string | null
+          warehouse_id: string | null
+          quantity: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_quote: { Args: { _quote_id: string }; Returns: Json }

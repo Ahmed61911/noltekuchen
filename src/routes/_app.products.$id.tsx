@@ -106,14 +106,14 @@ function ProductDetailPage() {
   const [form, setForm] = useState<Partial<Product> & { gallery: string[] }>({
     name: "", reference: "", brand: "", description: "",
     purchase_price: 0, min_stock: 5,
-    dimensions: "", warehouse_id: null, gallery: [],
+    dimensions: "", gallery: [],
   });
 
   const update = useMutation({
     mutationFn: async (payload: typeof form) => {
       // stock_quantity est retiré explicitement : même si un ancien état du
       // formulaire en contenait, la fiche produit ne doit pas écrire le stock.
-      const { gallery, stock_quantity: _ignoredStock, ...rest } = payload;
+      const { gallery, stock_quantity: _ignoredStock, warehouse_id: _ignoredWh, ...rest } = payload;
       const data = {
         ...rest,
         image_url: gallery[0] ?? null,
@@ -168,7 +168,6 @@ function ProductDetailPage() {
       purchase_price: product.purchase_price,
       min_stock: product.min_stock,
       dimensions: product.dimensions ?? "",
-      warehouse_id: product.warehouse_id ?? null,
       gallery,
     });
     setIsEditing(true);
@@ -239,18 +238,6 @@ function ProductDetailPage() {
               <Input value={form.reference ?? ""} onChange={(e) => setForm({ ...form, reference: e.target.value })} placeholder="Ex : BOS-DWK-90" />
             </Field>
 
-            {/* Row 2 — Warehouse */}
-            <Field label={t("warehouse") + " *"}>
-              <Select value={form.warehouse_id ?? ""} onValueChange={(v) => setForm({ ...form, warehouse_id: v })}>
-                <SelectTrigger><SelectValue placeholder={t("select_warehouse")} /></SelectTrigger>
-                <SelectContent>
-                  {warehouses.filter((w) => w.is_active || w.id === form.warehouse_id).map((w) => (
-                    <SelectItem key={w.id} value={w.id}>{w.name}{w.description ? ` – ${w.description}` : ""}{!w.is_active ? " (inactif)" : ""}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-
             {/* Row 3 — Pricing */}
             <Field label={t("purchase_price") + " (DH) *"}>
               <Input type="number" min="0" step="0.01" value={form.purchase_price} onChange={(e) => setForm({ ...form, purchase_price: Math.max(0, Number(e.target.value)) })} />
@@ -284,7 +271,6 @@ function ProductDetailPage() {
                   const errs: string[] = [];
                   if (!form.name?.trim()) errs.push(t("product_name"));
                   if (!form.reference?.trim()) errs.push(t("reference"));
-                  if (!form.warehouse_id) errs.push(t("warehouse"));
                   if ((form.purchase_price ?? 0) < 0) errs.push("Prix négatif interdit");
                   if ((form.min_stock ?? 0) < 0) errs.push("Quantité négative interdite");
                   if (errs.length) { toast.error("Champs requis : " + errs.join(", ")); return; }

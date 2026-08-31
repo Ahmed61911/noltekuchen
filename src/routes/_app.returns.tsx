@@ -22,6 +22,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { StatusBadge } from "@/components/data/status-badge";
 import { DataPagination, usePagination } from "@/components/data/pagination";
 import { round2 } from "@/lib/money";
+import { useStockByWarehouse } from "@/lib/stock-by-warehouse";
 
 export const Route = createFileRoute("/_app/returns")({
   component: ReturnsPage,
@@ -60,6 +61,8 @@ function ReturnsPage() {
   const [warehouseId, setWarehouseId] = useState<string>("");
   const [lines, setLines] = useState<LineForm[]>([newLine()]);
   const [typeFilter, setTypeFilter] = useState<"all" | ReturnType>("all");
+
+  const { depotsFor } = useStockByWarehouse();
 
   const { data: warehouses = [] } = useQuery({
     queryKey: ["warehouses-list"],
@@ -236,11 +239,16 @@ function ReturnsPage() {
                 </div>
                 <div className="col-span-2">
                   <Label>Dépôt</Label>
+                  {/* Retour client : la marchandise revient, tous les dépôts sont
+                      valides. Retour fournisseur : elle repart, donc seuls les
+                      dépôts où les produits retournés ont du stock sont proposés. */}
                   <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
                     <SelectTrigger className="mt-1"><SelectValue placeholder="—" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="_none">— Aucun —</SelectItem>
-                      {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                      {(type === "client" ? warehouses : warehouses.filter((w) =>
+                        lines.some((l) => l.product_id && depotsFor(l.product_id).some((d) => d.warehouse_id === w.id))
+                      )).map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

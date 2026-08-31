@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useConfirm } from "@/components/confirm-dialog";
 import { generateQuotePdf, type PdfQuote } from "@/lib/quote-pdf";
 import { computeLine, round2 } from "@/lib/money";
+import { useStockByWarehouse } from "@/lib/stock-by-warehouse";
 
 export const Route = createFileRoute("/_app/quotes/$id")({
   component: QuoteDetail,
@@ -61,6 +62,8 @@ function QuoteDetail() {
       return data ?? [];
     },
   });
+
+  const { depotsFor } = useStockByWarehouse();
 
   const { data: warehouses = [] } = useQuery({
     queryKey: ["warehouses-list"],
@@ -225,7 +228,7 @@ function QuoteDetail() {
                           setSelectedProduct(val);
                           const prod = products.find((p) => p.id === val);
                           if (prod?.selling_price) setUnitPrice(prod.selling_price);
-                          if (prod?.warehouse_id) setWarehouseId(prod.warehouse_id);
+                          setWarehouseId(depotsFor(val)[0]?.warehouse_id ?? "");
                         }}
                       >
                         <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
@@ -241,13 +244,20 @@ function QuoteDetail() {
                     </div>
                     <div>
                       <Label>Dépôt</Label>
-                      <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
-                        <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                      {/* Uniquement les dépôts où le produit a du stock. */}
+                      <Select value={warehouseId} onValueChange={setWarehouseId} disabled={!selectedProduct}>
+                        <SelectTrigger><SelectValue placeholder={selectedProduct ? "Dépôt…" : "Choisir un produit"} /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="_none">— Aucun —</SelectItem>
-                          {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                          {depotsFor(selectedProduct).map((d) => (
+                            <SelectItem key={d.warehouse_id} value={d.warehouse_id}>
+                              {warehouses.find((w) => w.id === d.warehouse_id)?.name ?? "—"} – Stock : {d.quantity}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
+                      {selectedProduct && depotsFor(selectedProduct).length === 0 && (
+                        <p className="mt-1 text-xs text-rose-600">Aucun dépôt approvisionné</p>
+                      )}
                     </div>
                   </div>
                   <DialogFooter>

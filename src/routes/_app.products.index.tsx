@@ -33,6 +33,7 @@ import { TableSkeleton } from "@/components/data/table-skeleton";
 import { EmptyState } from "@/components/data/empty-state";
 import { ErrorState } from "@/components/data/error-state";
 import { DataPagination, usePagination } from "@/components/data/pagination";
+import { useStockByWarehouse } from "@/lib/stock-by-warehouse";
 
 export const Route = createFileRoute("/_app/products/")({
   component: ProductsIndexPage,
@@ -62,12 +63,15 @@ type Warehouse = { id: string; name: string; description: string | null; is_acti
 // comme résultat des mouvements de stock (entrées, sorties, achats, retours).
 // L'exclure du formulaire évite d'écrire products.stock_quantity en direct,
 // ce qui contournerait l'historique et fausserait la valorisation.
-type FormState = Omit<Product, "id" | "image_url" | "images" | "stock_quantity"> & { gallery: string[] };
+// Ni le stock ni le dépôt ne sont des propriétés de la fiche produit : le
+// stock résulte des mouvements, et le dépôt de l'endroit où ces mouvements
+// ont eu lieu. Un même produit peut donc vivre dans plusieurs dépôts.
+type FormState = Omit<Product, "id" | "image_url" | "images" | "stock_quantity" | "warehouse_id"> & { gallery: string[] };
 
 const empty: FormState = {
   name: "", reference: "", brand: "", description: "",
   purchase_price: 0, min_stock: 5,
-  dimensions: "", gallery: [], warehouse_id: null,
+  dimensions: "", gallery: [],
 };
 
 function ProductsIndexPage() {
@@ -98,6 +102,7 @@ function ProductsIndexPage() {
     },
   });
   const warehouseMap = new Map(warehouses.map((w) => [w.id, w]));
+  const { depotsFor } = useStockByWarehouse();
 
   const { data: products = [], isLoading, error, refetch } = useQuery({
     queryKey: ["products"],
@@ -152,7 +157,10 @@ function ProductsIndexPage() {
     if (priceMin && p.purchase_price < Number(priceMin)) return false;
     if (priceMax && p.purchase_price > Number(priceMax)) return false;
     if (warehouseFilter !== "all") {
-      if (warehouseFilter === "none" ? p.warehouse_id !== null : p.warehouse_id !== warehouseFilter) return false;
+      const depots = depotsFor(p.id);
+      if (warehouseFilter === "none"
+        ? depots.length > 0
+        : !depots.some((d) => d.warehouse_id === warehouseFilter)) return false;
     }
     return true;
   });
@@ -187,7 +195,7 @@ function ProductsIndexPage() {
       brand: p.brand ?? "",
       description: p.description ?? "",
       purchase_price: p.purchase_price, min_stock: p.min_stock,
-      dimensions: p.dimensions ?? "", gallery, warehouse_id: p.warehouse_id ?? null,
+      dimensions: p.dimensions ?? "", gallery,
     });
     setOpen(true);
   }
@@ -223,20 +231,6 @@ function ProductsIndexPage() {
                       onChange={(e) => setForm({ ...form, reference: e.target.value })}
                       placeholder="Ex : BOS-DWK-90"
                     />
-                  </Field>
-
-                  {/* Row 2 — Warehouse */}
-                  <Field label={t("warehouse") + " *"}>
-                    <Select value={form.warehouse_id ?? ""} onValueChange={(v) => setForm({ ...form, warehouse_id: v })}>
-                      <SelectTrigger><SelectValue placeholder={t("select_warehouse")} /></SelectTrigger>
-                      <SelectContent>
-                        {warehouses.filter((w) => w.is_active || w.id === form.warehouse_id).map((w) => (
-                          <SelectItem key={w.id} value={w.id}>
-                            {w.name}{w.description ? ` – ${w.description}` : ""}{!w.is_active ? " (inactif)" : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </Field>
 
                   {/* Row 3 — Pricing */}
@@ -294,7 +288,6 @@ function ProductsIndexPage() {
                       const errs: string[] = [];
                       if (!form.name.trim()) errs.push(t("product_name"));
                       if (!form.reference.trim()) errs.push(t("reference"));
-                      if (!form.warehouse_id) errs.push(t("warehouse"));
                       if (form.purchase_price < 0) errs.push("Prix négatif interdit");
                       if (form.min_stock < 0) errs.push("Quantité négative interdite");
                       if (errs.length) { toast.error("Champs requis : " + errs.join(", ")); return; }
@@ -447,12 +440,16 @@ function ProductsIndexPage() {
                     </Link>
                   </TableCell>
                   <TableCell className="text-sm">
-                    {p.warehouse_id && warehouseMap.get(p.warehouse_id) ? (
-                      <div className="flex flex-col gap-0.5">
-                        <Badge variant="outline" className="w-fit">{warehouseMap.get(p.warehouse_id)!.name}</Badge>
-                        {warehouseMap.get(p.warehouse_id)!.description && (
-                          <span className="text-xs text-muted-foreground">{warehouseMap.get(p.warehouse_id)!.description}</span>
-                        )}
+                    {/* Les dépôts affichés sont ceux où le produit a du stock,
+                        déduits des mouvements — la fiche produit ne porte plus
+                        de dépôt. */}
+                    {depotsFor(p.id).length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {depotsFor(p.id).map((d) => (
+                          <Badge key={d.warehouse_id} variant="outline" className="w-fit">
+                            {warehouseMap.get(d.warehouse_id)?.name ?? "—"} : {d.quantity}
+                          </Badge>
+                        ))}
                       </div>
                     ) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
