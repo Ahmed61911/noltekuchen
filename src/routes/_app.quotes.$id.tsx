@@ -42,6 +42,7 @@ function QuoteDetail() {
   const [qty, setQty] = useState(1);
   const [discount, setDiscount] = useState(0);
   const [unitPrice, setUnitPrice] = useState(0);
+  const [warehouseId, setWarehouseId] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["quote", id],
@@ -56,7 +57,16 @@ function QuoteDetail() {
   const { data: products = [] } = useQuery({
     queryKey: ["products-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("id, name, reference, selling_price").order("name");
+      const { data } = await supabase.from("products").select("id, name, reference, selling_price, warehouse_id").order("name");
+      return data ?? [];
+    },
+  });
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses-list"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("warehouses").select("id,name").eq("is_active", true).order("name");
       return data ?? [];
     },
   });
@@ -99,7 +109,8 @@ function QuoteDetail() {
       const { ttc: total } = computeLine({ quantity: qty, unit_price: price, discount_rate: discount });
       const { error } = await supabase.from("quote_items").insert({
         quote_id: id, product_id: p.id, quantity: qty,
-        unit_price: price, discount, total, description: p.name
+        unit_price: price, discount, total, description: p.name,
+        warehouse_id: warehouseId || null,
       });
       if (error) throw error;
       await recomputeTotals();
@@ -107,7 +118,7 @@ function QuoteDetail() {
     onSuccess: () => {
       toast.success("Ligne ajoutée");
       setAddOpen(false);
-      setSelectedProduct(""); setQty(1); setDiscount(0); setUnitPrice(0);
+      setSelectedProduct(""); setQty(1); setDiscount(0); setUnitPrice(0); setWarehouseId("");
       qc.invalidateQueries({ queryKey: ["quote", id] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -214,6 +225,7 @@ function QuoteDetail() {
                           setSelectedProduct(val);
                           const prod = products.find((p) => p.id === val);
                           if (prod?.selling_price) setUnitPrice(prod.selling_price);
+                          if (prod?.warehouse_id) setWarehouseId(prod.warehouse_id);
                         }}
                       >
                         <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
@@ -226,6 +238,16 @@ function QuoteDetail() {
                       <div><Label>Prix unitaire (DH)</Label><Input type="number" min={0} value={unitPrice} step="any" onChange={e => setUnitPrice(Number(e.target.value))} /></div>
                       <div><Label>Quantité</Label><Input type="number" min={1} value={qty} step="any" onChange={e => setQty(Number(e.target.value))} /></div>
                       <div><Label>Remise (%)</Label><Input type="number" min={0} max={100} value={discount} step="any" onChange={e => setDiscount(Number(e.target.value))} /></div>
+                    </div>
+                    <div>
+                      <Label>Dépôt</Label>
+                      <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
+                        <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_none">— Aucun —</SelectItem>
+                          {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <DialogFooter>

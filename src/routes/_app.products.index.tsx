@@ -58,11 +58,15 @@ type Product = {
 
 type Warehouse = { id: string; name: string; description: string | null; is_active: boolean };
 
-type FormState = Omit<Product, "id" | "image_url" | "images"> & { gallery: string[] };
+// Le stock ne se modifie JAMAIS depuis la fiche produit : il n'existe que
+// comme résultat des mouvements de stock (entrées, sorties, achats, retours).
+// L'exclure du formulaire évite d'écrire products.stock_quantity en direct,
+// ce qui contournerait l'historique et fausserait la valorisation.
+type FormState = Omit<Product, "id" | "image_url" | "images" | "stock_quantity"> & { gallery: string[] };
 
 const empty: FormState = {
   name: "", reference: "", brand: "", description: "",
-  purchase_price: 0, stock_quantity: 0, min_stock: 5,
+  purchase_price: 0, min_stock: 5,
   dimensions: "", gallery: [], warehouse_id: null,
 };
 
@@ -182,8 +186,7 @@ function ProductsIndexPage() {
       name: p.name, reference: p.reference,
       brand: p.brand ?? "",
       description: p.description ?? "",
-      purchase_price: p.purchase_price,
-      stock_quantity: p.stock_quantity, min_stock: p.min_stock,
+      purchase_price: p.purchase_price, min_stock: p.min_stock,
       dimensions: p.dimensions ?? "", gallery, warehouse_id: p.warehouse_id ?? null,
     });
     setOpen(true);

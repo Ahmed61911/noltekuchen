@@ -105,13 +105,15 @@ function ProductDetailPage() {
 
   const [form, setForm] = useState<Partial<Product> & { gallery: string[] }>({
     name: "", reference: "", brand: "", description: "",
-    purchase_price: 0, stock_quantity: 0, min_stock: 5,
+    purchase_price: 0, min_stock: 5,
     dimensions: "", warehouse_id: null, gallery: [],
   });
 
   const update = useMutation({
     mutationFn: async (payload: typeof form) => {
-      const { gallery, ...rest } = payload;
+      // stock_quantity est retiré explicitement : même si un ancien état du
+      // formulaire en contenait, la fiche produit ne doit pas écrire le stock.
+      const { gallery, stock_quantity: _ignoredStock, ...rest } = payload;
       const data = {
         ...rest,
         image_url: gallery[0] ?? null,
@@ -164,7 +166,6 @@ function ProductDetailPage() {
       brand: product.brand ?? "",
       description: product.description ?? "",
       purchase_price: product.purchase_price,
-      stock_quantity: product.stock_quantity,
       min_stock: product.min_stock,
       dimensions: product.dimensions ?? "",
       warehouse_id: product.warehouse_id ?? null,
@@ -256,9 +257,6 @@ function ProductDetailPage() {
             </Field>
 
             {/* Row 4 — Stock */}
-            <Field label={t("quantity") + " *"}>
-              <Input type="number" min="0" step="1" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: Math.max(0, Math.floor(Number(e.target.value))) })} />
-            </Field>
             <Field label={t("min_stock") + " *"}>
               <Input type="number" min="0" step="1" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: Math.max(0, Math.floor(Number(e.target.value))) })} />
             </Field>
@@ -288,7 +286,7 @@ function ProductDetailPage() {
                   if (!form.reference?.trim()) errs.push(t("reference"));
                   if (!form.warehouse_id) errs.push(t("warehouse"));
                   if ((form.purchase_price ?? 0) < 0) errs.push("Prix négatif interdit");
-                  if ((form.stock_quantity ?? 0) < 0 || (form.min_stock ?? 0) < 0) errs.push("Quantité négative interdite");
+                  if ((form.min_stock ?? 0) < 0) errs.push("Quantité négative interdite");
                   if (errs.length) { toast.error("Champs requis : " + errs.join(", ")); return; }
                   const fallbackName = `${form.brand?.trim() ?? ""} ${form.reference?.trim() ?? ""}`.trim();
                   update.mutate({ ...form, name: form.name?.trim() || fallbackName || product.name });

@@ -57,8 +57,19 @@ function ReturnsPage() {
   const [returnDate, setReturnDate] = useState(new Date().toISOString().slice(0, 10));
   const [reason, setReason] = useState("");
   const [damaged, setDamaged] = useState(false); // client return -> damaged depot
+  const [warehouseId, setWarehouseId] = useState<string>("");
   const [lines, setLines] = useState<LineForm[]>([newLine()]);
   const [typeFilter, setTypeFilter] = useState<"all" | ReturnType>("all");
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("warehouses").select("id,name").eq("is_active", true).order("name");
+      if (error) throw error;
+      return data as { id: string; name: string }[];
+    },
+  });
 
   const { data: returns = [], isLoading } = useQuery({
     queryKey: ["returns"],
@@ -116,7 +127,7 @@ function ReturnsPage() {
 
   function resetForm() {
     setType("client"); setSaleId(""); setSupplierId(""); setClientName("");
-    setReturnDate(new Date().toISOString().slice(0, 10)); setReason(""); setDamaged(false); setLines([newLine()]);
+    setReturnDate(new Date().toISOString().slice(0, 10)); setReason(""); setDamaged(false); setWarehouseId(""); setLines([newLine()]);
   }
 
   const create = useMutation({
@@ -148,7 +159,7 @@ function ReturnsPage() {
           return_date: returnDate,
           reason: reason || null,
           damaged: type === "client" ? damaged : false,
-          warehouse_id: null,
+          warehouse_id: warehouseId || null,
         },
         _items: valid.map((l) => ({
           product_id: l.product_id,
@@ -222,6 +233,16 @@ function ReturnsPage() {
                 <div>
                   <Label>Date</Label>
                   <Input type="date" className="mt-1" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} />
+                </div>
+                <div className="col-span-2">
+                  <Label>Dépôt</Label>
+                  <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">— Aucun —</SelectItem>
+                      {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

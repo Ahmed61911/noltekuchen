@@ -55,7 +55,7 @@ function ProjectsPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     name: "", client_name: "", start_date: new Date().toISOString().slice(0, 10),
-    expected_end_date: "", budget: 0, install_address: "", notes: "",
+    expected_end_date: "", budget: 0, install_address: "", notes: "", warehouse_id: "",
   });
 
   const { data: projects = [], isLoading } = useQuery({
@@ -71,6 +71,16 @@ function ProjectsPage() {
     queryKey: ["customers-list"],
     queryFn: async () => {
       const { data, error } = await supabase.from("customers").select("id,name").order("name");
+      if (error) throw error;
+      return data as { id: string; name: string }[];
+    },
+  });
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("warehouses").select("id,name").eq("is_active", true).order("name");
       if (error) throw error;
       return data as { id: string; name: string }[];
     },
@@ -93,13 +103,14 @@ function ProjectsPage() {
         budget: form.budget,
         install_address: form.install_address || null,
         notes: form.notes || null,
+        warehouse_id: form.warehouse_id || null,
         created_by: user?.id ?? null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Projet créé"); qc.invalidateQueries({ queryKey: ["projects"] }); setOpen(false);
-      setForm({ name: "", customer_id: "", start_date: new Date().toISOString().slice(0, 10), expected_end_date: "", budget: 0, install_address: "", notes: "" });
+      setForm({ name: "", client_name: "", start_date: new Date().toISOString().slice(0, 10), expected_end_date: "", budget: 0, install_address: "", notes: "", warehouse_id: "" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -162,8 +173,17 @@ function ProjectsPage() {
             <DialogHeader><DialogTitle>Nouveau projet</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2"><Label>Nom du projet *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
-              <div><Label>Client (optionnel)</Label>
-                <Input placeholder="Ex: Mme Aicha" value={form.client_name} onChange={e => setForm({ ...form, client_name: e.target.value })} />
+              <div><Label>Nom du client</Label>
+                <Input value={form.client_name} onChange={e => setForm({ ...form, client_name: e.target.value })} />
+              </div>
+              <div><Label>Dépôt</Label>
+                <Select value={form.warehouse_id || "_none"} onValueChange={(v) => setForm({ ...form, warehouse_id: v === "_none" ? "" : v })}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">— Aucun —</SelectItem>
+                    {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div><Label>Budget (DH)</Label><Input type="number" value={form.budget} step="any" onChange={e => setForm({ ...form, budget: Number(e.target.value) })} /></div>
               <div><Label>Date de début</Label><Input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} /></div>

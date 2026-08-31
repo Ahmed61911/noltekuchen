@@ -1039,6 +1039,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          warehouse_id: string | null
           budget: number | null
           commercial_id: string | null
           created_at: string
@@ -1055,6 +1056,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          warehouse_id?: string | null
           budget?: number | null
           commercial_id?: string | null
           created_at?: string
@@ -1071,6 +1073,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          warehouse_id?: string | null
           budget?: number | null
           commercial_id?: string | null
           created_at?: string
@@ -1146,6 +1149,7 @@ export type Database = {
       }
       purchase_orders: {
         Row: {
+          warehouse_id: string | null
           created_at: string
           created_by: string | null
           expected_date: string | null
@@ -1161,6 +1165,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          warehouse_id?: string | null
           created_at?: string
           created_by?: string | null
           expected_date?: string | null
@@ -1176,6 +1181,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          warehouse_id?: string | null
           created_at?: string
           created_by?: string | null
           expected_date?: string | null
@@ -1202,6 +1208,7 @@ export type Database = {
       }
       quote_items: {
         Row: {
+          warehouse_id: string | null
           created_at: string
           description: string | null
           discount: number
@@ -1213,6 +1220,7 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          warehouse_id?: string | null
           created_at?: string
           description?: string | null
           discount?: number
@@ -1224,6 +1232,7 @@ export type Database = {
           unit_price?: number
         }
         Update: {
+          warehouse_id?: string | null
           created_at?: string
           description?: string | null
           discount?: number
@@ -1783,6 +1792,7 @@ export type Database = {
       create_sale: { Args: { _sale: Json; _items: Json }; Returns: string }
       create_sale_with_order: { Args: { _sale: Json; _items: Json }; Returns: Json }
       create_order: { Args: { _order: Json; _items: Json }; Returns: string }
+      create_purchase_order: { Args: { _po: Json; _items: Json }; Returns: Json }
       create_invoice: { Args: { _invoice: Json; _items: Json }; Returns: string }
       deliver_order: { Args: { _order_id: string }; Returns: Json }
       validate_order: { Args: { _order_id: string }; Returns: Json }

@@ -59,6 +59,7 @@ export function AppSidebar() {
   const ops = [
     { to: "/projects", icon: Kanban, label: "Projets", module: "projects" },
     
+    { to: "/purchases", icon: PackageCheck, label: "Achats", module: "suppliers" },
     { to: "/suppliers", icon: Truck, label: t("suppliers"), module: "suppliers" },
     { to: "/warehouses", icon: Warehouse, label: "Dépôts", module: "stock" },
     { to: "/documents", icon: FileText, label: t("documents"), module: null },
