@@ -154,19 +154,13 @@ function SalesPage() {
       const validLines = lines.filter(l => l.description && l.quantity > 0);
       if (validLines.length === 0) throw new Error("Ajoutez au moins une ligne");
 
-      // Validate depot & stock per line
+      // Le stock reste vérifié, mais plus l'appartenance du produit à un dépôt :
+      // le dépôt est désormais un choix libre (d'où part la marchandise), et un
+      // produit peut se trouver dans plusieurs dépôts.
       for (const [i, l] of validLines.entries()) {
-        if (l.product_key && !l.product_id) {
-          throw new Error(`Ligne ${i + 1}: sélectionnez le dépôt du produit`);
-        }
         if (l.product_id) {
-          if (!l.warehouse_id) throw new Error(`Ligne ${i + 1}: dépôt requis`);
           const p = products.find(x => x.id === l.product_id);
           if (!p) throw new Error(`Ligne ${i + 1}: produit introuvable`);
-          if (p.warehouse_id !== l.warehouse_id) {
-            const wname = warehouses.find(w => w.id === l.warehouse_id)?.name ?? "";
-            throw new Error(`Ligne ${i + 1}: "${p.name}" n'existe pas dans le dépôt ${wname}`);
-          }
           if (Number(p.stock_quantity ?? 0) < l.quantity) {
             throw new Error(`Ligne ${i + 1}: stock insuffisant pour "${p.name}" (disponible: ${p.stock_quantity ?? 0})`);
           }
@@ -368,10 +362,9 @@ function SalesPage() {
                       const upd = (p: Partial<LineForm>) => {
                         const nx = [...lines]; nx[idx] = { ...l, ...p }; setLines(nx);
                       };
-                      const depotOptions = l.product_key
-                        ? products.filter(p => productKey(p) === l.product_key && Number(p.stock_quantity ?? 0) > 0)
-                        : [];
-                      const outOfStock = !!l.product_key && depotOptions.length === 0;
+                      const selected = l.product_id ? products.find(p => p.id === l.product_id) : undefined;
+                      const stockLeft = selected ? Number(selected.stock_quantity ?? 0) : null;
+                      const outOfStock = !!selected && Number(selected.stock_quantity ?? 0) <= 0;
                       return (
                         <TableRow key={idx}>
                           <TableCell>
@@ -381,20 +374,16 @@ function SalesPage() {
                                 return;
                               }
                               const matches = products.filter(p => productKey(p) === v);
-                              const inStock = matches.filter(p => Number(p.stock_quantity ?? 0) > 0);
-                              const first = matches[0];
-                              if (!first) return;
-                              if (inStock.length === 0) {
-                                upd({ product_key: v, product_id: null, warehouse_id: null, description: first.name, unit_price: Number(first.selling_price) });
-                                toast.error("Produit indisponible en stock");
-                                return;
-                              }
-                              if (inStock.length === 1) {
-                                const p = inStock[0];
-                                upd({ product_key: v, product_id: p.id, warehouse_id: p.warehouse_id, description: p.name, unit_price: Number(p.selling_price) });
-                              } else {
-                                upd({ product_key: v, product_id: null, warehouse_id: null, description: first.name, unit_price: Number(first.selling_price) });
-                              }
+                              const pick = matches.find(p => Number(p.stock_quantity ?? 0) > 0) ?? matches[0];
+                              if (!pick) return;
+                              upd({
+                                product_key: v,
+                                product_id: pick.id,
+                                warehouse_id: pick.warehouse_id,
+                                description: pick.name,
+                                unit_price: Number(pick.selling_price),
+                              });
+                              if (Number(pick.stock_quantity ?? 0) <= 0) toast.error("Produit indisponible en stock");
                             }}>
                               <SelectTrigger className="h-8 mb-1"><SelectValue placeholder="Produit…" /></SelectTrigger>
                               <SelectContent>
@@ -410,28 +399,24 @@ function SalesPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {!l.product_key ? (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            ) : outOfStock ? (
-                              <span className="text-xs text-rose-600">Indisponible</span>
-                            ) : depotOptions.length === 1 ? (
-                              <div className="text-xs">
-                                <div className="font-medium">{warehouses.find(w => w.id === depotOptions[0].warehouse_id)?.name ?? "—"}</div>
-                                <div className="text-muted-foreground">Stock : {depotOptions[0].stock_quantity}</div>
-                              </div>
-                            ) : (
-                              <Select value={l.product_id ?? ""} onValueChange={(v) => {
-                                const p = depotOptions.find(x => x.id === v);
-                                if (p) upd({ product_id: p.id, warehouse_id: p.warehouse_id, unit_price: Number(p.selling_price) });
-                              }}>
-                                <SelectTrigger className="h-8"><SelectValue placeholder="Choisir dépôt…" /></SelectTrigger>
-                                <SelectContent>
-                                  {depotOptions.map(p => {
-                                    const wname = warehouses.find(w => w.id === p.warehouse_id)?.name ?? "—";
-                                    return <SelectItem key={p.id} value={p.id}>{wname} – Stock : {p.stock_quantity}</SelectItem>;
-                                  })}
-                                </SelectContent>
-                              </Select>
+                            {/* Dépôt librement choisi. Auparavant il était déduit des
+                                fiches produit et ne devenait un menu que si plusieurs
+                                fiches partageaient la même référence — donc figé en
+                                texte dès qu'un produit n'existait qu'une fois. */}
+                            <Select
+                              value={l.warehouse_id ?? "_none"}
+                              onValueChange={(v) => upd({ warehouse_id: v === "_none" ? null : v })}
+                            >
+                              <SelectTrigger className="h-8"><SelectValue placeholder="Dépôt…" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="_none">— Aucun —</SelectItem>
+                                {warehouses.map(w => (
+                                  <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {stockLeft !== null && (
+                              <div className="mt-1 text-xs text-muted-foreground">Stock : {stockLeft}</div>
                             )}
                           </TableCell>
                           <TableCell><Input className="h-8" type="number" min={0} step="0.01" value={l.quantity} onChange={e => upd({ quantity: Number(e.target.value) })} /></TableCell>
