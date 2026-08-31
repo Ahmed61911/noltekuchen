@@ -53,13 +53,13 @@ export function AppSidebar() {
     { to: "/quotes", icon: FileSignature, label: "Devis", module: "sales" },
     { to: "/orders", icon: ClipboardList, label: "Commandes", module: "orders" },
     { to: "/sales", icon: ShoppingCart, label: t("sales"), module: "sales" },
+    { to: "/purchases", icon: PackageCheck, label: "Achats", module: "suppliers" },
     { to: "/returns", icon: Undo2, label: "Retours", module: null },
     { to: "/appointments", icon: Calendar, label: t("appointments"), module: null },
   ].filter((it) => !it.module || can(it.module, "view"));
   const ops = [
     { to: "/projects", icon: Kanban, label: "Projets", module: "projects" },
     
-    { to: "/purchases", icon: PackageCheck, label: "Achats", module: "suppliers" },
     { to: "/suppliers", icon: Truck, label: t("suppliers"), module: "suppliers" },
     { to: "/warehouses", icon: Warehouse, label: "Dépôts", module: "stock" },
     { to: "/documents", icon: FileText, label: t("documents"), module: null },

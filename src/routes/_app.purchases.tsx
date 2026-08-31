@@ -210,100 +210,120 @@ function PurchasesPage() {
           <DialogTrigger asChild>
             <Button className="gap-2"><Plus className="h-4 w-4" /> Nouvel achat</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Nouvel achat</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Fournisseur</Label>
-                  <Select value={supplierId || "_none"} onValueChange={(v) => setSupplierId(v === "_none" ? "" : v)}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_none">— Aucun —</SelectItem>
-                      {suppliers.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Dépôt de réception</Label>
-                  <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_none">— Aucun —</SelectItem>
-                      {warehouses.map((w: any) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Date</Label>
-                  <Input type="date" className="mt-1" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
-                </div>
-                <div>
-                  <Label>Date prévue</Label>
-                  <Input type="date" className="mt-1" value={expectedDate} onChange={(e) => setExpectedDate(e.target.value)} />
-                </div>
-              </div>
 
+            <div className="grid grid-cols-4 gap-3">
               <div>
-                <Label>Lignes (coût unitaire)</Label>
-                <div className="mt-1 space-y-2">
-                  {lines.map((l) => (
-                    <div key={l.key} className="grid grid-cols-12 items-end gap-2">
-                      <div className="col-span-5">
-                        <Select
-                          value={l.product_id}
-                          onValueChange={(v) => {
-                            const p: any = products.find((x: any) => x.id === v);
-                            upd(l.key, {
-                              product_id: v,
-                              description: p?.name ?? "",
-                              unit_cost: Number(p?.purchase_price) || 0,
-                            });
-                            // Le dépôt de réception suit le produit s'il n'est pas déjà choisi.
-                            if (!warehouseId && p?.warehouse_id) setWarehouseId(p.warehouse_id);
-                          }}
-                        >
-                          <SelectTrigger className="h-8"><SelectValue placeholder="Produit…" /></SelectTrigger>
-                          <SelectContent>
-                            {products.map((p: any) => (
-                              <SelectItem key={p.id} value={p.id}>{p.reference} — {p.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-2">
-                        <Input className="h-8" type="number" min={0} step="any" placeholder="Qté"
-                          value={l.quantity} onChange={(e) => upd(l.key, { quantity: Number(e.target.value) })} />
-                      </div>
-                      <div className="col-span-3">
-                        <Input className="h-8" type="number" min={0} step="any" placeholder="Coût"
-                          value={l.unit_cost} onChange={(e) => upd(l.key, { unit_cost: Number(e.target.value) })} />
-                      </div>
-                      <div className="col-span-1 text-end text-sm tabular-nums text-muted-foreground">
-                        {fmt((Number(l.quantity) || 0) * (Number(l.unit_cost) || 0))}
-                      </div>
-                      <div className="col-span-1">
-                        <Button size="icon" variant="ghost" className="h-8 w-8"
-                          onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((x) => x.key !== l.key) : ls))}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <Button variant="outline" size="sm" className="mt-2"
-                  onClick={() => setLines((ls) => [...ls, newLine()])}>
-                  <Plus className="me-1 h-3.5 w-3.5" /> Ajouter une ligne
+                <Label>Fournisseur</Label>
+                <Select value={supplierId || "_none"} onValueChange={(v) => setSupplierId(v === "_none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">— Aucun —</SelectItem>
+                    {suppliers.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Dépôt de réception</Label>
+                <Select value={warehouseId || "_none"} onValueChange={(v) => setWarehouseId(v === "_none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">— Aucun —</SelectItem>
+                    {warehouses.map((w: any) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Date</Label><Input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} /></div>
+              <div>
+                <Label>Date prévue</Label>
+                <Input type="date" value={expectedDate} min={orderDate || undefined} onChange={(e) => setExpectedDate(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Produits</Label>
+                <Button size="sm" variant="outline" onClick={() => setLines([...lines, newLine()])}>
+                  <Plus className="me-1 h-3 w-3" /> Ligne
                 </Button>
               </div>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead className="w-[45%]">Produit / Description</TableHead>
+                    <TableHead>Qté</TableHead>
+                    <TableHead>Coût unitaire</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {lines.map((l) => (
+                      <TableRow key={l.key}>
+                        <TableCell>
+                          <Select
+                            value={l.product_id}
+                            onValueChange={(v) => {
+                              const p: any = products.find((x: any) => x.id === v);
+                              upd(l.key, {
+                                product_id: v,
+                                description: p?.name ?? "",
+                                unit_cost: Number(p?.purchase_price) || 0,
+                              });
+                              // Le dépôt de réception suit le produit s'il n'est pas déjà choisi.
+                              if (!warehouseId && p?.warehouse_id) setWarehouseId(p.warehouse_id);
+                            }}
+                          >
+                            <SelectTrigger className="h-8 mb-1"><SelectValue placeholder="Produit…" /></SelectTrigger>
+                            <SelectContent>
+                              {products.map((p: any) => (
+                                <SelectItem key={p.id} value={p.id}>{p.reference} — {p.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input className="h-8" placeholder="Description"
+                            value={l.description} onChange={(e) => upd(l.key, { description: e.target.value })} />
+                        </TableCell>
+                        <TableCell>
+                          <Input className="h-8 w-20" type="number" min={0} step="any"
+                            value={l.quantity} onChange={(e) => upd(l.key, { quantity: Number(e.target.value) })} />
+                        </TableCell>
+                        <TableCell>
+                          <Input className="h-8 w-28" type="number" min={0} step="any"
+                            value={l.unit_cost} onChange={(e) => upd(l.key, { unit_cost: Number(e.target.value) })} />
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums font-medium">
+                          {fmt((Number(l.quantity) || 0) * (Number(l.unit_cost) || 0))}
+                        </TableCell>
+                        <TableCell>
+                          <Button size="icon" variant="ghost" className="h-8 w-8"
+                            onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((x) => x.key !== l.key) : ls))}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
 
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Notes</Label>
-                <Textarea className="mt-1" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+                <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
               </div>
-
-              <div className="flex justify-end text-lg font-semibold">Total : {fmt(total)}</div>
+              <div className="flex flex-col justify-end gap-1 rounded-md border p-3">
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Lignes</span>
+                  <span className="tabular-nums">{lines.filter((l) => l.product_id && Number(l.quantity) > 0).length}</span>
+                </div>
+                <div className="flex justify-between text-lg font-semibold">
+                  <span>Total</span><span className="tabular-nums">{fmt(total)}</span>
+                </div>
+              </div>
             </div>
+
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
               <Button onClick={() => create.mutate()} disabled={create.isPending}>
