@@ -48,6 +48,13 @@ services:
       - --storage.tsdb.retention.time=15d
       - --storage.tsdb.retention.size=2GB
       - --web.enable-lifecycle
+      # Served under /_prom/ by nginx (same basic-auth gate as Grafana, no
+      # published port). Prometheus derives --web.route-prefix from the path
+      # of --web.external-url, so it serves at /_prom/ internally and nginx
+      # passes the URI through unchanged — same arrangement as Grafana's
+      # serve_from_sub_path. Without this, every asset and redirect the UI
+      # emits points at / and 404s against the ERP instead.
+      - --web.external-url=https://${DOMAIN_APP}/_prom/
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }

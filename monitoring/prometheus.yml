@@ -25,6 +25,11 @@ global:
 
 scrape_configs:
   - job_name: prometheus
+    # --web.external-url=https://.../_prom/ makes Prometheus derive a route
+    # prefix of /_prom/, which moves its OWN metrics endpoint too. Without
+    # this path the self-scrape 404s and the `prometheus` target sits down
+    # while everything else looks fine.
+    metrics_path: /_prom/metrics
     static_configs:
       - targets: ["localhost:9090"]
 

@@ -87,6 +87,35 @@ server {
     proxy_pass http://$upstream_grafana:3000;
   }
 
+  # --- Prometheus UI ----------------------------------------------------
+  # Same gate as /_ops/. Useful mainly for the Targets page (spotting a
+  # broken exporter at a glance) and raw PromQL; day-to-day querying is
+  # nicer in Grafana Explore.
+  #
+  # NOTE: Prometheus has NO authentication of its own — unlike Grafana,
+  # which has its own login behind the basic-auth gate. Here nginx basic
+  # auth is the ONLY thing in front of it, and anyone through it can also
+  # hit the admin-ish lifecycle endpoints (--web.enable-lifecycle exposes
+  # POST /-/reload and /-/quit). Treat the ops password accordingly.
+  location /_prom/ {
+    auth_basic "Nolte Ops";
+    auth_basic_user_file /etc/nginx/conf.d/ops.htpasswd;
+
+    # As in /_ops/: a location-level add_header replaces the server's list,
+    # and the app's CSP is too strict for the Prometheus UI.
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self'" always;
+
+    # Prometheus does not read Authorization; strip it so the gate's own
+    # credentials are not forwarded needlessly.
+    proxy_set_header Authorization "";
+
+    set $upstream_prom prometheus;
+    proxy_pass http://$upstream_prom:9090;
+  }
+
   location / {
     # Variable indirection is load-bearing, not style — see the resolver
     # comment in nginx.conf. A literal `proxy_pass http://app:3000` caches
