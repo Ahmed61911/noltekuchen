@@ -8,7 +8,15 @@ datasources:
     uid: prometheus
     type: prometheus
     access: proxy
-    url: http://prometheus:9090
+    # /_prom is REQUIRED, not cosmetic. Prometheus runs with
+    # --web.external-url=https://<domain>/_prom/ so it can be served under
+    # that path by nginx, and it derives a route prefix of /_prom/ from it —
+    # which moves the API too. Pointed at http://prometheus:9090 (no prefix)
+    # every query returns Prometheus' plain-text "404 page not found", which
+    # Grafana then fails to parse as JSON and surfaces as:
+    #   Status: 404. Message: ReadObject: expect { or , or } or n, but found 4
+    # If --web.external-url is ever removed, drop this suffix in the same change.
+    url: http://prometheus:9090/_prom
     isDefault: true
     editable: false
     jsonData:
