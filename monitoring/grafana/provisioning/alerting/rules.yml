@@ -1,0 +1,243 @@
+apiVersion: 1
+
+# Provisioned alert rules (Grafana unified alerting — no Alertmanager
+# container needed).
+#
+# DELIVERY IS NOT WIRED YET. These rules evaluate and will show as Firing in
+# Grafana, but there is no contact point configured, so nothing is sent
+# anywhere. That was a deliberate choice: SMTP on this box is unconfigured
+# (SMTP_HOST=smtp.example.com, empty SMTP_PASS), so email would silently fail.
+# To start receiving them, add a contact point (email once real SMTP creds
+# exist, or a Telegram/Slack/Discord webhook) under Alerting > Contact points
+# and point the default notification policy at it. The rules need no change.
+#
+# Each rule below maps to a failure this box has actually suffered or is
+# demonstrably exposed to — not a generic starter pack.
+
+groups:
+  - orgId: 1
+    name: nolte-infra
+    folder: Nolte
+    interval: 1m
+    rules:
+      # --- Disk ------------------------------------------------------------
+      # The disk reached 79% on 2026-09-08 with a Docker build pending; the
+      # build cache alone was 21 GB. A full disk under a running Postgres
+      # risks corruption, not just failed writes.
+      - uid: nolte-disk-high
+        title: Disk usage above 85%
+        condition: THRESH
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Root filesystem is {{ $values.QUERY.Value | printf \"%.1f\" }}% full"
+          runbook: "docker builder prune -f reclaims build cache. Check docker system df first."
+        noDataState: NoData
+        execErrState: Error
+        isPaused: false
+        data:
+          - refId: QUERY
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: QUERY
+              instant: true
+              expr: 100 - ((node_filesystem_avail_bytes{mountpoint="/"} * 100) / node_filesystem_size_bytes{mountpoint="/"})
+          - refId: THRESH
+            datasourceUid: __expr__
+            model:
+              refId: THRESH
+              type: threshold
+              expression: QUERY
+              conditions:
+                - evaluator: { type: gt, params: [85] }
+
+      # --- Memory ----------------------------------------------------------
+      # 3.7 GB total and NO SWAP. When this runs out the kernel OOM-killer
+      # picks by RSS, which means Postgres or the app dies, not the process
+      # that caused the pressure.
+      - uid: nolte-mem-low
+        title: Available memory below 300 MB
+        condition: THRESH
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Only {{ $values.QUERY.Value | printf \"%.0f\" }} MB available and there is no swap"
+          runbook: "Check docker stats. Monitoring stack is mem_limited; the ERP is not."
+        noDataState: NoData
+        execErrState: Error
+        isPaused: false
+        data:
+          - refId: QUERY
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: QUERY
+              instant: true
+              expr: node_memory_MemAvailable_bytes / 1024 / 1024
+          - refId: THRESH
+            datasourceUid: __expr__
+            model:
+              refId: THRESH
+              type: threshold
+              expression: QUERY
+              conditions:
+                - evaluator: { type: lt, params: [300] }
+
+      # --- App reachable AND serving the right thing -----------------------
+      # This is the rule that would have caught the 2026-09-08 outage. nginx
+      # served PostgREST's OpenAPI JSON with HTTP 200 for 15 minutes after a
+      # container recreation shuffled Docker IPs. probe_success for the
+      # http_app_content module fails on a body that lacks the app's title,
+      # so a 200 from the wrong upstream still trips this.
+      - uid: nolte-app-content
+        title: App not serving expected content
+        condition: THRESH
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "https://noltenador.digital is not returning the ERP (status may still be 200)"
+          runbook: "Most likely stale nginx DNS after a container recreation: docker compose ... exec -T nginx nginx -s reload. Verify by body content, not status code."
+        noDataState: NoData
+        execErrState: Error
+        isPaused: false
+        data:
+          - refId: QUERY
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: QUERY
+              instant: true
+              expr: probe_success{job="blackbox_app"}
+          - refId: THRESH
+            datasourceUid: __expr__
+            model:
+              refId: THRESH
+              type: threshold
+              expression: QUERY
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+
+      # --- Supabase API ----------------------------------------------------
+      - uid: nolte-api-down
+        title: Supabase API health failing
+        condition: THRESH
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kong / auth health endpoint is not returning 200"
+        noDataState: NoData
+        execErrState: Error
+        isPaused: false
+        data:
+          - refId: QUERY
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: QUERY
+              instant: true
+              expr: probe_success{job="blackbox_api"}
+          - refId: THRESH
+            datasourceUid: __expr__
+            model:
+              refId: THRESH
+              type: threshold
+              expression: QUERY
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+
+      # --- Postgres --------------------------------------------------------
+      - uid: nolte-pg-down
+        title: Postgres unreachable
+        condition: THRESH
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "postgres-exporter cannot reach the database"
+        noDataState: NoData
+        execErrState: Error
+        isPaused: false
+        data:
+          - refId: QUERY
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: QUERY
+              instant: true
+              expr: pg_up
+          - refId: THRESH
+            datasourceUid: __expr__
+            model:
+              refId: THRESH
+              type: threshold
+              expression: QUERY
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+
+      # --- TLS expiry ------------------------------------------------------
+      # certbot renews on a 12h loop, so 14 days is a wide margin — it fires
+      # only if renewal is genuinely broken, not on normal rotation.
+      - uid: nolte-tls-expiry
+        title: TLS certificate expiring within 14 days
+        condition: THRESH
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Certificate for {{ $labels.instance }} expires in under 14 days — certbot renewal may be failing"
+          runbook: "docker compose ... logs certbot. Renewal runs every 12h via the certbot container."
+        noDataState: NoData
+        execErrState: Error
+        isPaused: false
+        data:
+          - refId: QUERY
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: QUERY
+              instant: true
+              expr: (probe_ssl_earliest_cert_expiry - time()) / 86400
+          - refId: THRESH
+            datasourceUid: __expr__
+            model:
+              refId: THRESH
+              type: threshold
+              expression: QUERY
+              conditions:
+                - evaluator: { type: lt, params: [14] }
+
+      # --- Exporter / scrape health ----------------------------------------
+      # If a scrape target disappears the dashboards go quiet rather than red,
+      # which is the failure mode that lets monitoring rot unnoticed.
+      - uid: nolte-target-down
+        title: A Prometheus scrape target is down
+        condition: THRESH
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Target {{ $labels.job }} / {{ $labels.instance }} has been unscrapeable for 10m"
+        noDataState: NoData
+        execErrState: Error
+        isPaused: false
+        data:
+          - refId: QUERY
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: QUERY
+              instant: true
+              expr: up{job=~"node|postgres|prometheus"}
+          - refId: THRESH
+            datasourceUid: __expr__
+            model:
+              refId: THRESH
+              type: threshold
+              expression: QUERY
+              conditions:
+                - evaluator: { type: lt, params: [1] }

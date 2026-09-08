@@ -29,6 +29,13 @@ lovable-export/
 nginx/conf.d/app.conf
 nginx/logs/
 
+# Basic-auth credentials for the /_ops/ Grafana gate. Only a hash, but it is
+# a credential file and does not belong in the repo. Regenerate on a new host:
+#   printf 'ops:%s\n' "$(openssl passwd -apr1 'YOUR-PASSWORD')" \
+#     > nginx/conf.d/ops.htpasswd && chmod 644 nginx/conf.d/ops.htpasswd
+# 644, not 640: nginx workers run as uid 101 inside the container.
+nginx/conf.d/ops.htpasswd
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

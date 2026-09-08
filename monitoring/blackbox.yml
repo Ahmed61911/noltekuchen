@@ -1,0 +1,51 @@
+# Blackbox exporter — end-to-end probes from outside the app.
+#
+# The `http_app_content` module exists because of a real incident on
+# 2026-09-08: a container recreation reshuffled Docker IPs, nginx (which
+# resolves proxy_pass hostnames once at startup and caches them) kept
+# proxying to the address it had memorised, and that address now belonged to
+# PostgREST. The site returned HTTP 200 for 15 minutes while serving
+# PostgREST's OpenAPI JSON instead of the ERP. A status-code-only check would
+# have stayed green throughout.
+#
+# So the app probe asserts on BODY CONTENT, not just status. If the response
+# no longer contains the app's own <title>, the probe fails regardless of the
+# status code.
+
+modules:
+  # App: follows the / -> /dashboard redirect and requires the app's title in
+  # the final body. Matching '<title>Nolte' rather than the full 'Nolte
+  # Küchen' keeps the pattern pure ASCII — no encoding ambiguity between this
+  # file, the exporter's YAML parser, and the served charset.
+  http_app_content:
+    prober: http
+    timeout: 10s
+    http:
+      method: GET
+      valid_status_codes: [200]
+      follow_redirects: true
+      preferred_ip_protocol: ip4
+      fail_if_body_not_matches_regexp:
+        - "<title>Nolte"
+
+  # Supabase/Kong health endpoint. Returns JSON, so status-only is correct
+  # here — there is no meaningful body assertion to make.
+  http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      method: GET
+      valid_status_codes: [200]
+      follow_redirects: false
+      preferred_ip_protocol: ip4
+
+  # TLS certificate expiry. The probe itself reports
+  # probe_ssl_earliest_cert_expiry, which the cert-expiry alert reads.
+  http_tls:
+    prober: http
+    timeout: 10s
+    http:
+      method: GET
+      valid_status_codes: [200, 301, 302, 307, 308]
+      follow_redirects: false
+      preferred_ip_protocol: ip4

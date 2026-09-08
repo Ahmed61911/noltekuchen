@@ -50,8 +50,50 @@ server {
   # bien régénéré, voir scripts/render-nginx.sh.
   add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://${DOMAIN_SUPABASE} wss://${DOMAIN_SUPABASE}; frame-ancestors 'self'; base-uri 'self'; form-action 'self'" always;
 
+  # --- Ops UI (Grafana) -------------------------------------------------
+  # Reached ONLY through here: the monitoring stack publishes no host ports,
+  # so this vhost is the single way in. Two independent auth layers — nginx
+  # basic auth, then Grafana's own login. The unguessable path is a
+  # convenience, not a control; do not treat it as one.
+  #
+  # nginx matches the longest prefix location first, so this wins over
+  # `location /` below regardless of ordering in the file.
+  location /_ops/ {
+    auth_basic "Nolte Ops";
+    auth_basic_user_file /etc/nginx/conf.d/ops.htpasswd;
+
+    # add_header REPLACES the server block's list as soon as a location
+    # defines its own, so the inherited CSP is gone here — which is what we
+    # want, since the app's CSP is far too strict for Grafana (it needs
+    # unsafe-eval and blob: workers). Re-declare the headers that should
+    # still apply, with a CSP scoped to Grafana's actual needs.
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'self'" always;
+
+    # Via a variable so nginx resolves at request time, not config load. This
+    # also means a stopped Grafana degrades to a 502 on /_ops/ ONLY — with a
+    # literal hostname, nginx would fail to start or reload at all whenever
+    # the monitoring stack is down, taking the ERP with it.
+    # Strip the gate's own credentials before they reach Grafana. Without
+    # this, nginx forwards the `ops` basic-auth header upstream, Grafana
+    # treats it as a login attempt for a Grafana user named `ops`, and every
+    # request logs an authn failure — and in the UI it collides with
+    # Grafana's own session login. The two auth layers must stay separate.
+    proxy_set_header Authorization "";
+
+    set $upstream_grafana grafana;
+    proxy_pass http://$upstream_grafana:3000;
+  }
+
   location / {
-    proxy_pass http://app:3000;
+    # Variable indirection is load-bearing, not style — see the resolver
+    # comment in nginx.conf. A literal `proxy_pass http://app:3000` caches
+    # the IP for the worker's lifetime and silently serves whatever later
+    # takes that address.
+    set $upstream_app app;
+    proxy_pass http://$upstream_app:3000;
   }
 }
 
@@ -72,12 +114,14 @@ server {
   # password recovery). Blocks brute-force without needing fail2ban.
   location ~ ^/auth/v1/(token|signup|recover|otp|verify|magiclink) {
     limit_req zone=auth_zone burst=10 nodelay;
-    proxy_pass http://kong:8000;
+    set $upstream_kong_auth kong;
+    proxy_pass http://$upstream_kong_auth:8000;
   }
 
   # General API traffic (rest, storage, remaining auth reads).
   location / {
     limit_req zone=api_zone burst=60 nodelay;
-    proxy_pass http://kong:8000;
+    set $upstream_kong kong;
+    proxy_pass http://$upstream_kong:8000;
   }
 }

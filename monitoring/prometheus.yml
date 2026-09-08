@@ -1,11 +1,90 @@
+# Prometheus scrape config.
+#
+# Deliberately narrow: this box has 2 cores and 3.7 GB RAM with no swap, and
+# it runs a live ERP. Every job here earns its keep against something that
+# has actually broken or is a known risk:
+#
+#   node       -> disk / RAM / CPU. The disk hit 79% on 2026-09-08 and a
+#                 Docker build on top of that would have filled it under a
+#                 running Postgres.
+#   postgres   -> connection saturation, transaction age, DB availability.
+#   blackbox   -> end-to-end HTTPS probes with body assertions, because a
+#                 200 from the wrong upstream is indistinguishable from
+#                 health at the status-code level (see monitoring/blackbox.yml).
+#
+# Container-level metrics (cAdvisor) are deliberately omitted — it is the
+# heaviest exporter in common use and node-exporter plus the blackbox probes
+# already cover the failure modes seen here.
+
 global:
-  scrape_interval: 15s
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+  external_labels:
+    host: vps-0d88bf39
 
 scrape_configs:
   - job_name: prometheus
     static_configs:
       - targets: ["localhost:9090"]
 
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
   - job_name: postgres
     static_configs:
       - targets: ["postgres-exporter:9187"]
+
+  # --- Blackbox: app content probe -----------------------------------------
+  # Hits the public URL through nginx and asserts the body really is the app.
+  - job_name: blackbox_app
+    metrics_path: /probe
+    params:
+      module: [http_app_content]
+    static_configs:
+      - targets:
+          - https://noltenador.digital/
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # --- Blackbox: Supabase API health ---------------------------------------
+  - job_name: blackbox_api
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://supabase.noltenador.digital/auth/v1/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # --- Blackbox: TLS expiry ------------------------------------------------
+  # Separate job so cert alerts are not coupled to the content assertion —
+  # a content failure should not also mask cert expiry, and vice versa.
+  - job_name: blackbox_tls
+    scrape_interval: 5m
+    metrics_path: /probe
+    params:
+      module: [http_tls]
+    static_configs:
+      - targets:
+          - https://noltenador.digital/
+          - https://supabase.noltenador.digital/auth/v1/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115

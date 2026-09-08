@@ -1,26 +1,163 @@
-# Optional observability stack: Grafana + Loki + Promtail (container logs) +
-# Prometheus + postgres-exporter (Postgres stats). NOT started by default —
-# opt in explicitly:
-#   docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
-# In production, layer it on top of the prod override too:
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.monitoring.yml up -d
+# Observability stack. NOT started by default — opt in explicitly:
 #
-# Grafana: http://<host>:3001 — default login admin / admin unless you set
-# GRAFANA_ADMIN_PASSWORD in .env before first boot. Change it on first login
-# either way. Port 3001 is mapped directly to the host for simplicity; if
-# this VPS is public, put it behind the nginx vhost + basic auth (or an SSH
-# tunnel) rather than leaving it open on the internet.
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#                  -f docker-compose.monitoring.yml up -d
 #
-# postgres-exporter connects as the `postgres` superuser for simplicity. For
-# a tighter setup, create a dedicated read-only monitoring role instead.
+# IMPORTANT: always include docker-compose.prod.yml on this box. The prod
+# override is what drops the published ports (`ports: !reset []`) on db, kong,
+# minio and app. Running `docker compose up` with the base file alone
+# republishes 5432 / 8000 / 9001 / 8080, and Docker's DNAT rules bypass ufw
+# entirely — so the database lands on the public internet. That happened on
+# 2026-09-08 and took ~73 minutes to notice.
+#
+# ---------------------------------------------------------------------------
+# Access: nothing here publishes a host port. Grafana is reached only through
+# the nginx vhost at https://${DOMAIN_APP}/_ops/, behind HTTP basic auth plus
+# Grafana's own login. Two independent auth layers; the obscure path is a
+# convenience, never the control.
+#
+# ---------------------------------------------------------------------------
+# Memory: this host has 3.7 GB RAM and NO SWAP, shared with a live ERP. Every
+# service below has an explicit mem_limit so the monitoring stack can never
+# grow into the space Postgres needs. Budget is ~530 MB total against ~1.7 GB
+# free. Without limits, Prometheus' TSDB in particular will happily expand
+# until the kernel OOM-killer picks a victim — and it picks by RSS, which
+# means Postgres or the app, not Prometheus.
+#
+# Loki + Promtail (log aggregation) are defined but gated behind the `logs`
+# profile, so they do NOT start unless asked for:
+#
+#   ... -f docker-compose.monitoring.yml --profile logs up -d
+#
+# They add roughly 400 MB. Add a swapfile before enabling them.
 
 services:
+  # ---------- Prometheus ---------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    restart: always
+    mem_limit: 320m
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # 15d, not 30d: retention is the main driver of both disk and the
+      # in-memory index on a box this size.
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=2GB
+      - --web.enable-lifecycle
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # ---------- Host metrics -------------------------------------------------
+  # Disk, RAM, CPU, filesystem fill rate. This is the job that would have
+  # flagged the 79%-full disk before a build tried to fill the rest.
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    restart: always
+    mem_limit: 64m
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - --path.rootfs=/host
+      # Only the real root filesystem matters here; without these the
+      # overlay2 mounts of every container show up as separate filesystems
+      # and drown the disk panels in noise.
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|var/lib/docker/.+)($$|/)
+      - --collector.filesystem.fs-types-exclude=^(autofs|overlay|tmpfs|devtmpfs|squashfs)$$
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # ---------- Postgres metrics --------------------------------------------
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    restart: always
+    mem_limit: 64m
+    environment:
+      # Connects as the superuser for simplicity, matching the original
+      # config. A dedicated read-only monitoring role would be tighter —
+      # noted as follow-up rather than silently changed here.
+      DATA_SOURCE_NAME: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # ---------- End-to-end probes -------------------------------------------
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    restart: always
+    mem_limit: 64m
+    volumes:
+      - ./monitoring/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    command:
+      - --config.file=/etc/blackbox_exporter/config.yml
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # ---------- Grafana ------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.2.0
+    restart: always
+    mem_limit: 256m
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Served under a sub-path by nginx, so Grafana has to know its own
+      # external URL or every asset and redirect it emits points at / and
+      # 404s against the app instead.
+      GF_SERVER_ROOT_URL: https://${DOMAIN_APP}/_ops/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      # Both of these are required behind this reverse proxy, and neither is
+      # implied by ROOT_URL.
+      #
+      # DOMAIN defaults to "localhost". Grafana's CSRF middleware compares the
+      # browser's Origin header against it, so every POST from a real browser
+      # (login, /api/ds/query — i.e. every panel) was rejected with
+      # "origin not allowed" / HTTP 403 while the dashboards rendered fine.
+      # curl never reproduced it because curl sends no Origin header.
+      GF_SERVER_DOMAIN: ${DOMAIN_APP}
+      # Belt-and-braces for the same check: name the origin explicitly so the
+      # comparison does not depend on Host/X-Forwarded-* reaching Grafana
+      # intact through nginx.
+      GF_SECURITY_CSRF_TRUSTED_ORIGINS: ${DOMAIN_APP}
+      # No outbound calls from a production box that does not need them.
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      # Land on the Nolte dashboard instead of Grafana's stock home page.
+      # Without this you log in to an empty built-in dashboard and have to
+      # navigate to Dashboards > Nolte to see anything — which reads exactly
+      # like "monitoring is showing no data".
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/nolte-overview.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on: [prometheus]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # ---------- Log aggregation (opt-in: --profile logs) ---------------------
   loki:
     image: grafana/loki:3.2.1
-    restart: unless-stopped
+    profiles: ["logs"]
+    restart: always
+    mem_limit: 256m
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - loki_data:/loki
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
 
   promtail:
     # 2.9.x's bundled Docker client only speaks API <=1.42; current Docker
@@ -28,46 +165,19 @@ services:
     # ("client version 1.42 is too old"), which breaks docker_sd_configs
     # discovery entirely. 3.x bundles a client that negotiates correctly.
     image: grafana/promtail:3.2.1
-    restart: unless-stopped
+    profiles: ["logs"]
+    restart: always
+    mem_limit: 128m
     volumes:
       - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command: -config.file=/etc/promtail/config.yml
     depends_on: [loki]
-
-  prometheus:
-    image: prom/prometheus:v2.54.1
-    restart: unless-stopped
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.retention.time=30d
-
-  postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:v0.15.0
-    restart: unless-stopped
-    environment:
-      DATA_SOURCE_NAME: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
-    depends_on:
-      db:
-        condition: service_healthy
-
-  grafana:
-    image: grafana/grafana:11.2.0
-    restart: unless-stopped
-    ports:
-      - "3001:3000"
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
-      GF_USERS_ALLOW_SIGN_UP: "false"
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-    depends_on: [loki, prometheus]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
 
 volumes:
-  loki_data:
   prometheus_data:
   grafana_data:
+  loki_data:

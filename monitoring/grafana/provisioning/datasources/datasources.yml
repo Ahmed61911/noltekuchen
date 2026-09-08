@@ -1,14 +1,24 @@
 apiVersion: 1
 
+# Explicit `uid` values matter: the provisioned alert rules in
+# ../alerting/rules.yml reference the datasource by UID. Without one, Grafana
+# generates a random UID per install and the provisioned rules fail to bind.
 datasources:
   - name: Prometheus
+    uid: prometheus
     type: prometheus
     access: proxy
     url: http://prometheus:9090
     isDefault: true
     editable: false
+    jsonData:
+      timeInterval: 30s
 
+  # Only reachable when the stack is started with `--profile logs`. Left
+  # provisioned so enabling that profile needs no config change; until then
+  # this datasource will simply report unreachable in the UI.
   - name: Loki
+    uid: loki
     type: loki
     access: proxy
     url: http://loki:3100
