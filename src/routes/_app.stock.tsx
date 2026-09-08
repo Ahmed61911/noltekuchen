@@ -55,6 +55,9 @@ function StockPage() {
   const [type, setType] = useState<"in" | "out" | "damaged">("in");
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState("");
+  // Vide = maintenant : on omet alors created_at et Postgres applique
+  // son propre defaut now(). Rien ne change tant que rien n'est saisi.
+  const [movementDate, setMovementDate] = useState("");
   
   // Mouvements filters
   const [productFilter, setProductFilter] = useState("all");
@@ -110,6 +113,9 @@ function StockPage() {
       const { error } = await supabase.from("stock_movements").insert({
         product_id: productId, type, quantity, unit_cost: unitCost, reason, user_id: user.id,
         warehouse_id: warehouseId || null,
+        // datetime-local rend une heure locale ; toISOString la convertit en
+        // UTC, ce que timestamptz attend. Omis si vide (defaut now()).
+        ...(movementDate ? { created_at: new Date(movementDate).toISOString() } : {}),
       });
       if (error) throw error;
     },
@@ -121,6 +127,7 @@ function StockPage() {
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       setOpen(false);
       setProductId(""); setWarehouseId(""); setType("in"); setQuantity(1); setUnitCost(0); setReason("");
+      setMovementDate("");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -345,6 +352,17 @@ function StockPage() {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Date du mouvement</Label>
+                      <Input
+                        type="datetime-local"
+                        value={movementDate}
+                        onChange={(e) => setMovementDate(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Laisser vide pour la date et l'heure actuelles.
+                      </p>
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">{t("reason")}</Label>
