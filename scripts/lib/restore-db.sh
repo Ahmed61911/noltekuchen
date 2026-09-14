@@ -29,8 +29,18 @@ restore_db_dump() {
     || { echo "[restore] ERROR: $dump does not look like a pg_dump plain dump" >&2; rm -rf "$work"; return 1; }
   touch "$work/clean.sql"
 
+  # auth and storage are dropped wholesale afterwards. The dump holds every
+  # object in both, but a freshly bootstrapped stack already has them, filled
+  # by the Postgres image, GoTrue and Storage with objects the dump doesn't
+  # list. The dump's plain `DROP SCHEMA IF EXISTS auth` is then refused
+  # (dependent objects), and its `CREATE SCHEMA auth` aborts the restore.
+  # public is left to the dump's own per-object DROPs above, which run
+  # first, so nothing of the app's is lost to the CASCADE that isn't in the
+  # dump anyway.
+  printf 'DROP SCHEMA IF EXISTS auth CASCADE;\nDROP SCHEMA IF EXISTS storage CASCADE;\n' >> "$work/clean.sql"
+
   local clean_errors
-  clean_errors=$(cat "$work/header.sql" "$work/clean.sql" | "$@" -v ON_ERROR_STOP=0 -q 2>&1 >/dev/null | grep -c '^ERROR' || true)
+  clean_errors=$(cat "$work/header.sql" "$work/clean.sql" | "$@" -v ON_ERROR_STOP=0 -q 2>&1 >/dev/null | grep -c 'ERROR:' || true)
   echo "[restore] clean phase: $clean_errors statement(s) skipped (objects absent on the target — expected on a fresh database)"
 
   local rc=0
