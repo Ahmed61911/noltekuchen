@@ -26,8 +26,10 @@ echo "[restore] db"
 # drops each object right before recreating it, so no separate schema-wipe
 # is needed here (an earlier version dropped only `public`, which then hit
 # dozens of "already exists" errors restoring the auth/storage schema
-# objects that pg_dump also captures).
-gunzip -c "$TMP/db.sql.gz" | docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+# objects that pg_dump also captures). See lib/restore-db.sh for why the
+# DROP section is replayed separately from the rest.
+. "$ROOT/scripts/lib/restore-db.sh"
+restore_db_dump "$TMP/db.sql.gz" docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
 
 # --no-owner (used at backup time, deliberately, so a restore never depends
 # on matching role names) means the dump's CREATE SCHEMA auth/storage lines

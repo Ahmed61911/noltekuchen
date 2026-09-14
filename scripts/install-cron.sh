@@ -30,6 +30,9 @@ add_if_missing() {
 }
 
 add_if_missing "$BACKUP_LINE"
+# Weekly proof that the newest archive restores (throwaway container only).
+VERIFY_LINE="30 4 * * 0 cd $ROOT && ./scripts/verify-backup.sh >> $LOG_DIR/nolte-verify-backup.log 2>&1"
+add_if_missing "$VERIFY_LINE"
 
 # Only once off-site storage is actually configured; otherwise the job would
 # fail every night and bury real errors in its log.

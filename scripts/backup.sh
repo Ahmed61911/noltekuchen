@@ -38,9 +38,9 @@ docker compose run --rm -T --no-deps \
   --entrypoint /bin/sh minio-init -c "
     set -e;
     mc alias set local http://minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD >/dev/null;
-    mc mirror --overwrite --preserve local/product-images /backup/product-images;
-    mc mirror --overwrite --preserve local/documents      /backup/documents;
-    mc mirror --overwrite --preserve local/$STORAGE_S3_BUCKET /backup/$STORAGE_S3_BUCKET;
+    mc mirror --quiet --overwrite --preserve local/product-images /backup/product-images;
+    mc mirror --quiet --overwrite --preserve local/documents      /backup/documents;
+    mc mirror --quiet --overwrite --preserve local/$STORAGE_S3_BUCKET /backup/$STORAGE_S3_BUCKET;
   " || echo "[backup] WARNING: storage mirror failed — archive contains the database only" >&2
 
 echo "[backup] tarball"
