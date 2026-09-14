@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 set -a; . ./.env; set +a
-export COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+export COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml COMPOSE_IGNORE_ORPHANS=1
 
 : "${POSTGRES_EXPORTER_PASSWORD:?set POSTGRES_EXPORTER_PASSWORD in .env (openssl rand -hex 32)}"
 

@@ -9,7 +9,7 @@ set -a; . ./.env; set +a
 # Always resolve services through the prod override. With the base file
 # alone, compose sees db/minio/app as having diverged from their definition
 # and may recreate them with their dev ports published to the internet.
-export COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+export COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml COMPOSE_IGNORE_ORPHANS=1
 
 STAMP=$(date -u +%Y%m%d-%H%M%S)
 OUT="./backups/$STAMP"
@@ -38,9 +38,9 @@ docker compose run --rm -T --no-deps \
   --entrypoint /bin/sh minio-init -c "
     set -e;
     mc alias set local http://minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD >/dev/null;
-    mc mirror --quiet --overwrite --preserve local/product-images /backup/product-images;
-    mc mirror --quiet --overwrite --preserve local/documents      /backup/documents;
-    mc mirror --quiet --overwrite --preserve local/$STORAGE_S3_BUCKET /backup/$STORAGE_S3_BUCKET;
+    mc mirror --quiet --overwrite --preserve local/product-images /backup/product-images >/dev/null;
+    mc mirror --quiet --overwrite --preserve local/documents      /backup/documents >/dev/null;
+    mc mirror --quiet --overwrite --preserve local/$STORAGE_S3_BUCKET /backup/$STORAGE_S3_BUCKET >/dev/null;
   " || echo "[backup] WARNING: storage mirror failed — archive contains the database only" >&2
 
 echo "[backup] tarball"

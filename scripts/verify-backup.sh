@@ -12,7 +12,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 set -a; . ./.env; set +a
-export COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+export COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml COMPOSE_IGNORE_ORPHANS=1
 . "$ROOT/scripts/lib/restore-db.sh"
 
 ARCHIVE="${1:-$(ls -1t backups/backup-*.tar.gz 2>/dev/null | head -1)}"

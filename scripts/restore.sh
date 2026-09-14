@@ -9,7 +9,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 set -a; . ./.env; set +a
 # Same reason as backup.sh: never resolve services without the prod override.
-export COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+export COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml COMPOSE_IGNORE_ORPHANS=1
 
 ARCHIVE="${1:?path to backup archive required}"
 [[ -f "$ARCHIVE" ]] || { echo "No such file: $ARCHIVE" >&2; exit 1; }
