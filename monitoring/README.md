@@ -21,5 +21,6 @@ Grafana: http://\<host\>:3001, login `admin` / `${GRAFANA_ADMIN_PASSWORD:-admin}
 — change the password on first login. Don't expose this port on the public
 internet without extra protection (nginx vhost + auth, or an SSH tunnel).
 
-`postgres-exporter` connects as the `postgres` superuser for simplicity. For
-a tighter setup, create a dedicated read-only monitoring role instead.
+`postgres-exporter` connects as the read-only `nolte_exporter` role (member of
+`pg_monitor`). Set `POSTGRES_EXPORTER_PASSWORD` in `.env` and run
+`scripts/create-exporter-role.sh` before starting the monitoring stack.

@@ -101,6 +101,18 @@ services:
     environment:
       DOMAIN_APP: ${DOMAIN_APP}
       DOMAIN_SUPABASE: ${DOMAIN_SUPABASE}
+    # certbot (below) renews certificates on the shared volume but cannot
+    # signal nginx, which keeps serving the certificate it loaded at start
+    # until it expires. Reload every 6h so a renewal is picked up well inside
+    # Let's Encrypt's 30-day renewal window. A reload with a broken config is
+    # refused and the running config stays in place. The loop is started
+    # before exec'ing the stock entrypoint so nginx itself stays PID 1.
+    command:
+      - /bin/sh
+      - -c
+      - |
+        (while :; do sleep 6h; nginx -s reload; done) &
+        exec /docker-entrypoint.sh nginx -g 'daemon off;'
 
   certbot:
     image: certbot/certbot:v2.11.0

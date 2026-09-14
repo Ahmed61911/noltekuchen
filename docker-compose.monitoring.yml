@@ -47,7 +47,9 @@ services:
       # in-memory index on a box this size.
       - --storage.tsdb.retention.time=15d
       - --storage.tsdb.retention.size=2GB
-      - --web.enable-lifecycle
+      # No --web.enable-lifecycle: it exposes /-/quit and /-/reload to anyone
+      # past the /_prom/ basic-auth gate, and nothing here uses them. Apply a
+      # prometheus.yml change with `docker compose ... restart prometheus`.
       # Served under /_prom/ by nginx (same basic-auth gate as Grafana, no
       # published port). Prometheus derives --web.route-prefix from the path
       # of --web.external-url, so it serves at /_prom/ internally and nginx
@@ -86,10 +88,10 @@ services:
     restart: always
     mem_limit: 64m
     environment:
-      # Connects as the superuser for simplicity, matching the original
-      # config. A dedicated read-only monitoring role would be tighter —
-      # noted as follow-up rather than silently changed here.
-      DATA_SOURCE_NAME: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+      # Dedicated read-only role (member of pg_monitor), created by
+      # scripts/create-exporter-role.sh — never the superuser, whose password
+      # would otherwise be readable here via `docker inspect`.
+      DATA_SOURCE_NAME: postgres://nolte_exporter:${POSTGRES_EXPORTER_PASSWORD:?set POSTGRES_EXPORTER_PASSWORD in .env, then run scripts/create-exporter-role.sh}@db:5432/${POSTGRES_DB}?sslmode=disable
     depends_on:
       db:
         condition: service_healthy

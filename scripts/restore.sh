@@ -8,6 +8,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 set -a; . ./.env; set +a
+# Same reason as backup.sh: never resolve services without the prod override.
+export COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
 
 ARCHIVE="${1:?path to backup archive required}"
 [[ -f "$ARCHIVE" ]] || { echo "No such file: $ARCHIVE" >&2; exit 1; }
@@ -36,7 +38,7 @@ docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
   "ALTER SCHEMA auth OWNER TO supabase_auth_admin; ALTER SCHEMA storage OWNER TO supabase_storage_admin;"
 
 echo "[restore] storage"
-docker compose run --rm -T \
+docker compose run --rm -T --no-deps \
   -v "$TMP/storage:/backup:ro" \
   --entrypoint /bin/sh minio-init -c "
     mc alias set local http://minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD >/dev/null;
