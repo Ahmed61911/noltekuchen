@@ -142,6 +142,17 @@ services:
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_NEWS_NEWS_FEED_ENABLED: "false"
+      # Alert e-mail (contact point: provisioning/alerting/contact-points.yml).
+      # Reuses the SMTP_* settings GoTrue sends auth mail with, so there is
+      # one mail account to maintain. Gmail rewrites any other From address to
+      # the authenticated account anyway, so From is the SMTP user itself.
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: ${SMTP_HOST}:${SMTP_PORT}
+      GF_SMTP_USER: ${SMTP_USER}
+      GF_SMTP_PASSWORD: ${SMTP_PASS}
+      GF_SMTP_FROM_ADDRESS: ${SMTP_USER}
+      GF_SMTP_FROM_NAME: Nolte Monitoring
+      GF_SMTP_STARTTLS_POLICY: MandatoryStartTLS
       # Land on the Nolte dashboard instead of Grafana's stock home page.
       # Without this you log in to an empty built-in dashboard and have to
       # navigate to Dashboards > Nolte to see anything — which reads exactly

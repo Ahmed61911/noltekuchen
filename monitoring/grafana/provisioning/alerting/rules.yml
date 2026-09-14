@@ -3,13 +3,8 @@ apiVersion: 1
 # Provisioned alert rules (Grafana unified alerting — no Alertmanager
 # container needed).
 #
-# DELIVERY IS NOT WIRED YET. These rules evaluate and will show as Firing in
-# Grafana, but there is no contact point configured, so nothing is sent
-# anywhere. That was a deliberate choice: SMTP on this box is unconfigured
-# (SMTP_HOST=smtp.example.com, empty SMTP_PASS), so email would silently fail.
-# To start receiving them, add a contact point (email once real SMTP creds
-# exist, or a Telegram/Slack/Discord webhook) under Alerting > Contact points
-# and point the default notification policy at it. The rules need no change.
+# Delivery: e-mailed to noltenador@gmail.com via contact-points.yml, over the
+# SMTP_* account in .env (Gmail + App Password).
 #
 # Each rule below maps to a failure this box has actually suffered or is
 # demonstrably exposed to — not a generic starter pack.

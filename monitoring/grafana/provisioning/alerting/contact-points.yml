@@ -1,0 +1,30 @@
+apiVersion: 1
+
+# Where the rules in rules.yml are delivered. SMTP itself is configured by
+# the GF_SMTP_* variables in docker-compose.monitoring.yml.
+#
+# Test delivery without waiting for a real incident:
+#   Grafana > Alerting > Contact points > nolte-email > Test
+
+contactPoints:
+  - orgId: 1
+    name: nolte-email
+    receivers:
+      - uid: nolte-email
+        type: email
+        settings:
+          addresses: noltenador@gmail.com
+          singleEmail: true
+        # Also mail when the problem clears, so an inbox read later shows
+        # whether it is still ongoing.
+        disableResolveMessage: false
+
+# Replaces Grafana's default policy tree: every alert goes to nolte-email.
+policies:
+  - orgId: 1
+    receiver: nolte-email
+    group_by: ["grafana_folder", "alertname"]
+    group_wait: 30s
+    group_interval: 5m
+    # A still-firing alert is re-sent every 4h, not every evaluation.
+    repeat_interval: 4h
